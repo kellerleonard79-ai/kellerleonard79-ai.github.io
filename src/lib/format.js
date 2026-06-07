@@ -24,6 +24,14 @@ export function todayISO() {
   return new Date(now.getTime() - off * 60000).toISOString().slice(0, 10)
 }
 
+// Turn a grade number into an ordinal label, e.g. 10 -> "10th Grade".
+export function gradeLabel(n) {
+  if (n == null) return ''
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]} Grade`
+}
+
 export function checkinUrl(meetingId) {
   const origin =
     typeof window !== 'undefined' ? window.location.origin : ''

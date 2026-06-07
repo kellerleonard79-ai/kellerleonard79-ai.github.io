@@ -8,6 +8,8 @@ import MeetingDetail from './pages/MeetingDetail.jsx'
 import AgendaEditor from './pages/AgendaEditor.jsx'
 import SessionView from './pages/SessionView.jsx'
 import Checkin from './pages/Checkin.jsx'
+import Profile from './pages/Profile.jsx'
+import MemberDirectory from './pages/MemberDirectory.jsx'
 
 export default function App() {
   return (
@@ -16,6 +18,9 @@ export default function App() {
       <Route path="/join" element={<Join />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dashboard/profile" element={<Profile />} />
+      <Route path="/dashboard/members" element={<MemberDirectory />} />
+      <Route path="/dashboard/members/:id" element={<Profile />} />
       <Route path="/dashboard/meetings" element={<Meetings />} />
       <Route path="/dashboard/meetings/:id" element={<MeetingDetail />} />
       <Route path="/dashboard/meetings/:id/agenda" element={<AgendaEditor />} />

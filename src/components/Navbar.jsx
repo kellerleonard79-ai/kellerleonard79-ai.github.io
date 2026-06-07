@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Menu, X, LogIn, LogOut, UserPlus, LayoutDashboard } from 'lucide-react'
+import { Menu, X, LogIn, LogOut, UserPlus, LayoutDashboard, UserCircle } from 'lucide-react'
 import Crest from './Crest.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 
@@ -56,6 +56,15 @@ export default function Navbar() {
               className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
             >
               <LayoutDashboard className="h-4 w-4" /> Dashboard
+            </Link>
+          )}
+
+          {session && (
+            <Link
+              to="/dashboard/profile"
+              className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+            >
+              <UserCircle className="h-4 w-4" /> My Profile
             </Link>
           )}
 
@@ -117,6 +126,16 @@ export default function Navbar() {
                 className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-maroon px-4 py-2 text-base font-semibold text-maroon"
               >
                 <LayoutDashboard className="h-4 w-4" /> Dashboard
+              </Link>
+            )}
+
+            {session && (
+              <Link
+                to="/dashboard/profile"
+                onClick={() => setOpen(false)}
+                className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-maroon px-4 py-2 text-base font-semibold text-maroon"
+              >
+                <UserCircle className="h-4 w-4" /> My Profile
               </Link>
             )}
 

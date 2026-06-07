@@ -18,7 +18,7 @@ const CARDS = [
     title: 'Member Directory',
     desc: 'Search and filter all members',
     icon: Users,
-    to: null,
+    to: '/dashboard/members',
   },
   {
     title: 'Meetings',
@@ -33,10 +33,10 @@ const CARDS = [
     to: null,
   },
   {
-    title: 'Profile',
-    desc: 'Committees, achievements',
+    title: 'My Profile',
+    desc: 'Your info and attendance',
     icon: UserCircle,
-    to: null,
+    to: '/dashboard/profile',
   },
   {
     title: 'Elections',
