@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Menu, X, LogIn } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Menu, X, LogIn, UserPlus } from 'lucide-react'
 import Crest from './Crest.jsx'
 
 // Placeholder routes for the other pages you'll build later.
@@ -19,7 +20,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         {/* Brand */}
-        <a href="#home" className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3">
           <Crest className="h-11 w-11 shrink-0 object-contain" />
           <span className="flex flex-col leading-tight">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-gold">
@@ -29,7 +30,7 @@ export default function Navbar() {
               Student Government
             </span>
           </span>
-        </a>
+        </Link>
 
         {/* Desktop nav */}
         <div className="hidden items-center gap-1 lg:flex">
@@ -46,9 +47,15 @@ export default function Navbar() {
               {l.label}
             </a>
           ))}
+          <Link
+            to="/join"
+            className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+          >
+            <UserPlus className="h-4 w-4" /> Join SGA
+          </Link>
           <a
             href="#login"
-            className="ml-2 inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
+            className="ml-1 inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
           >
             <LogIn className="h-4 w-4" /> Member Login
           </a>
@@ -79,6 +86,13 @@ export default function Navbar() {
                 {l.label}
               </a>
             ))}
+            <Link
+              to="/join"
+              onClick={() => setOpen(false)}
+              className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-maroon px-4 py-2 text-base font-semibold text-maroon"
+            >
+              <UserPlus className="h-4 w-4" /> Join SGA
+            </Link>
             <a
               href="#login"
               onClick={() => setOpen(false)}
