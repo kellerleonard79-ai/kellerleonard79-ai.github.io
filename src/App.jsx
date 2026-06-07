@@ -3,6 +3,7 @@ import Home from './pages/Home.jsx'
 import Join from './pages/Join.jsx'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
+import Meetings from './pages/Meetings.jsx'
 import Checkin from './pages/Checkin.jsx'
 
 export default function App() {
@@ -12,6 +13,7 @@ export default function App() {
       <Route path="/join" element={<Join />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dashboard/meetings" element={<Meetings />} />
       <Route path="/checkin/:meetingId" element={<Checkin />} />
     </Routes>
   )
