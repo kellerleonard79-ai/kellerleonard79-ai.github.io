@@ -4,6 +4,9 @@ import Join from './pages/Join.jsx'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Meetings from './pages/Meetings.jsx'
+import MeetingDetail from './pages/MeetingDetail.jsx'
+import AgendaEditor from './pages/AgendaEditor.jsx'
+import SessionView from './pages/SessionView.jsx'
 import Checkin from './pages/Checkin.jsx'
 
 export default function App() {
@@ -14,6 +17,9 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dashboard/meetings" element={<Meetings />} />
+      <Route path="/dashboard/meetings/:id" element={<MeetingDetail />} />
+      <Route path="/dashboard/meetings/:id/agenda" element={<AgendaEditor />} />
+      <Route path="/dashboard/meetings/:id/session" element={<SessionView />} />
       <Route path="/checkin/:meetingId" element={<Checkin />} />
     </Routes>
   )
