@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Menu, X, LogIn, UserPlus } from 'lucide-react'
+import { Menu, X, LogIn, LogOut, UserPlus, LayoutDashboard } from 'lucide-react'
 import Crest from './Crest.jsx'
+import { useAuth } from '../lib/AuthContext.jsx'
 
 // Placeholder routes for the other pages you'll build later.
 const links = [
@@ -15,6 +16,7 @@ const links = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
+  const { session, isStaff, signOut } = useAuth()
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur">
@@ -47,18 +49,39 @@ export default function Navbar() {
               {l.label}
             </a>
           ))}
-          <Link
-            to="/join"
-            className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
-          >
-            <UserPlus className="h-4 w-4" /> Join SGA
-          </Link>
-          <a
-            href="#login"
-            className="ml-1 inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
-          >
-            <LogIn className="h-4 w-4" /> Member Login
-          </a>
+
+          {isStaff && (
+            <Link
+              to="/dashboard"
+              className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+            >
+              <LayoutDashboard className="h-4 w-4" /> Dashboard
+            </Link>
+          )}
+
+          {session ? (
+            <button
+              onClick={signOut}
+              className="ml-1 inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
+            >
+              <LogOut className="h-4 w-4" /> Sign Out
+            </button>
+          ) : (
+            <>
+              <Link
+                to="/join"
+                className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+              >
+                <UserPlus className="h-4 w-4" /> Join SGA
+              </Link>
+              <Link
+                to="/login"
+                className="ml-1 inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
+              >
+                <LogIn className="h-4 w-4" /> Member Login
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -86,20 +109,45 @@ export default function Navbar() {
                 {l.label}
               </a>
             ))}
-            <Link
-              to="/join"
-              onClick={() => setOpen(false)}
-              className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-maroon px-4 py-2 text-base font-semibold text-maroon"
-            >
-              <UserPlus className="h-4 w-4" /> Join SGA
-            </Link>
-            <a
-              href="#login"
-              onClick={() => setOpen(false)}
-              className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-maroon px-4 py-2 text-base font-semibold text-white"
-            >
-              <LogIn className="h-4 w-4" /> Member Login
-            </a>
+
+            {isStaff && (
+              <Link
+                to="/dashboard"
+                onClick={() => setOpen(false)}
+                className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-maroon px-4 py-2 text-base font-semibold text-maroon"
+              >
+                <LayoutDashboard className="h-4 w-4" /> Dashboard
+              </Link>
+            )}
+
+            {session ? (
+              <button
+                onClick={() => {
+                  setOpen(false)
+                  signOut()
+                }}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-maroon px-4 py-2 text-base font-semibold text-white"
+              >
+                <LogOut className="h-4 w-4" /> Sign Out
+              </button>
+            ) : (
+              <>
+                <Link
+                  to="/join"
+                  onClick={() => setOpen(false)}
+                  className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-maroon px-4 py-2 text-base font-semibold text-maroon"
+                >
+                  <UserPlus className="h-4 w-4" /> Join SGA
+                </Link>
+                <Link
+                  to="/login"
+                  onClick={() => setOpen(false)}
+                  className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-maroon px-4 py-2 text-base font-semibold text-white"
+                >
+                  <LogIn className="h-4 w-4" /> Member Login
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}
