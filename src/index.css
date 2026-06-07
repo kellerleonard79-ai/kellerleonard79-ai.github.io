@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* School brand palette — maroon & white with gold / light-grey accents.
+   Defining colors here makes utilities like bg-maroon, text-gold, etc. available. */
+@theme {
+  --color-maroon: #7a1620;
+  --color-maroon-dark: #561016;
+  --color-maroon-light: #9b2330;
+  --color-gold: #c8a24a;
+  --color-gold-light: #e3c97e;
+  --font-display: Georgia, "Times New Roman", serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #ffffff;
+  color: #1f2937;
+  -webkit-font-smoothing: antialiased;
+}

@@ -1,0 +1,2 @@
+Save the school crest here as "crest.png" (1024px+ PNG with transparent background recommended).
+The homepage, navbar, footer and favicon all reference /crest.png.
