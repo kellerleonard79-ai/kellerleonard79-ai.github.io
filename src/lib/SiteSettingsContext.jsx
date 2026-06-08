@@ -4,6 +4,7 @@ import supabase from './supabaseClient.js'
 const SiteSettingsContext = createContext({
   settings: null,
   loading: true,
+  refresh: async () => {},
 })
 
 // Push the admin-configurable brand colors into CSS custom properties at
@@ -29,6 +30,19 @@ export function SiteSettingsProvider({ children }) {
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Re-read the single settings row and re-apply branding. Used after an admin
+  // saves changes from the Edit Site / Admin tools so the whole app reflects them.
+  async function refresh() {
+    const { data } = await supabase
+      .from('site_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle()
+    setSettings(data ?? null)
+    applyBranding(data)
+    return data ?? null
+  }
+
   useEffect(() => {
     let active = true
     supabase
@@ -48,7 +62,7 @@ export function SiteSettingsProvider({ children }) {
   }, [])
 
   return (
-    <SiteSettingsContext.Provider value={{ settings, loading }}>
+    <SiteSettingsContext.Provider value={{ settings, loading, refresh }}>
       {children}
     </SiteSettingsContext.Provider>
   )

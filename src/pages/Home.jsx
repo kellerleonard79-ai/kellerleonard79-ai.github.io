@@ -1,8 +1,10 @@
-import { ArrowRight, CalendarDays } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowRight, CalendarDays, Megaphone } from 'lucide-react'
 import { Instagram } from '../components/BrandIcons.jsx'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import Crest from '../components/Crest.jsx'
+import supabase from '../lib/supabaseClient.js'
 
 export default function Home() {
   return (
@@ -60,6 +62,9 @@ export default function Home() {
         {/* gold divider */}
         <div className="h-1.5 w-full bg-gradient-to-r from-gold via-gold-light to-gold" />
       </section>
+
+      {/* ─────────────────── Announcements ─────────────────── */}
+      <Announcements />
 
       {/* ─────────────────── Stay Connected grid ─────────────────── */}
       <section id="events" className="bg-gray-50 py-16 sm:py-20">
@@ -159,5 +164,70 @@ export default function Home() {
 
       <Footer />
     </div>
+  )
+}
+
+// Pulls published announcements (RLS lets anon read only published rows) and
+// renders them below the hero. Renders nothing when there are none, so the
+// homepage stays clean until SCI publishes something.
+function Announcements() {
+  const [items, setItems] = useState([])
+
+  useEffect(() => {
+    supabase
+      .from('announcements')
+      .select('id, title, body, created_at')
+      .eq('is_published', true)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setItems(data ?? []))
+  }, [])
+
+  if (items.length === 0) return null
+
+  return (
+    <section id="announcements" className="bg-white py-16 sm:py-20">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="font-display text-3xl font-bold text-maroon sm:text-4xl">
+            Announcements
+          </h2>
+          <div className="mx-auto mt-4 h-1 w-20 rounded-full bg-gold" />
+        </div>
+
+        <div className="mt-10 space-y-4">
+          {items.map((a) => (
+            <article
+              key={a.id}
+              className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            >
+              <div className="flex items-start gap-4">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-maroon/10 text-maroon">
+                  <Megaphone className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <h3 className="font-display text-lg font-bold text-gray-900">
+                      {a.title}
+                    </h3>
+                    <span className="text-xs text-gray-400">
+                      {new Date(a.created_at).toLocaleDateString(undefined, {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                  {a.body && (
+                    <p className="mt-2 whitespace-pre-line text-gray-600">
+                      {a.body}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }

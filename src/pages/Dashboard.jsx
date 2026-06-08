@@ -30,7 +30,8 @@ const CARDS = [
     title: 'Edit Public Site',
     desc: 'Announcements and settings',
     icon: Globe,
-    to: null,
+    to: '/dashboard/edit-site',
+    permission: 'edit_site',
   },
   {
     title: 'My Profile',
@@ -61,8 +62,14 @@ export default function Dashboard() {
 }
 
 function DashboardHub() {
-  const { profile, signOut } = useAuth()
+  const { profile, signOut, hasPermission } = useAuth()
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Tiger'
+
+  // Cards with a `permission` are only shown to roles that hold it; cards
+  // without one are visible to everyone who can reach the dashboard.
+  const cards = CARDS.filter(
+    (card) => !card.permission || hasPermission(card.permission),
+  )
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -92,7 +99,7 @@ function DashboardHub() {
 
         {/* Card grid */}
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {CARDS.map((card) => (
+          {cards.map((card) => (
             <DashboardCard key={card.title} {...card} />
           ))}
         </div>
