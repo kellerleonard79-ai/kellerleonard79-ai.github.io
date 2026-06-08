@@ -64,9 +64,10 @@ const CARDS = [
   },
   {
     title: 'Bookkeeping',
-    desc: 'View finances',
+    desc: 'Accounts, ledgers and balances',
     icon: Wallet,
-    to: null,
+    to: '/dashboard/bookkeeping',
+    permission: 'view_bookkeeping',
   },
 ]
 
