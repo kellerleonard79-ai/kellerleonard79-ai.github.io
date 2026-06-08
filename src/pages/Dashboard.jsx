@@ -6,6 +6,7 @@ import {
   UserCircle,
   Vote,
   Wallet,
+  ShieldCheck,
   ArrowUpRight,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
@@ -38,6 +39,13 @@ const CARDS = [
     desc: 'Your info and attendance',
     icon: UserCircle,
     to: '/dashboard/profile',
+  },
+  {
+    title: 'Security Clearance',
+    desc: 'Approvals and member roles',
+    icon: ShieldCheck,
+    to: '/dashboard/security',
+    permission: 'manage_roles',
   },
   {
     title: 'Elections',

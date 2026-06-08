@@ -12,6 +12,7 @@ import Checkin from './pages/Checkin.jsx'
 import Profile from './pages/Profile.jsx'
 import MemberDirectory from './pages/MemberDirectory.jsx'
 import EditSite from './pages/EditSite.jsx'
+import SecurityClearance from './pages/SecurityClearance.jsx'
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dashboard/profile" element={<Profile />} />
       <Route path="/dashboard/edit-site" element={<EditSite />} />
+      <Route path="/dashboard/security" element={<SecurityClearance />} />
       <Route path="/dashboard/members" element={<MemberDirectory />} />
       <Route path="/dashboard/members/:id" element={<Profile />} />
       <Route path="/dashboard/meetings" element={<Meetings />} />
