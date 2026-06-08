@@ -7,6 +7,7 @@ import {
   Vote,
   Wallet,
   ShieldCheck,
+  Archive,
   ArrowUpRight,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
@@ -46,6 +47,13 @@ const CARDS = [
     icon: ShieldCheck,
     to: '/dashboard/security',
     permission: 'manage_roles',
+  },
+  {
+    title: 'Archives',
+    desc: 'Documents and resources',
+    icon: Archive,
+    to: '/dashboard/archives',
+    permission: 'view_archives',
   },
   {
     title: 'Elections',

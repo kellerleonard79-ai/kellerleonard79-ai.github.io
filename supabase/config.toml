@@ -390,6 +390,12 @@ deno_version = 2
 [functions.delete-user]
 verify_jwt = true
 
+# Mints short-lived signed URLs for private archive files. verify_jwt keeps
+# anonymous callers out; the function reads the item through the caller's JWT so
+# archive_items RLS enforces tier visibility before signing.
+[functions.archive-file-url]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327
