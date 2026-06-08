@@ -20,15 +20,31 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setSubmitting(true)
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    setSubmitting(false)
+    const { data, error: signInError } = await supabase.auth.signInWithPassword(
+      { email, password },
+    )
     if (signInError) {
+      setSubmitting(false)
       setError(signInError.message)
       return
     }
+
+    // Block members whose membership is still awaiting SCI approval.
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('status')
+      .eq('id', data.user.id)
+      .maybeSingle()
+    if (prof?.status === 'pending') {
+      await supabase.auth.signOut()
+      setSubmitting(false)
+      setError(
+        'Your account is awaiting SCI approval. You’ll be able to sign in once an officer approves your membership.',
+      )
+      return
+    }
+
+    setSubmitting(false)
     navigate(redirect, { replace: true })
   }
 

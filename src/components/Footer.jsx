@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Bell, Send, Check, Mail, MapPin, Phone } from 'lucide-react'
+import { Bell, Send, Check, Loader2, Mail, MapPin, Phone } from 'lucide-react'
 import { Instagram, Facebook, Youtube } from './BrandIcons.jsx'
 import Crest from './Crest.jsx'
+import supabase from '../lib/supabaseClient.js'
 
 const columns = [
   {
@@ -17,12 +18,25 @@ const columns = [
 export default function Footer() {
   const [email, setEmail] = useState('')
   const [subscribed, setSubscribed] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
-  // Placeholder handler — wire this up to Supabase (e.g. insert into a
-  // "newsletter_subscribers" table) when you're ready.
-  const handleSubmit = (e) => {
+  // Store the email in the newsletter_emails table. A duplicate (unique
+  // violation, 23505) just means they're already on the list — treat as success.
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!email) return
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed) return
+    setSubmitting(true)
+    setError('')
+    const { error: insertError } = await supabase
+      .from('newsletter_emails')
+      .insert({ email: trimmed })
+    setSubmitting(false)
+    if (insertError && insertError.code !== '23505') {
+      setError('Something went wrong. Please try again.')
+      return
+    }
     setSubscribed(true)
     setEmail('')
   }
@@ -75,12 +89,22 @@ export default function Footer() {
                   />
                   <button
                     type="submit"
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-gold px-6 py-3 font-semibold text-maroon-dark transition hover:bg-gold-light"
+                    disabled={submitting}
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-gold px-6 py-3 font-semibold text-maroon-dark transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Subscribe <Send className="h-4 w-4" />
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Subscribing…
+                      </>
+                    ) : (
+                      <>
+                        Subscribe <Send className="h-4 w-4" />
+                      </>
+                    )}
                   </button>
                 </div>
               )}
+              {error && <p className="mt-3 text-xs text-red-300">{error}</p>}
               <p className="mt-3 text-xs text-white/50">
                 We respect your privacy. Unsubscribe anytime.
               </p>

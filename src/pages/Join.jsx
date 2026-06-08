@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Loader2, UserPlus } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import Crest from '../components/Crest.jsx'
 import supabase from '../lib/supabaseClient.js'
+import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 
 const GRADE_LEVELS = [9, 10, 11, 12]
 const SHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
@@ -19,6 +20,7 @@ const EMPTY = {
 }
 
 export default function Join() {
+  const { settings, loading: settingsLoading } = useSiteSettings()
   const [form, setForm] = useState(EMPTY)
   const [status, setStatus] = useState('idle') // idle | submitting | success
   const [error, setError] = useState('')
@@ -52,8 +54,26 @@ export default function Join() {
       return
     }
 
+    // New members start as 'pending' and need SCI approval before they can log
+    // in. If email confirmation is disabled, signUp returns an active session —
+    // sign it out so a pending account can't bypass the login approval gate.
+    await supabase.auth.signOut()
+
     setStatus('success')
     setForm(EMPTY)
+  }
+
+  // Signup is gated by site_settings.signup_enabled. While settings load, show
+  // a spinner; if signup is explicitly disabled, redirect home.
+  if (settingsLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <Loader2 className="h-8 w-8 animate-spin text-maroon" />
+      </div>
+    )
+  }
+  if (settings && settings.signup_enabled === false) {
+    return <Navigate to="/" replace />
   }
 
   return (
@@ -83,11 +103,12 @@ export default function Join() {
             <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
               <CheckCircle2 className="mx-auto h-14 w-14 text-green-600" />
               <h2 className="mt-4 font-display text-2xl font-bold text-maroon">
-                You&apos;re registered!
+                Registration received!
               </h2>
               <p className="mt-2 text-gray-600">
-                Check your email to confirm your account. Once confirmed, you can
-                log in as an SGA member.
+                Confirm your email address, then an SGA officer will review your
+                membership. You&apos;ll be able to log in once your account is
+                approved.
               </p>
               <Link
                 to="/"

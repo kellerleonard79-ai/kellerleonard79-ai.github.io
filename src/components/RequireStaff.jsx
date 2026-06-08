@@ -7,7 +7,7 @@ import { useAuth } from '../lib/AuthContext.jsx'
 // Gates a route to admins/officers. Sends signed-out users to login (returning
 // them here afterward) and shows an access-denied screen to plain members.
 export default function RequireStaff({ children }) {
-  const { loading, session, profile, isStaff } = useAuth()
+  const { loading, session, profile, hasPermission } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
@@ -28,7 +28,7 @@ export default function RequireStaff({ children }) {
 
   if (!session) return null // redirecting to login
 
-  if (!isStaff) {
+  if (!hasPermission('create_meetings')) {
     return (
       <Gate
         icon={<Lock className="h-10 w-10 text-maroon" />}

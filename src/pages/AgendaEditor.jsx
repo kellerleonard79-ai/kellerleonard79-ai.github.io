@@ -30,6 +30,18 @@ const CORE_SECTIONS = [
   { key: 'open_floor', title: 'Open Floor' },
 ]
 
+// Maps the legacy free-text section keys to agenda_section_types.name so new
+// items can be dual-written with a section_type_id FK during the transition.
+const SECTION_KEY_TO_NAME = {
+  opening: 'Opening',
+  announcements: 'Announcements',
+  reports: 'Reports',
+  unfinished: 'Unfinished Business',
+  new: 'New Business',
+  open_floor: 'Open Floor',
+  adjournment: 'Adjournment',
+}
+
 export default function AgendaEditor() {
   return (
     <RequireStaff>
@@ -46,6 +58,16 @@ function EditorContent() {
   const [publicView, setPublicView] = useState(false)
   const [showAnnouncements, setShowAnnouncements] = useState(false)
   const [showReports, setShowReports] = useState(false)
+  const [sectionTypeMap, setSectionTypeMap] = useState({}) // name -> id
+
+  const loadSectionTypes = useCallback(async () => {
+    const { data } = await supabase
+      .from('agenda_section_types')
+      .select('id, name')
+    const map = {}
+    for (const r of data ?? []) map[r.name] = r.id
+    setSectionTypeMap(map)
+  }, [])
 
   const loadMeeting = useCallback(async () => {
     const { data } = await supabase
@@ -73,7 +95,8 @@ function EditorContent() {
   useEffect(() => {
     loadMeeting()
     loadItems()
-  }, [loadMeeting, loadItems])
+    loadSectionTypes()
+  }, [loadMeeting, loadItems, loadSectionTypes])
 
   const bySection = useMemo(() => {
     const map = {}
@@ -99,6 +122,9 @@ function EditorContent() {
     await supabase.from('agenda_items').insert({
       meeting_id: id,
       section,
+      // Dual-write the FK so new items carry section_type_id during the
+      // transition off the free-text section column.
+      section_type_id: sectionTypeMap[SECTION_KEY_TO_NAME[section]] ?? null,
       parent_id: parentId,
       content: text,
       position,
@@ -113,6 +139,17 @@ function EditorContent() {
 
   async function deleteItem(itemId) {
     await supabase.from('agenda_items').delete().eq('id', itemId)
+    loadItems()
+  }
+
+  // Persist a new top-level ordering for a section: write each item's index as
+  // its `position`, then reload.
+  async function reorderItems(orderedIds) {
+    await Promise.all(
+      orderedIds.map((itemId, i) =>
+        supabase.from('agenda_items').update({ position: i }).eq('id', itemId),
+      ),
+    )
     loadItems()
   }
 
@@ -134,7 +171,14 @@ function EditorContent() {
     )
   }
 
-  const ctx = { addItem, updateItem, deleteItem, childrenOf, publicView }
+  const ctx = {
+    addItem,
+    updateItem,
+    deleteItem,
+    reorderItems,
+    childrenOf,
+    publicView,
+  }
 
   return (
     <Shell>
@@ -434,10 +478,41 @@ function AgendaSection({ sectionKey, title, items, ctx }) {
 }
 
 function ItemList({ sectionKey, items, ctx }) {
+  // Local copy so a drag reorders instantly; it re-syncs whenever the canonical
+  // items change (after add / delete / reload).
+  const [ordered, setOrdered] = useState(items)
+  const [dragId, setDragId] = useState(null)
+
+  useEffect(() => {
+    setOrdered(items)
+  }, [items])
+
+  function handleDrop(targetId) {
+    const current = dragId
+    setDragId(null)
+    if (!current || current === targetId) return
+    const ids = ordered.map((i) => i.id)
+    const from = ids.indexOf(current)
+    const to = ids.indexOf(targetId)
+    if (from === -1 || to === -1) return
+    const next = [...ordered]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    setOrdered(next)
+    ctx.reorderItems(next.map((i) => i.id))
+  }
+
   return (
-    <div className={items.length ? 'divide-y divide-gray-100' : ''}>
-      {items.map((item) => (
-        <AgendaItem key={item.id} item={item} ctx={ctx} />
+    <div className={ordered.length ? 'divide-y divide-gray-100' : ''}>
+      {ordered.map((item) => (
+        <AgendaItem
+          key={item.id}
+          item={item}
+          ctx={ctx}
+          isDragging={dragId === item.id}
+          onDragStart={() => setDragId(item.id)}
+          onDrop={() => handleDrop(item.id)}
+        />
       ))}
       {!ctx.publicView && (
         <AddItemInput
@@ -445,15 +520,18 @@ function ItemList({ sectionKey, items, ctx }) {
           onAdd={(text) => ctx.addItem(sectionKey, text)}
         />
       )}
-      {ctx.publicView && items.length === 0 && (
+      {ctx.publicView && ordered.length === 0 && (
         <p className="py-2 text-sm text-gray-400">No items.</p>
       )}
     </div>
   )
 }
 
-function AgendaItem({ item, ctx }) {
+function AgendaItem({ item, ctx, isDragging, onDragStart, onDrop }) {
   const subItems = ctx.childrenOf(item.id)
+  // The row is only draggable while the grip handle is held, so the text
+  // inputs stay normally editable / selectable the rest of the time.
+  const [draggable, setDraggable] = useState(false)
 
   if (ctx.publicView) {
     return (
@@ -479,9 +557,27 @@ function AgendaItem({ item, ctx }) {
   }
 
   return (
-    <div className="py-3">
+    <div
+      draggable={draggable}
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move'
+        onDragStart?.()
+      }}
+      onDragEnd={() => setDraggable(false)}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDraggable(false)
+        onDrop?.()
+      }}
+      className={`py-3 ${isDragging ? 'opacity-50' : ''}`}
+    >
       <div className="flex items-start gap-2">
-        <GripVertical className="mt-1 h-4 w-4 shrink-0 cursor-grab text-gray-300" />
+        <GripVertical
+          onMouseDown={() => setDraggable(true)}
+          onMouseUp={() => setDraggable(false)}
+          className="mt-1 h-4 w-4 shrink-0 cursor-grab text-gray-300 hover:text-gray-500"
+        />
         <div className="min-w-0 flex-1">
           <input
             defaultValue={item.content}

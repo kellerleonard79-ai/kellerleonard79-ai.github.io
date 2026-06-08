@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ChevronLeft, Loader2 } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ChevronLeft, Loader2, Trash2 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import RequireAuth from '../components/RequireAuth.jsx'
@@ -17,7 +17,12 @@ export default function Profile() {
   if (id) {
     return (
       <RequireStaff>
-        <ProfileContent profileId={id} backTo="/dashboard/members" backLabel="Directory" />
+        <ProfileContent
+          profileId={id}
+          backTo="/dashboard/members"
+          backLabel="Directory"
+          allowAdminControls
+        />
       </RequireStaff>
     )
   }
@@ -42,7 +47,9 @@ function OwnProfile() {
   return <ProfileContent profileId={profile.id} backTo="/" backLabel="Home" />
 }
 
-function ProfileContent({ profileId, backTo, backLabel }) {
+function ProfileContent({ profileId, backTo, backLabel, allowAdminControls }) {
+  const { hasPermission } = useAuth()
+  const canManage = allowAdminControls && hasPermission('manage_roles')
   const [profile, setProfile] = useState(null)
   const [attendance, setAttendance] = useState([])
   const [loading, setLoading] = useState(true)
@@ -142,6 +149,10 @@ function ProfileContent({ profileId, backTo, backLabel }) {
         </dl>
       </section>
 
+      {canManage && (
+        <AdminControls profile={profile} onChanged={load} />
+      )}
+
       {/* Attendance */}
       <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="font-display text-lg font-bold text-gray-900">Attendance</h2>
@@ -207,6 +218,210 @@ function Field({ label, value, children }) {
     </div>
   )
 }
+
+// Maps a role to the legacy clearance_level string so the two stay in sync
+// while the app still reads clearance_level in places (isStaff, nav, badges).
+function clearanceForRole(role) {
+  if (!role) return 'member'
+  if (role.is_admin) return 'admin'
+  if (role.permissions?.create_meetings) return 'officer'
+  return 'member'
+}
+
+// SCI-only edit panel: change role, change elected position, approve / set
+// member status, toggle dues, and delete the account.
+function AdminControls({ profile, onChanged }) {
+  const navigate = useNavigate()
+  const [roles, setRoles] = useState([])
+  const [positions, setPositions] = useState([])
+  const [busy, setBusy] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    supabase
+      .from('roles')
+      .select('id, name, permissions, is_admin')
+      .order('order', { ascending: true })
+      .then(({ data }) => setRoles(data ?? []))
+    supabase
+      .from('elected_positions')
+      .select('id, title, group')
+      .order('group', { ascending: true })
+      .order('order', { ascending: true })
+      .then(({ data }) => setPositions(data ?? []))
+  }, [])
+
+  async function patch(fields) {
+    setBusy(true)
+    await supabase.from('profiles').update(fields).eq('id', profile.id)
+    setBusy(false)
+    onChanged()
+  }
+
+  function changeRole(roleId) {
+    const role = roles.find((r) => r.id === roleId)
+    patch({ role_id: roleId, clearance_level: clearanceForRole(role) })
+  }
+
+  function changePosition(positionId) {
+    const pos = positions.find((p) => p.id === positionId)
+    patch({
+      elected_position_id: positionId || null,
+      position: pos ? pos.title : null,
+    })
+  }
+
+  async function handleDelete() {
+    if (
+      !window.confirm(
+        `Permanently delete ${
+          profile.full_name ?? 'this member'
+        }'s account and all of their attendance records? This cannot be undone.`,
+      )
+    )
+      return
+    setDeleting(true)
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', profile.id)
+    if (error) {
+      setDeleting(false)
+      window.alert(`Delete failed: ${error.message}`)
+      return
+    }
+    navigate('/dashboard/members', { replace: true })
+  }
+
+  const grouped = positions.reduce((acc, p) => {
+    ;(acc[p.group] ??= []).push(p)
+    return acc
+  }, {})
+  const isPending = (profile.status ?? 'active') === 'pending'
+
+  return (
+    <section className="mt-6 rounded-2xl border border-maroon/20 bg-white p-6 shadow-sm sm:p-8">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg font-bold text-gray-900">
+          Officer controls
+        </h2>
+        <span className="rounded-full bg-maroon/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-maroon">
+          SCI only
+        </span>
+      </div>
+
+      {isPending && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm text-amber-800">
+            This member is awaiting approval and cannot log in yet.
+          </p>
+          <button
+            onClick={() => patch({ status: 'active' })}
+            disabled={busy}
+            className="rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:opacity-60"
+          >
+            Approve membership
+          </button>
+        </div>
+      )}
+
+      <div className="mt-5 grid gap-5 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Role / clearance
+          </span>
+          <select
+            value={profile.role_id ?? ''}
+            onChange={(e) => changeRole(e.target.value)}
+            disabled={busy}
+            className={selectClass}
+          >
+            {!profile.role_id && <option value="">— None —</option>}
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Elected position
+          </span>
+          <select
+            value={profile.elected_position_id ?? ''}
+            onChange={(e) => changePosition(e.target.value)}
+            disabled={busy}
+            className={selectClass}
+          >
+            <option value="">— None —</option>
+            {Object.entries(grouped).map(([group, list]) => (
+              <optgroup key={group} label={group}>
+                {list.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Member status
+          </span>
+          <select
+            value={profile.status ?? 'active'}
+            onChange={(e) => patch({ status: e.target.value })}
+            disabled={busy}
+            className={selectClass}
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="pending">Pending</option>
+          </select>
+        </label>
+
+        <div className="block">
+          <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Dues
+          </span>
+          <button
+            onClick={() => patch({ dues_paid: !profile.dues_paid })}
+            disabled={busy}
+            className={`w-full rounded-lg border px-3.5 py-2.5 text-sm font-semibold transition disabled:opacity-60 ${
+              profile.dues_paid
+                ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100'
+                : 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'
+            }`}
+          >
+            {profile.dues_paid ? 'PAID — mark unpaid' : 'UNPAID — mark paid'}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-gray-100 pt-5">
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="inline-flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+        >
+          {deleting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+          Delete account
+        </button>
+      </div>
+    </section>
+  )
+}
+
+const selectClass =
+  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
 
 function StatBox({ value, label, className }) {
   return (
