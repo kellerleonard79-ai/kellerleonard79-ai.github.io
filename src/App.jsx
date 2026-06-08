@@ -14,6 +14,7 @@ import MemberDirectory from './pages/MemberDirectory.jsx'
 import EditSite from './pages/EditSite.jsx'
 import SecurityClearance from './pages/SecurityClearance.jsx'
 import Archives from './pages/Archives.jsx'
+import Elections from './pages/Elections.jsx'
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
       <Route path="/dashboard/edit-site" element={<EditSite />} />
       <Route path="/dashboard/security" element={<SecurityClearance />} />
       <Route path="/dashboard/archives" element={<Archives />} />
+      <Route path="/dashboard/elections" element={<Elections />} />
       <Route path="/dashboard/members" element={<MemberDirectory />} />
       <Route path="/dashboard/members/:id" element={<Profile />} />
       <Route path="/dashboard/meetings" element={<Meetings />} />

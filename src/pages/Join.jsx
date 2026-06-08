@@ -17,6 +17,7 @@ const EMPTY = {
   shirt_size: '',
   email: '',
   password: '',
+  is_candidate_application: false,
 }
 
 export default function Join() {
@@ -44,6 +45,7 @@ export default function Join() {
           student_id: form.student_id.trim(),
           grade_level: form.grade_level,
           shirt_size: form.shirt_size,
+          is_candidate_application: form.is_candidate_application,
         },
       },
     })
@@ -234,6 +236,30 @@ export default function Join() {
                     placeholder="At least 6 characters"
                   />
                 </Field>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <input
+                    type="checkbox"
+                    checked={form.is_candidate_application}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        is_candidate_application: e.target.checked,
+                      }))
+                    }
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
+                  />
+                  <span className="text-sm text-gray-700">
+                    <span className="font-semibold text-gray-900">
+                      I&apos;m running for a position
+                    </span>
+                    <span className="mt-0.5 block text-gray-500">
+                      Check this if you&apos;re applying as a candidate, not just
+                      a general member. An officer will follow up about your
+                      candidacy.
+                    </span>
+                  </span>
+                </label>
               </div>
 
               <button

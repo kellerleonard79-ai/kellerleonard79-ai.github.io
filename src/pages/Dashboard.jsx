@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
-import RequireStaff from '../components/RequireStaff.jsx'
+import RequireAuth from '../components/RequireAuth.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 
 const CARDS = [
@@ -57,9 +57,10 @@ const CARDS = [
   },
   {
     title: 'Elections',
-    desc: 'Manage applications',
+    desc: 'Cycles, candidates and results',
     icon: Vote,
-    to: null,
+    to: '/dashboard/elections',
+    permission: 'view_elections',
   },
   {
     title: 'Bookkeeping',
@@ -71,9 +72,9 @@ const CARDS = [
 
 export default function Dashboard() {
   return (
-    <RequireStaff>
+    <RequireAuth>
       <DashboardHub />
-    </RequireStaff>
+    </RequireAuth>
   )
 }
 
