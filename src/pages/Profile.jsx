@@ -281,15 +281,19 @@ function AdminControls({ profile, onChanged }) {
     )
       return
     setDeleting(true)
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', profile.id)
-    if (error) {
+    // 1. Remove the auth.users record via the privileged Edge Function. This
+    //    cascades the profiles row through the FK, but we delete it explicitly
+    //    below too in case the cascade is ever changed.
+    const { error: fnError } = await supabase.functions.invoke('delete-user', {
+      body: { user_id: profile.id },
+    })
+    if (fnError) {
       setDeleting(false)
-      window.alert(`Delete failed: ${error.message}`)
+      window.alert(`Delete failed: ${fnError.message}`)
       return
     }
+    // 2. Delete the profiles row (a no-op if the cascade already removed it).
+    await supabase.from('profiles').delete().eq('id', profile.id)
     navigate('/dashboard/members', { replace: true })
   }
 

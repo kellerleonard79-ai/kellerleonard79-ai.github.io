@@ -4,10 +4,11 @@ import { Menu, X, LogIn, LogOut, UserPlus, LayoutDashboard, UserCircle } from 'l
 import Crest from './Crest.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 
-// Placeholder routes for the other pages you'll build later.
+// Links with a `to` are real routes (React Router); the rest are placeholder
+// on-page anchors for pages you'll build later.
 const links = [
   { label: 'Home', href: '#home' },
-  { label: 'About', href: '#about' },
+  { label: 'About', to: '/about' },
   { label: 'Officers', href: '#officers' },
   { label: 'Events', href: '#events' },
   { label: 'Resources', href: '#resources' },
@@ -36,19 +37,22 @@ export default function Navbar() {
 
         {/* Desktop nav */}
         <div className="hidden items-center gap-1 lg:flex">
-          {links.map((l, i) => (
-            <a
-              key={l.label}
-              href={l.href}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                i === 0
-                  ? 'text-maroon'
-                  : 'text-gray-600 hover:bg-maroon/5 hover:text-maroon'
-              }`}
-            >
-              {l.label}
-            </a>
-          ))}
+          {links.map((l, i) => {
+            const cls = `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              i === 0
+                ? 'text-maroon'
+                : 'text-gray-600 hover:bg-maroon/5 hover:text-maroon'
+            }`
+            return l.to ? (
+              <Link key={l.label} to={l.to} className={cls}>
+                {l.label}
+              </Link>
+            ) : (
+              <a key={l.label} href={l.href} className={cls}>
+                {l.label}
+              </a>
+            )
+          })}
 
           {isStaff && (
             <Link
@@ -108,16 +112,29 @@ export default function Navbar() {
       {open && (
         <div className="border-t border-gray-200 bg-white lg:hidden">
           <div className="space-y-1 px-4 py-3">
-            {links.map((l) => (
-              <a
-                key={l.label}
-                href={l.href}
-                onClick={() => setOpen(false)}
-                className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-maroon/5 hover:text-maroon"
-              >
-                {l.label}
-              </a>
-            ))}
+            {links.map((l) => {
+              const cls =
+                'block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-maroon/5 hover:text-maroon'
+              return l.to ? (
+                <Link
+                  key={l.label}
+                  to={l.to}
+                  onClick={() => setOpen(false)}
+                  className={cls}
+                >
+                  {l.label}
+                </Link>
+              ) : (
+                <a
+                  key={l.label}
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  className={cls}
+                >
+                  {l.label}
+                </a>
+              )
+            })}
 
             {isStaff && (
               <Link
