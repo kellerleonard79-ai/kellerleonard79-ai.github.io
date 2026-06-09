@@ -7,7 +7,7 @@ import { useAuth } from '../lib/AuthContext.jsx'
 // Links with a `to` are real routes (React Router); the rest are placeholder
 // on-page anchors for pages you'll build later.
 const links = [
-  { label: 'Home', href: '#home' },
+  { label: 'Home', to: '/' },
   { label: 'About', to: '/about' },
 ]
 
