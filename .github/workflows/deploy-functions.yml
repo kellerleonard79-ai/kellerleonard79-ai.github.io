@@ -23,5 +23,10 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Deploy delete-user
-        run: supabase functions deploy delete-user --project-ref "$PROJECT_REF"
+      - name: Deploy all edge functions
+        run: |
+          for fn in supabase/functions/*/; do
+            name="$(basename "$fn")"
+            echo "Deploying $name…"
+            supabase functions deploy "$name" --project-ref "$PROJECT_REF"
+          done
