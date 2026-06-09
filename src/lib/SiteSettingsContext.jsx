@@ -24,6 +24,15 @@ function applyBranding(settings) {
     root.style.setProperty('--color-accent', settings.accent_color)
     root.style.setProperty('--color-gold', settings.accent_color)
   }
+  if (settings.bg_color) {
+    root.style.setProperty('--color-bg', settings.bg_color)
+  }
+  // Reflect the admin-configured school name in the browser tab title. Avoid
+  // doubling up "SGA" when the configured name already includes it.
+  if (settings.school_name) {
+    const name = settings.school_name.trim()
+    document.title = /sga/i.test(name) ? name : `${name} SGA`
+  }
 }
 
 export function SiteSettingsProvider({ children }) {

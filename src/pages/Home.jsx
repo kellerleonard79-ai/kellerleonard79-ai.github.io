@@ -6,6 +6,16 @@ import Footer from '../components/Footer.jsx'
 import Crest from '../components/Crest.jsx'
 import supabase from '../lib/supabaseClient.js'
 
+// ── Embeds ──────────────────────────────────────────────────────────────────
+// SnapWidget Instagram widget ID. Once a widget is created (see the SNAPWIDGET
+// note in index.html), paste only the ID here — e.g. SNAPWIDGET_ID = '123456'.
+// While blank, a styled fallback with setup instructions shows instead.
+const SNAPWIDGET_ID = ''
+
+// PHS SGA public Google Calendar (same embed as the original Django site).
+const CALENDAR_SRC =
+  'https://calendar.google.com/calendar/embed?src=c_0660093bc692b20cf903cc9ebe8c8a7ab767b99fcd4a467cc5b55193b1926b40%40group.calendar.google.com&ctz=America%2FChicago'
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-white">
@@ -91,11 +101,11 @@ export default function Home() {
                     <h3 className="font-display text-lg font-bold text-gray-900">
                       Instagram Feed
                     </h3>
-                    <p className="text-sm text-gray-500">@phs_sga</p>
+                    <p className="text-sm text-gray-500">@pensacolahighsga</p>
                   </div>
                 </div>
                 <a
-                  href="https://instagram.com"
+                  href="https://instagram.com/pensacolahighsga"
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark"
@@ -104,19 +114,42 @@ export default function Home() {
                 </a>
               </div>
               <div className="p-5">
-                <div className="grid grid-cols-3 gap-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="aspect-square animate-pulse rounded-lg bg-gray-100"
-                    />
-                  ))}
-                </div>
-                <div className="mt-4 rounded-xl border-2 border-dashed border-gray-200 p-4 text-center text-sm text-gray-500">
-                  {/* Instagram Feed Widget — drop your embed here
-                      (e.g. Behold, LightWidget, or EmbedSocial). */}
-                  Instagram Feed Widget — embed goes here.
-                </div>
+                {/*
+                  SNAPWIDGET — Instagram embed for @pensacolahighsga
+                  Setup (one-time, done at snapwidget.com — free, no Meta review):
+                    1. Create a free account at https://snapwidget.com.
+                    2. Create Widget → Instagram → connect/enter @pensacolahighsga.
+                    3. Choose a "Grid" layout, copy the widget ID from the embed
+                       code (the number in https://snapwidget.com/embed/NNNNNN).
+                    4. Paste that number into SNAPWIDGET_ID at the top of this file.
+                  The script tag in index.html makes the iframe auto-resize.
+                */}
+                {SNAPWIDGET_ID ? (
+                  <iframe
+                    title="PHS SGA Instagram"
+                    src={`https://snapwidget.com/embed/${SNAPWIDGET_ID}`}
+                    className="snapwidget-widget w-full"
+                    allowTransparency="true"
+                    frameBorder="0"
+                    scrolling="no"
+                    style={{ border: 'none', overflow: 'hidden', width: '100%', height: '320px' }}
+                  />
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-2">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="aspect-square animate-pulse rounded-lg bg-gray-100"
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-4 rounded-xl border-2 border-dashed border-gray-200 p-4 text-center text-sm text-gray-500">
+                      Instagram feed loads once a SnapWidget ID is set — see the
+                      setup note in <code>Home.jsx</code>.
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -144,18 +177,15 @@ export default function Home() {
                 </a>
               </div>
               <div className="p-5">
-                {/* Calendar placeholder — paste your Google Calendar
-                    <iframe> here to embed the live school calendar. */}
-                <div className="flex min-h-[18rem] flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center">
-                  <CalendarDays className="h-10 w-10 text-maroon/40" />
-                  <p className="mt-3 font-semibold text-gray-700">
-                    Embedded Calendar Coming Soon
-                  </p>
-                  <p className="mt-1 max-w-xs text-sm text-gray-500">
-                    Paste your Google Calendar embed code here to show upcoming
-                    SGA and school events.
-                  </p>
-                </div>
+                <iframe
+                  title="PHS SGA School Calendar"
+                  src={CALENDAR_SRC}
+                  className="w-full rounded-xl"
+                  style={{ border: 0 }}
+                  height="600"
+                  frameBorder="0"
+                  scrolling="no"
+                />
               </div>
             </div>
           </div>

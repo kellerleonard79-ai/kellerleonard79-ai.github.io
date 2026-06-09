@@ -8,6 +8,8 @@ import {
   Wallet,
   ShieldCheck,
   Archive,
+  UsersRound,
+  Settings2,
   ArrowUpRight,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
@@ -69,6 +71,19 @@ const CARDS = [
     to: '/dashboard/bookkeeping',
     permission: 'view_bookkeeping',
   },
+  {
+    title: 'Committees',
+    desc: 'Members, chairs and reports',
+    icon: UsersRound,
+    to: '/dashboard/committees',
+  },
+  {
+    title: 'Admin Settings',
+    desc: 'Branding, tiers, forms and more',
+    icon: Settings2,
+    to: '/dashboard/admin',
+    permission: 'manage_roles',
+  },
 ]
 
 export default function Dashboard() {
@@ -116,7 +131,7 @@ function DashboardHub() {
         </header>
 
         {/* Card grid */}
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
           {cards.map((card) => (
             <DashboardCard key={card.title} {...card} />
           ))}

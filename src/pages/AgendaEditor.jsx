@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ChevronLeft,
   Plus,
   GripVertical,
   Loader2,
-  Printer,
+  FileDown,
   Eye,
   Pencil,
 } from 'lucide-react'
@@ -13,7 +13,8 @@ import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import RequireStaff from '../components/RequireStaff.jsx'
 import supabase from '../lib/supabaseClient.js'
-import { formatDate } from '../lib/format.js'
+import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
+import { formatDate, formatTime } from '../lib/format.js'
 
 const STATUS_OPTIONS = [
   'No status',
@@ -24,23 +25,32 @@ const STATUS_OPTIONS = [
   'Carried',
 ]
 
-const CORE_SECTIONS = [
-  { key: 'unfinished', title: 'Unfinished Business' },
-  { key: 'new', title: 'New Business' },
-  { key: 'open_floor', title: 'Open Floor' },
-]
-
-// Maps the legacy free-text section keys to agenda_section_types.name so new
-// items can be dual-written with a section_type_id FK during the transition.
-const SECTION_KEY_TO_NAME = {
-  opening: 'Opening',
-  announcements: 'Announcements',
-  reports: 'Reports',
-  unfinished: 'Unfinished Business',
-  new: 'New Business',
-  open_floor: 'Open Floor',
-  adjournment: 'Adjournment',
+// Legacy free-text section keys still satisfy the NOT NULL `section` column on
+// agenda_items. The section type FK (section_type_id) is the source of truth;
+// `section` is kept in sync for backward compatibility. Known default types map
+// to their original keys; any custom type slugifies its name.
+const NAME_TO_LEGACY_KEY = {
+  Opening: 'opening',
+  Announcements: 'announcements',
+  Reports: 'reports',
+  'Unfinished Business': 'unfinished',
+  'New Business': 'new',
+  'Open Floor': 'open_floor',
+  Adjournment: 'adjournment',
 }
+
+function legacyKeyFor(name) {
+  return (
+    NAME_TO_LEGACY_KEY[name] ??
+    name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+  )
+}
+
+// Reverse of NAME_TO_LEGACY_KEY, for resolving older items that only carry the
+// legacy `section` string (no section_type_id) back to a type name.
+const LEGACY_KEY_TO_NAME = Object.fromEntries(
+  Object.entries(NAME_TO_LEGACY_KEY).map(([name, key]) => [key, name]),
+)
 
 export default function AgendaEditor() {
   return (
@@ -52,21 +62,23 @@ export default function AgendaEditor() {
 
 function EditorContent() {
   const { id } = useParams()
+  const { settings } = useSiteSettings()
   const [meeting, setMeeting] = useState(null)
   const [items, setItems] = useState([])
+  const [sectionTypes, setSectionTypes] = useState([]) // ordered array
+  const [attendance, setAttendance] = useState([])
   const [loading, setLoading] = useState(true)
   const [publicView, setPublicView] = useState(false)
-  const [showAnnouncements, setShowAnnouncements] = useState(false)
-  const [showReports, setShowReports] = useState(false)
-  const [sectionTypeMap, setSectionTypeMap] = useState({}) // name -> id
+  const [exporting, setExporting] = useState(false)
+  const agendaPrintRef = useRef(null)
+  const attendancePrintRef = useRef(null)
 
   const loadSectionTypes = useCallback(async () => {
     const { data } = await supabase
       .from('agenda_section_types')
-      .select('id, name')
-    const map = {}
-    for (const r of data ?? []) map[r.name] = r.id
-    setSectionTypeMap(map)
+      .select('id, name, default_order')
+      .order('default_order', { ascending: true })
+    setSectionTypes(data ?? [])
   }, [])
 
   const loadMeeting = useCallback(async () => {
@@ -85,46 +97,74 @@ function EditorContent() {
       .eq('meeting_id', id)
       .order('position', { ascending: true })
       .order('created_at', { ascending: true })
-    const rows = data ?? []
-    setItems(rows)
-    if (rows.some((r) => r.section === 'announcements')) setShowAnnouncements(true)
-    if (rows.some((r) => r.section === 'reports')) setShowReports(true)
+    setItems(data ?? [])
     setLoading(false)
+  }, [id])
+
+  // Attendance for the meeting's session — used to append an attendance roster
+  // page to the exported agenda PDF.
+  const loadAttendance = useCallback(async () => {
+    const { data } = await supabase
+      .from('attendance')
+      .select('status, checked_in_at, profiles(full_name, student_id)')
+      .eq('meeting_id', id)
+      .order('checked_in_at', { ascending: true })
+    setAttendance(data ?? [])
   }, [id])
 
   useEffect(() => {
     loadMeeting()
     loadItems()
     loadSectionTypes()
-  }, [loadMeeting, loadItems, loadSectionTypes])
+    loadAttendance()
+  }, [loadMeeting, loadItems, loadSectionTypes, loadAttendance])
 
-  const bySection = useMemo(() => {
+  // name -> type, for resolving legacy items lacking a section_type_id.
+  const typeByName = useMemo(() => {
+    const m = {}
+    for (const t of sectionTypes) m[t.name] = t
+    return m
+  }, [sectionTypes])
+
+  // Resolve which section type an item belongs to: prefer the FK, fall back to
+  // mapping the legacy `section` string through to a type by name.
+  const resolveTypeId = useCallback(
+    (item) => {
+      if (item.section_type_id) return item.section_type_id
+      const name = LEGACY_KEY_TO_NAME[item.section]
+      return name ? typeByName[name]?.id ?? null : null
+    },
+    [typeByName],
+  )
+
+  // Group top-level items by their resolved section type id.
+  const bySectionTypeId = useMemo(() => {
     const map = {}
     for (const it of items) {
       if (it.parent_id) continue
-      ;(map[it.section] ??= []).push(it)
+      const tid = resolveTypeId(it)
+      if (!tid) continue
+      ;(map[tid] ??= []).push(it)
     }
     return map
-  }, [items])
+  }, [items, resolveTypeId])
 
   const childrenOf = useCallback(
     (parentId) => items.filter((it) => it.parent_id === parentId),
     [items],
   )
 
-  async function addItem(section, content, parentId = null) {
+  async function addItem(sectionType, content, parentId = null) {
     const text = content.trim()
-    if (!text) return
+    if (!text || !sectionType) return
     const siblings = parentId
       ? childrenOf(parentId)
-      : (bySection[section] ?? [])
+      : (bySectionTypeId[sectionType.id] ?? [])
     const position = siblings.length
     await supabase.from('agenda_items').insert({
       meeting_id: id,
-      section,
-      // Dual-write the FK so new items carry section_type_id during the
-      // transition off the free-text section column.
-      section_type_id: sectionTypeMap[SECTION_KEY_TO_NAME[section]] ?? null,
+      section: legacyKeyFor(sectionType.name),
+      section_type_id: sectionType.id,
       parent_id: parentId,
       content: text,
       position,
@@ -153,6 +193,55 @@ function EditorContent() {
     loadItems()
   }
 
+  // Render a hidden off-screen element to a canvas, then lay it across as many
+  // PDF pages as its height requires. The printable elements use plain inline
+  // styles (hex colors only) so html2canvas never meets Tailwind's oklch()
+  // color functions, which it cannot parse.
+  async function exportPdf() {
+    setExporting(true)
+    try {
+      // Load the heavy PDF libraries on demand so they stay out of the initial
+      // app bundle — they're only needed the moment someone exports.
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas'),
+      ])
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pageW = pdf.internal.pageSize.getWidth()
+      const pageH = pdf.internal.pageSize.getHeight()
+
+      const addElement = async (el, isFirst) => {
+        if (!el) return
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+        })
+        const imgData = canvas.toDataURL('image/png')
+        const imgW = pageW
+        const imgH = (canvas.height * imgW) / canvas.width
+        let heightLeft = imgH
+        let position = 0
+        if (!isFirst) pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH)
+        heightLeft -= pageH
+        while (heightLeft > 0) {
+          position -= pageH
+          pdf.addPage()
+          pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH)
+          heightLeft -= pageH
+        }
+      }
+
+      await addElement(agendaPrintRef.current, true)
+      await addElement(attendancePrintRef.current, false)
+
+      const safe = (meeting.title || 'agenda').replace(/[^\w-]+/g, '-')
+      pdf.save(`${safe}-agenda.pdf`)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   if (loading) {
     return (
       <Shell>
@@ -179,6 +268,23 @@ function EditorContent() {
     childrenOf,
     publicView,
   }
+
+  const openingType = typeByName['Opening']
+  const adjournmentType = typeByName['Adjournment']
+  // Every configured section type except Opening / Adjournment renders as a
+  // generic section, in default_order. New custom types added in Admin Settings
+  // appear here automatically.
+  const middleTypes = sectionTypes.filter(
+    (t) => t.name !== 'Opening' && t.name !== 'Adjournment',
+  )
+
+  // Section order for the printable agenda: Opening first, then everything
+  // else in default_order, Adjournment last — mirroring the on-screen layout.
+  const printTypes = [
+    ...(openingType ? [openingType] : []),
+    ...middleTypes,
+    ...(adjournmentType ? [adjournmentType] : []),
+  ]
 
   return (
     <Shell>
@@ -213,83 +319,262 @@ function EditorContent() {
             )}
           </button>
           <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            onClick={exportPdf}
+            disabled={exporting}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
           >
-            <Printer className="h-4 w-4" /> Print
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="h-4 w-4" />
+            )}
+            {exporting ? 'Exporting…' : 'Export PDF'}
           </button>
         </div>
       </div>
 
       <div className="mt-6 space-y-5">
-        <OpeningPanel
-          meeting={meeting}
-          items={bySection['opening'] ?? []}
-          onMeetingSaved={loadMeeting}
-          ctx={ctx}
-        />
+        {openingType && (
+          <OpeningPanel
+            meeting={meeting}
+            sectionType={openingType}
+            items={bySectionTypeId[openingType.id] ?? []}
+            onMeetingSaved={loadMeeting}
+            ctx={ctx}
+          />
+        )}
 
-        {CORE_SECTIONS.map((s) => (
+        {middleTypes.map((t) => (
           <AgendaSection
-            key={s.key}
-            sectionKey={s.key}
-            title={s.title}
-            items={bySection[s.key] ?? []}
+            key={t.id}
+            sectionType={t}
+            title={t.name}
+            items={bySectionTypeId[t.id] ?? []}
             ctx={ctx}
           />
         ))}
 
-        <AdjournmentPanel
-          meeting={meeting}
-          items={bySection['adjournment'] ?? []}
-          onMeetingSaved={loadMeeting}
-          ctx={ctx}
-        />
-
-        {showAnnouncements && (
-          <AgendaSection
-            sectionKey="announcements"
-            title="Announcements"
-            items={bySection['announcements'] ?? []}
-            ctx={ctx}
-          />
-        )}
-        {showReports && (
-          <AgendaSection
-            sectionKey="reports"
-            title="Officer and Committee Reports"
-            items={bySection['reports'] ?? []}
+        {adjournmentType && (
+          <AdjournmentPanel
+            meeting={meeting}
+            sectionType={adjournmentType}
+            items={bySectionTypeId[adjournmentType.id] ?? []}
+            onMeetingSaved={loadMeeting}
             ctx={ctx}
           />
         )}
       </div>
 
-      {!publicView && (
-        <div className="mt-5 flex flex-wrap gap-2 print:hidden">
-          {!showAnnouncements && (
-            <button
-              onClick={() => setShowAnnouncements(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-500 transition hover:border-maroon/40 hover:text-maroon"
-            >
-              <Plus className="h-4 w-4" /> Show Announcements
-            </button>
-          )}
-          {!showReports && (
-            <button
-              onClick={() => setShowReports(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-500 transition hover:border-maroon/40 hover:text-maroon"
-            >
-              <Plus className="h-4 w-4" /> Show Officer and Committee Reports
-            </button>
-          )}
-        </div>
-      )}
+      {/* Off-screen clean renders captured by html2canvas for the PDF export. */}
+      <PrintableAgenda
+        innerRef={agendaPrintRef}
+        meeting={meeting}
+        schoolName={settings?.school_name}
+        types={printTypes}
+        openingId={openingType?.id}
+        adjournmentId={adjournmentType?.id}
+        bySectionTypeId={bySectionTypeId}
+        childrenOf={childrenOf}
+      />
+      <PrintableAttendance
+        innerRef={attendancePrintRef}
+        meeting={meeting}
+        schoolName={settings?.school_name}
+        attendance={attendance}
+      />
     </Shell>
   )
 }
 
+/* --------------------- Printable (PDF) renders ---------------------------- */
+// Hidden, fixed-width (A4-ish at 96dpi), inline-styled views captured by
+// html2canvas. Inline hex colors only — never Tailwind classes — so the
+// capture doesn't choke on oklch() color functions.
+const PRINT_WRAP = {
+  position: 'absolute',
+  left: '-10000px',
+  top: 0,
+  width: '760px',
+  padding: '40px',
+  background: '#ffffff',
+  color: '#111827',
+  fontFamily: 'Georgia, "Times New Roman", serif',
+}
+
+function PrintHeader({ schoolName, title, subtitle }) {
+  return (
+    <div style={{ borderBottom: '3px solid #8e231c', paddingBottom: '12px', marginBottom: '20px' }}>
+      {schoolName && (
+        <div style={{ fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', color: '#8e231c', fontWeight: 700 }}>
+          {schoolName}
+        </div>
+      )}
+      <div style={{ fontSize: '24px', fontWeight: 700, marginTop: '4px' }}>{title}</div>
+      {subtitle && <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '2px' }}>{subtitle}</div>}
+    </div>
+  )
+}
+
+function PrintableAgenda({
+  innerRef,
+  meeting,
+  schoolName,
+  types,
+  openingId,
+  adjournmentId,
+  bySectionTypeId,
+  childrenOf,
+}) {
+  return (
+    <div ref={innerRef} style={PRINT_WRAP}>
+      <PrintHeader
+        schoolName={schoolName}
+        title="Meeting Agenda"
+        subtitle={`${meeting.title} — ${formatDate(meeting.date)}`}
+      />
+
+      {types.map((t) => {
+        const items = bySectionTypeId[t.id] ?? []
+        const isOpening = t.id === openingId
+        const isAdjournment = t.id === adjournmentId
+        return (
+          <div key={t.id} style={{ marginBottom: '22px' }}>
+            <div
+              style={{
+                fontSize: '16px',
+                fontWeight: 700,
+                color: '#8e231c',
+                borderBottom: '1px solid #e5e7eb',
+                paddingBottom: '4px',
+                marginBottom: '8px',
+              }}
+            >
+              {t.name}
+            </div>
+
+            {isOpening && (
+              <div style={{ fontSize: '13px', color: '#374151', marginBottom: '8px' }}>
+                <div>Presiding officer: {meeting.presiding_officer || '—'}</div>
+                <div>
+                  Called to order:{' '}
+                  {meeting.called_to_order
+                    ? new Date(meeting.called_to_order).toLocaleString()
+                    : '—'}
+                </div>
+                <div>Quorum confirmed: {meeting.quorum_confirmed ? 'Yes' : 'No'}</div>
+                <div>Agenda approved: {meeting.agenda_approved ? 'Yes' : 'No'}</div>
+              </div>
+            )}
+
+            {items.length === 0 && !isOpening && !isAdjournment ? (
+              <div style={{ fontSize: '13px', color: '#9ca3af' }}>No items.</div>
+            ) : (
+              <ol style={{ margin: 0, paddingLeft: '20px' }}>
+                {items.map((item) => {
+                  const subs = childrenOf(item.id)
+                  return (
+                    <li key={item.id} style={{ fontSize: '14px', marginBottom: '6px' }}>
+                      <span style={{ fontWeight: 600 }}>{item.content}</span>
+                      {item.status && item.status !== 'No status' && (
+                        <span style={{ color: '#6b7280', fontSize: '12px' }}>
+                          {' '}
+                          [{item.status}]
+                        </span>
+                      )}
+                      {subs.length > 0 && (
+                        <ul style={{ margin: '2px 0 0', paddingLeft: '18px' }}>
+                          {subs.map((s) => (
+                            <li key={s.id} style={{ fontSize: '13px', color: '#374151' }}>
+                              {s.content}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {item.secretary_notes && (
+                        <div style={{ fontSize: '12px', fontStyle: 'italic', color: '#6b7280', marginTop: '2px' }}>
+                          {item.secretary_notes}
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ol>
+            )}
+
+            {isAdjournment && (
+              <div style={{ fontSize: '13px', color: '#374151', marginTop: '8px' }}>
+                <div>
+                  Next meeting:{' '}
+                  {meeting.next_meeting_date ? formatDate(meeting.next_meeting_date) : '—'}
+                </div>
+                <div>
+                  Adjourned at:{' '}
+                  {meeting.adjourned_at
+                    ? new Date(meeting.adjourned_at).toLocaleString()
+                    : '—'}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function PrintableAttendance({ innerRef, meeting, schoolName, attendance }) {
+  const cell = {
+    padding: '6px 8px',
+    borderBottom: '1px solid #e5e7eb',
+    fontSize: '13px',
+    textAlign: 'left',
+  }
+  return (
+    <div ref={innerRef} style={PRINT_WRAP}>
+      <PrintHeader
+        schoolName={schoolName}
+        title="Attendance"
+        subtitle={`${meeting.title} — ${formatDate(meeting.date)}`}
+      />
+      {attendance.length === 0 ? (
+        <div style={{ fontSize: '13px', color: '#9ca3af' }}>
+          No attendance recorded for this meeting.
+        </div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ ...cell, fontWeight: 700, color: '#8e231c', borderBottom: '2px solid #8e231c' }}>
+                Member
+              </th>
+              <th style={{ ...cell, fontWeight: 700, color: '#8e231c', borderBottom: '2px solid #8e231c' }}>
+                Status
+              </th>
+              <th style={{ ...cell, fontWeight: 700, color: '#8e231c', borderBottom: '2px solid #8e231c' }}>
+                Checked in
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {attendance.map((a, i) => (
+              <tr key={i}>
+                <td style={cell}>{a.profiles?.full_name ?? 'Member'}</td>
+                <td style={{ ...cell, textTransform: 'capitalize' }}>{a.status}</td>
+                <td style={cell}>{a.checked_in_at ? formatTime(a.checked_in_at) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '14px' }}>
+        Total recorded: {attendance.length}
+      </div>
+    </div>
+  )
+}
+
 /* ----------------------------- Opening ------------------------------------ */
-function OpeningPanel({ meeting, items, onMeetingSaved, ctx }) {
+function OpeningPanel({ meeting, sectionType, items, onMeetingSaved, ctx }) {
   const [presiding, setPresiding] = useState(meeting.presiding_officer ?? '')
   const [calledAt, setCalledAt] = useState(toLocalInput(meeting.called_to_order))
   const [quorum, setQuorum] = useState(meeting.quorum_confirmed)
@@ -323,7 +608,7 @@ function OpeningPanel({ meeting, items, onMeetingSaved, ctx }) {
   }
 
   return (
-    <SectionCard title="Opening">
+    <SectionCard title={sectionType.name}>
       {!ctx.publicView && (
         <div className="rounded-xl bg-blue-50/40 p-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -398,13 +683,13 @@ function OpeningPanel({ meeting, items, onMeetingSaved, ctx }) {
         </dl>
       )}
 
-      <ItemList sectionKey="opening" items={items} ctx={ctx} />
+      <ItemList sectionType={sectionType} items={items} ctx={ctx} />
     </SectionCard>
   )
 }
 
 /* --------------------------- Adjournment ---------------------------------- */
-function AdjournmentPanel({ meeting, items, onMeetingSaved, ctx }) {
+function AdjournmentPanel({ meeting, sectionType, items, onMeetingSaved, ctx }) {
   const [nextDate, setNextDate] = useState(meeting.next_meeting_date ?? '')
   const [adjournedAt, setAdjournedAt] = useState(
     toLocalInput(meeting.adjourned_at),
@@ -425,7 +710,7 @@ function AdjournmentPanel({ meeting, items, onMeetingSaved, ctx }) {
   }
 
   return (
-    <SectionCard title="Adjournment">
+    <SectionCard title={sectionType.name}>
       {!ctx.publicView && (
         <div className="rounded-xl bg-blue-50/40 p-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -463,21 +748,21 @@ function AdjournmentPanel({ meeting, items, onMeetingSaved, ctx }) {
           </div>
         </div>
       )}
-      <ItemList sectionKey="adjournment" items={items} ctx={ctx} />
+      <ItemList sectionType={sectionType} items={items} ctx={ctx} />
     </SectionCard>
   )
 }
 
 /* ------------------------- Generic section -------------------------------- */
-function AgendaSection({ sectionKey, title, items, ctx }) {
+function AgendaSection({ sectionType, title, items, ctx }) {
   return (
     <SectionCard title={title}>
-      <ItemList sectionKey={sectionKey} items={items} ctx={ctx} />
+      <ItemList sectionType={sectionType} items={items} ctx={ctx} />
     </SectionCard>
   )
 }
 
-function ItemList({ sectionKey, items, ctx }) {
+function ItemList({ sectionType, items, ctx }) {
   // Local copy so a drag reorders instantly; it re-syncs whenever the canonical
   // items change (after add / delete / reload).
   const [ordered, setOrdered] = useState(items)
@@ -508,6 +793,7 @@ function ItemList({ sectionKey, items, ctx }) {
         <AgendaItem
           key={item.id}
           item={item}
+          sectionType={sectionType}
           ctx={ctx}
           isDragging={dragId === item.id}
           onDragStart={() => setDragId(item.id)}
@@ -516,8 +802,8 @@ function ItemList({ sectionKey, items, ctx }) {
       ))}
       {!ctx.publicView && (
         <AddItemInput
-          placeholder={`Add item to ${sectionLabel(sectionKey)}…`}
-          onAdd={(text) => ctx.addItem(sectionKey, text)}
+          placeholder={`Add item to ${sectionType.name}…`}
+          onAdd={(text) => ctx.addItem(sectionType, text)}
         />
       )}
       {ctx.publicView && ordered.length === 0 && (
@@ -527,7 +813,7 @@ function ItemList({ sectionKey, items, ctx }) {
   )
 }
 
-function AgendaItem({ item, ctx, isDragging, onDragStart, onDrop }) {
+function AgendaItem({ item, sectionType, ctx, isDragging, onDragStart, onDrop }) {
   const subItems = ctx.childrenOf(item.id)
   // The row is only draggable while the grip handle is held, so the text
   // inputs stay normally editable / selectable the rest of the time.
@@ -615,7 +901,7 @@ function AgendaItem({ item, ctx, isDragging, onDragStart, onDrop }) {
           <AddItemInput
             small
             placeholder="Add sub-item…"
-            onAdd={(text) => ctx.addItem(item.section, text, item.id)}
+            onAdd={(text) => ctx.addItem(sectionType, text, item.id)}
           />
 
           <input
@@ -738,20 +1024,6 @@ function Shell({ children }) {
         <Footer />
       </div>
     </div>
-  )
-}
-
-function sectionLabel(key) {
-  return (
-    {
-      opening: 'Opening',
-      unfinished: 'Unfinished Business',
-      new: 'New Business',
-      open_floor: 'Open Floor',
-      adjournment: 'Adjournment',
-      announcements: 'Announcements',
-      reports: 'Reports',
-    }[key] ?? key
   )
 }
 
