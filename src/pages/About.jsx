@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Crown, UsersRound } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import Crest from '../components/Crest.jsx'
@@ -17,20 +17,63 @@ const CLASS_GROUPS = [
 export default function About() {
   const { settings } = useSiteSettings()
   const [officers, setOfficers] = useState([])
+  const [committeeRows, setCommitteeRows] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // public_officers is a view exposing only name / photo / position for
-    // members with an elected position — readable by anonymous visitors.
-    supabase
-      .from('public_officers')
-      .select('*')
-      .order('position_order', { ascending: true })
-      .then(({ data }) => {
-        setOfficers(data ?? [])
-        setLoading(false)
-      })
+    // Both views expose only public-facing columns and are readable by
+    // anonymous visitors. public_officers: name/photo/position for members with
+    // an elected position. public_committees: one row per committee membership
+    // (committees with no members still appear, with null member columns).
+    Promise.all([
+      supabase
+        .from('public_officers')
+        .select('*')
+        .order('position_order', { ascending: true }),
+      supabase
+        .from('public_committees')
+        .select('*')
+        .order('committee_name', { ascending: true }),
+    ]).then(([{ data: offs }, { data: cmts }]) => {
+      setOfficers(offs ?? [])
+      setCommitteeRows(cmts ?? [])
+      setLoading(false)
+    })
   }, [])
+
+  // Fold the flat membership rows into one entry per committee. Chair first,
+  // then members alphabetically.
+  const committees = useMemo(() => {
+    const map = new Map()
+    for (const row of committeeRows) {
+      let c = map.get(row.committee_id)
+      if (!c) {
+        c = {
+          id: row.committee_id,
+          name: row.committee_name,
+          description: row.committee_description,
+          members: [],
+        }
+        map.set(row.committee_id, c)
+      }
+      if (row.membership_id) {
+        c.members.push({
+          id: row.membership_id,
+          name: row.member_name,
+          title: row.member_position_title,
+          isChair: row.is_chair,
+        })
+      }
+    }
+    const list = [...map.values()]
+    for (const c of list) {
+      c.members.sort((a, b) => {
+        if (a.isChair !== b.isChair) return a.isChair ? -1 : 1
+        return (a.name ?? '').localeCompare(b.name ?? '')
+      })
+    }
+    return list
+  }, [committeeRows])
 
   const exec = useMemo(
     () => officers.filter((o) => o.position_group === 'exec'),
@@ -125,7 +168,19 @@ export default function About() {
         </div>
       </section>
 
-      {/* COMMITTEES — Stage 8 */}
+      {/* Committees */}
+      {!loading && committees.length > 0 && (
+        <section className="bg-white py-14 sm:py-16">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <SectionHeading>Committees</SectionHeading>
+            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {committees.map((c) => (
+                <CommitteeCard key={c.id} committee={c} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <Footer />
     </div>
@@ -153,6 +208,54 @@ function OfficerCard({ officer }) {
       <p className="mt-0.5 text-sm font-semibold text-maroon">
         {officer.position_title}
       </p>
+    </div>
+  )
+}
+
+function CommitteeCard({ committee }) {
+  return (
+    <div className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-maroon/30 hover:shadow-md">
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-maroon/8 text-maroon">
+          <UsersRound className="h-5 w-5" />
+        </span>
+        <h3 className="font-display text-lg font-bold text-gray-900">
+          {committee.name}
+        </h3>
+      </div>
+      {committee.description && (
+        <p className="mt-3 text-sm leading-relaxed text-gray-600">
+          {committee.description}
+        </p>
+      )}
+      {committee.members.length > 0 ? (
+        <ul className="mt-4 space-y-1.5 border-t border-gray-100 pt-4">
+          {committee.members.map((m) => (
+            <li
+              key={m.id}
+              className="flex items-center justify-between gap-2 text-sm"
+            >
+              <span className="min-w-0">
+                <span className="truncate text-gray-800">{m.name}</span>
+                {m.title && (
+                  <span className="ml-1.5 text-xs text-gray-400">
+                    {m.title}
+                  </span>
+                )}
+              </span>
+              {m.isChair && (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-maroon">
+                  <Crown className="h-3 w-3 text-gold" /> Chair
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 border-t border-gray-100 pt-4 text-sm text-gray-400">
+          Members to be announced.
+        </p>
+      )}
     </div>
   )
 }

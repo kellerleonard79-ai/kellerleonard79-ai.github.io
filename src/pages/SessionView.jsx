@@ -6,6 +6,7 @@ import Footer from '../components/Footer.jsx'
 import RequireStaff from '../components/RequireStaff.jsx'
 import CheckinQR from '../components/CheckinQR.jsx'
 import supabase from '../lib/supabaseClient.js'
+import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 import { formatDate, formatTime, checkinUrl } from '../lib/format.js'
 
 const STATUSES = ['present', 'excused', 'unexcused']
@@ -20,6 +21,7 @@ export default function SessionView() {
 
 function SessionContent() {
   const { id } = useParams()
+  const { settings } = useSiteSettings()
   const [meeting, setMeeting] = useState(null)
   const [members, setMembers] = useState([])
   const [attendance, setAttendance] = useState([])
@@ -38,7 +40,7 @@ function SessionContent() {
   const loadMembers = useCallback(async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, student_id')
+      .select('id, full_name, student_id, status, elected_position_id')
       .order('full_name', { ascending: true })
     setMembers(data ?? [])
   }, [])
@@ -80,8 +82,28 @@ function SessionContent() {
     [attendance],
   )
   const total = members.length
-  const needed = Math.ceil(total / 2)
-  const quorumMet = total > 0 && present * 2 >= total
+
+  // Quorum threshold per the admin-configured rule in site_settings:
+  //   half_active   — half of members with status 'active'
+  //   half_officers — half of members holding an elected position
+  //   custom        — a fixed number set by the admin
+  const { needed, quorumBasis } = useMemo(() => {
+    const type = settings?.quorum_type ?? 'half_active'
+    if (type === 'custom') {
+      return {
+        needed: Math.max(0, settings?.quorum_custom_value ?? 0),
+        quorumBasis: 'custom number',
+      }
+    }
+    if (type === 'half_officers') {
+      const officers = members.filter((m) => m.elected_position_id).length
+      return { needed: Math.ceil(officers / 2), quorumBasis: 'officers' }
+    }
+    const active = members.filter((m) => (m.status ?? 'active') === 'active').length
+    return { needed: Math.ceil(active / 2), quorumBasis: 'active members' }
+  }, [settings, members])
+
+  const quorumMet = needed > 0 && present >= needed
   const checkIns = useMemo(
     () => attendance.filter((a) => a.source === 'qr'),
     [attendance],
@@ -180,7 +202,8 @@ function SessionContent() {
               quorumMet ? 'text-green-600' : 'text-amber-600'
             }`}
           >
-            {quorumMet ? 'Met' : 'Not met'} — {present} of {needed} needed
+            {quorumMet ? 'Met' : 'Not met'} — {present} of {needed} needed (
+            {quorumBasis})
           </p>
         </div>
       </div>

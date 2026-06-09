@@ -32,6 +32,15 @@ export function gradeLabel(n) {
   return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]} Grade`
 }
 
+// Build a meeting title from the admin-configured format string, substituting
+// the {date} token with a human-readable date. Falls back to a sensible default
+// when no format is set.
+export function meetingTitleFromFormat(format, dateISO) {
+  const tpl = format?.trim() || 'SGA Meeting – {date}'
+  const dateLabel = dateISO ? formatDate(dateISO) : ''
+  return tpl.replace(/\{date\}/g, dateLabel).trim()
+}
+
 export function checkinUrl(meetingId) {
   const origin =
     typeof window !== 'undefined' ? window.location.origin : ''

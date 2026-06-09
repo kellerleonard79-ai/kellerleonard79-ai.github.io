@@ -16,6 +16,8 @@ import SecurityClearance from './pages/SecurityClearance.jsx'
 import Archives from './pages/Archives.jsx'
 import Elections from './pages/Elections.jsx'
 import Bookkeeping from './pages/Bookkeeping.jsx'
+import Committees from './pages/Committees.jsx'
+import AdminSettings from './pages/AdminSettings.jsx'
 
 export default function App() {
   return (
@@ -28,9 +30,11 @@ export default function App() {
       <Route path="/dashboard/profile" element={<Profile />} />
       <Route path="/dashboard/edit-site" element={<EditSite />} />
       <Route path="/dashboard/security" element={<SecurityClearance />} />
+      <Route path="/dashboard/admin" element={<AdminSettings />} />
       <Route path="/dashboard/archives" element={<Archives />} />
       <Route path="/dashboard/elections" element={<Elections />} />
       <Route path="/dashboard/bookkeeping" element={<Bookkeeping />} />
+      <Route path="/dashboard/committees" element={<Committees />} />
       <Route path="/dashboard/members" element={<MemberDirectory />} />
       <Route path="/dashboard/members/:id" element={<Profile />} />
       <Route path="/dashboard/meetings" element={<Meetings />} />

@@ -396,6 +396,12 @@ verify_jwt = true
 [functions.archive-file-url]
 verify_jwt = true
 
+# Mints short-lived signed URLs for private committee-report files. verify_jwt
+# keeps anonymous callers out; the function reads the report through the caller's
+# JWT so committee_reports RLS enforces access before signing.
+[functions.committee-report-url]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

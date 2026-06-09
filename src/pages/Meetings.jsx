@@ -5,7 +5,8 @@ import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import RequireStaff from '../components/RequireStaff.jsx'
 import supabase from '../lib/supabaseClient.js'
-import { formatDate, todayISO } from '../lib/format.js'
+import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
+import { formatDate, todayISO, meetingTitleFromFormat } from '../lib/format.js'
 
 export default function Meetings() {
   return (
@@ -198,11 +199,21 @@ function EmptyCard({ children }) {
 }
 
 function CreateMeetingForm({ onCreated }) {
+  const { settings } = useSiteSettings()
+  const titleFormat = settings?.default_meeting_title_format
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
   const [agenda, setAgenda] = useState('')
+  // Track whether the admin-configured default title was overridden by hand, so
+  // changing the date keeps refreshing the suggested title until the user edits.
+  const [titleEdited, setTitleEdited] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  // Keep the suggested title in sync with the chosen date until manually edited.
+  useEffect(() => {
+    if (!titleEdited) setTitle(meetingTitleFromFormat(titleFormat, date))
+  }, [titleFormat, date, titleEdited])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -241,7 +252,10 @@ function CreateMeetingForm({ onCreated }) {
             type="text"
             required
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value)
+              setTitleEdited(true)
+            }}
             className={inputClass}
             placeholder="General Body Meeting"
           />

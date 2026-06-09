@@ -7,14 +7,9 @@ import Crest from '../components/Crest.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 
-const GRADE_LEVELS = [9, 10, 11, 12]
-const SHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-
 const EMPTY = {
   full_name: '',
   student_id: '',
-  grade_level: '',
-  shirt_size: '',
   email: '',
   password: '',
   is_candidate_application: false,
@@ -23,16 +18,34 @@ const EMPTY = {
 export default function Join() {
   const { settings, loading: settingsLoading } = useSiteSettings()
   const [form, setForm] = useState(EMPTY)
+  // Values for the admin-configured schema fields, keyed by field.key.
+  const [extra, setExtra] = useState({})
   const [status, setStatus] = useState('idle') // idle | submitting | success
   const [error, setError] = useState('')
 
+  // The dynamic part of the form is driven entirely by join_form_schema; fields
+  // toggled off (enabled === false) are skipped.
+  const schema = Array.isArray(settings?.join_form_schema)
+    ? settings.join_form_schema.filter((f) => f.enabled !== false)
+    : []
+
   const update = (field) => (e) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }))
+
+  const updateExtra = (key, value) =>
+    setExtra((prev) => ({ ...prev, [key]: value }))
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setStatus('submitting')
+
+    // The default Grade / Shirt Size fields map onto dedicated profile columns;
+    // everything flagged `custom` is collected into the custom_fields jsonb.
+    const customFields = {}
+    for (const f of schema) {
+      if (f.custom) customFields[f.key] = extra[f.key] ?? ''
+    }
 
     const { error: signUpError } = await supabase.auth.signUp({
       email: form.email,
@@ -43,9 +56,10 @@ export default function Join() {
         data: {
           full_name: form.full_name.trim(),
           student_id: form.student_id.trim(),
-          grade_level: form.grade_level,
-          shirt_size: form.shirt_size,
+          grade_level: extra.grade ?? '',
+          shirt_size: extra.shirt_size ?? '',
           is_candidate_application: form.is_candidate_application,
+          custom_fields: JSON.stringify(customFields),
         },
       },
     })
@@ -63,6 +77,7 @@ export default function Join() {
 
     setStatus('success')
     setForm(EMPTY)
+    setExtra({})
   }
 
   // Signup is gated by site_settings.signup_enabled. While settings load, show
@@ -168,45 +183,14 @@ export default function Join() {
                   />
                 </Field>
 
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <Field label="Grade Level" htmlFor="grade_level">
-                    <select
-                      id="grade_level"
-                      required
-                      value={form.grade_level}
-                      onChange={update('grade_level')}
-                      className={inputClass}
-                    >
-                      <option value="" disabled>
-                        Select…
-                      </option>
-                      {GRADE_LEVELS.map((g) => (
-                        <option key={g} value={g}>
-                          {g}th Grade
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field label="Shirt Size" htmlFor="shirt_size">
-                    <select
-                      id="shirt_size"
-                      required
-                      value={form.shirt_size}
-                      onChange={update('shirt_size')}
-                      className={inputClass}
-                    >
-                      <option value="" disabled>
-                        Select…
-                      </option>
-                      {SHIRT_SIZES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                </div>
+                {schema.map((field) => (
+                  <DynamicField
+                    key={field.key}
+                    field={field}
+                    value={extra[field.key] ?? (field.type === 'checkbox' ? false : '')}
+                    onChange={(v) => updateExtra(field.key, v)}
+                  />
+                ))}
 
                 <hr className="border-gray-100" />
 
@@ -296,6 +280,58 @@ export default function Join() {
 
 const inputClass =
   'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+
+// Renders a single schema-driven field (Grade, Shirt Size, or any admin-added
+// custom field). Checkbox fields render inline; text/select use the Field shell.
+function DynamicField({ field, value, onChange }) {
+  if (field.type === 'checkbox') {
+    return (
+      <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          required={field.required}
+          checked={Boolean(value)}
+          onChange={(e) => onChange(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
+        />
+        {field.label}
+      </label>
+    )
+  }
+
+  return (
+    <Field label={field.label} htmlFor={field.key}>
+      {field.type === 'select' ? (
+        <select
+          id={field.key}
+          required={field.required}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={inputClass}
+        >
+          <option value="" disabled>
+            Select…
+          </option>
+          {(field.options ?? []).map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          id={field.key}
+          type="text"
+          required={field.required}
+          placeholder={field.placeholder ?? ''}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={inputClass}
+        />
+      )}
+    </Field>
+  )
+}
 
 function Field({ label, htmlFor, children }) {
   return (
