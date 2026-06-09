@@ -1,8 +1,9 @@
 name: Deploy Supabase Edge Functions
 
-# Deploys the Edge Functions whenever they (or the Supabase config) change on
-# main. Requires a repo secret SUPABASE_ACCESS_TOKEN (a Supabase personal access
-# token from https://supabase.com/dashboard/account/tokens).
+# Deploys every Edge Function under supabase/functions/ whenever they (or the
+# Supabase config) change on main. Requires a repo secret SUPABASE_ACCESS_TOKEN
+# (a Supabase personal access token from
+# https://supabase.com/dashboard/account/tokens).
 on:
   push:
     branches: [main]
