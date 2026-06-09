@@ -9,10 +9,6 @@ import { useAuth } from '../lib/AuthContext.jsx'
 const links = [
   { label: 'Home', href: '#home' },
   { label: 'About', to: '/about' },
-  { label: 'Officers', href: '#officers' },
-  { label: 'Events', href: '#events' },
-  { label: 'Resources', href: '#resources' },
-  { label: 'Contact', href: '#contact' },
 ]
 
 export default function Navbar() {
