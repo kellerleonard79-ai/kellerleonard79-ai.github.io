@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays, Megaphone } from 'lucide-react'
+import { CalendarDays, Megaphone, Bell, Send, Check, Loader2 } from 'lucide-react'
 import { Instagram } from '../components/BrandIcons.jsx'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
@@ -28,21 +28,19 @@ export default function Home() {
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(200,162,74,0.18),transparent_42%)]" />
 
-        <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-28">
-          <div>
-            <h1 className="font-oswald text-4xl font-bold uppercase leading-tight tracking-wide sm:text-5xl lg:text-6xl">
-              Pensacola High School
-              <br />
-              <span className="text-gold">Student Government Association</span>
-            </h1>
+        {/* crest — absolutely positioned so the heading can use the full width */}
+        <div className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 lg:block xl:right-16">
+          <div className="relative">
+            <div className="absolute inset-0 scale-110 rounded-full bg-gold/20 blur-3xl" />
+            <Crest className="relative h-80 w-80 object-contain drop-shadow-2xl" />
           </div>
+        </div>
 
-          <div className="hidden justify-center lg:flex">
-            <div className="relative">
-              <div className="absolute inset-0 scale-110 rounded-full bg-gold/20 blur-3xl" />
-              <Crest className="relative h-80 w-80 object-contain drop-shadow-2xl" />
-            </div>
-          </div>
+        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+          <h1 className="font-oswald text-4xl font-bold uppercase leading-tight tracking-wide text-white sm:text-5xl lg:text-5xl xl:text-6xl">
+            <span className="block whitespace-nowrap">Pensacola High School</span>
+            <span className="block whitespace-nowrap">Student Government Association</span>
+          </h1>
         </div>
 
         {/* gold divider */}
@@ -57,7 +55,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="font-display text-3xl font-bold text-maroon sm:text-4xl">
-              Stay Connected
+              What's New
             </h2>
             <p className="mt-3 text-gray-600">
               Follow our latest posts and never miss a school event.
@@ -65,8 +63,49 @@ export default function Home() {
             <div className="mx-auto mt-4 h-1 w-20 rounded-full bg-gold" />
           </div>
 
-          <div className="mt-12 grid gap-8 lg:grid-cols-2">
-            {/* Left — Instagram feed placeholder */}
+          <div className="mt-12 grid items-start gap-8 lg:grid-cols-2">
+            {/* Left — newsletter signup + school calendar */}
+            <div className="flex flex-col gap-8">
+              <NewsletterSignup />
+
+              {/* School calendar */}
+              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div className="flex items-center justify-between gap-3 border-b border-gray-100 p-5">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon text-gold">
+                      <CalendarDays className="h-6 w-6" />
+                    </span>
+                    <div>
+                      <h3 className="font-display text-lg font-bold text-gray-900">
+                        School Calendar
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Events, meetings &amp; deadlines
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href="#calendar"
+                    className="rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+                  >
+                    Full View
+                  </a>
+                </div>
+                <div className="p-5">
+                  <iframe
+                    title="PHS SGA School Calendar"
+                    src={CALENDAR_SRC}
+                    className="w-full rounded-xl"
+                    style={{ border: 0 }}
+                    height="450"
+                    frameBorder="0"
+                    scrolling="no"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right — Instagram feed placeholder */}
             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
               <div className="flex items-center justify-between gap-3 border-b border-gray-100 p-5">
                 <div className="flex items-center gap-3">
@@ -128,47 +167,100 @@ export default function Home() {
                 )}
               </div>
             </div>
-
-            {/* Right — School calendar placeholder */}
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between gap-3 border-b border-gray-100 p-5">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon text-gold">
-                    <CalendarDays className="h-6 w-6" />
-                  </span>
-                  <div>
-                    <h3 className="font-display text-lg font-bold text-gray-900">
-                      School Calendar
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Events, meetings &amp; deadlines
-                    </p>
-                  </div>
-                </div>
-                <a
-                  href="#calendar"
-                  className="rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
-                >
-                  Full View
-                </a>
-              </div>
-              <div className="p-5">
-                <iframe
-                  title="PHS SGA School Calendar"
-                  src={CALENDAR_SRC}
-                  className="w-full rounded-xl"
-                  style={{ border: 0 }}
-                  height="600"
-                  frameBorder="0"
-                  scrolling="no"
-                />
-              </div>
-            </div>
           </div>
         </div>
       </section>
 
       <Footer />
+    </div>
+  )
+}
+
+// Light-themed newsletter signup card for the "What's New" section. Stores the
+// email in newsletter_emails; a duplicate (unique violation, 23505) just means
+// they're already on the list, so we treat it as success.
+function NewsletterSignup() {
+  const [email, setEmail] = useState('')
+  const [subscribed, setSubscribed] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed) return
+    setSubmitting(true)
+    setError('')
+    const { error: insertError } = await supabase
+      .from('newsletter_emails')
+      .insert({ email: trimmed })
+    setSubmitting(false)
+    if (insertError && insertError.code !== '23505') {
+      setError('Something went wrong. Please try again.')
+      return
+    }
+    setSubscribed(true)
+    setEmail('')
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex items-center gap-3 border-b border-gray-100 p-5">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-maroon text-gold">
+          <Bell className="h-6 w-6" />
+        </span>
+        <div>
+          <h3 className="font-display text-lg font-bold text-gray-900">
+            Get Updates About Upcoming Events
+          </h3>
+          <p className="text-sm text-gray-500">
+            Event reminders &amp; SGA news in your inbox
+          </p>
+        </div>
+      </div>
+      <div className="p-5">
+        {subscribed ? (
+          <div className="flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/5 px-5 py-4">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gold text-maroon-dark">
+              <Check className="h-5 w-5" />
+            </span>
+            <p className="text-sm text-gray-700">
+              You're on the list! Watch your inbox for the next update.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
+            <label htmlFor="events-email" className="sr-only">
+              Email address
+            </label>
+            <input
+              id="events-email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@students.pensacola.edu"
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20"
+            />
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-maroon px-6 py-3 font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Subscribing…
+                </>
+              ) : (
+                <>
+                  Subscribe <Send className="h-4 w-4" />
+                </>
+              )}
+            </button>
+          </form>
+        )}
+        {error && <p className="mt-3 text-xs text-red-500">{error}</p>}
+      </div>
     </div>
   )
 }
