@@ -14,7 +14,7 @@ const SNAPWIDGET_ID = ''
 
 // PHS SGA public Google Calendar (same embed as the original Django site).
 const CALENDAR_SRC =
-  'https://calendar.google.com/calendar/embed?src=c_0660093bc692b20cf903cc9ebe8c8a7ab767b99fcd4a467cc5b55193b1926b40%40group.calendar.google.com&ctz=America%2FChicago'
+  'https://calendar.google.com/calendar/embed?src=c_0660093bc692b20cf903cc9ebe8c8a7ab767b99fcd4a467cc5b55193b1926b40%40group.calendar.google.com&ctz=America%2FChicago&mode=AGENDA'
 
 export default function Home() {
   return (
@@ -39,7 +39,7 @@ export default function Home() {
         <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
           <h1 className="font-oswald text-4xl font-bold uppercase leading-tight tracking-wide text-white sm:text-5xl lg:text-5xl xl:text-6xl">
             <span className="block whitespace-nowrap">Pensacola High School</span>
-            <span className="block whitespace-nowrap">Student Government Association</span>
+            <span className="block whitespace-nowrap">Student Government</span>
           </h1>
         </div>
 
@@ -75,14 +75,6 @@ export default function Home() {
                     <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon text-gold">
                       <CalendarDays className="h-6 w-6" />
                     </span>
-                    <div>
-                      <h3 className="font-display text-lg font-bold text-gray-900">
-                        School Calendar
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        Events, meetings &amp; deadlines
-                      </p>
-                    </div>
                   </div>
                   <a
                     href="#calendar"
@@ -113,9 +105,6 @@ export default function Home() {
                     <Instagram className="h-6 w-6" />
                   </span>
                   <div>
-                    <h3 className="font-display text-lg font-bold text-gray-900">
-                      Instagram Feed
-                    </h3>
                     <p className="text-sm text-gray-500">@pensacolahighsga</p>
                   </div>
                 </div>
@@ -213,9 +202,6 @@ function NewsletterSignup() {
           <h3 className="font-display text-lg font-bold text-gray-900">
             Get Updates About Upcoming Events
           </h3>
-          <p className="text-sm text-gray-500">
-            Event reminders &amp; SGA news in your inbox
-          </p>
         </div>
       </div>
       <div className="p-5">
