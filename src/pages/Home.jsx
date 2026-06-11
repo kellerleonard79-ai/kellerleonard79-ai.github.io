@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, CalendarDays, Megaphone } from 'lucide-react'
+import { CalendarDays, Megaphone } from 'lucide-react'
 import { Instagram } from '../components/BrandIcons.jsx'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
@@ -26,39 +26,14 @@ export default function Home() {
         id="home"
         className="relative overflow-hidden bg-gradient-to-br from-maroon-dark via-maroon to-maroon-dark text-white"
       >
-        {/* decorative crest watermark */}
-        <div className="pointer-events-none absolute -right-20 top-1/2 hidden -translate-y-1/2 opacity-10 lg:block">
-          <Crest className="h-[34rem] w-[34rem] object-contain" />
-        </div>
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(200,162,74,0.18),transparent_42%)]" />
 
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-28">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-gold-light">
-              Home of the Tigers
-            </span>
-            <h1 className="mt-6 font-display text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+            <h1 className="font-display text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
               Pensacola High School{' '}
               <span className="text-gold">Student Government</span>
             </h1>
-            <p className="mt-6 max-w-xl text-lg text-white/80">
-              Representing every Tiger. Building school spirit, leadership, and
-              community — one event, one voice, one student at a time.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <a
-                href="#get-involved"
-                className="inline-flex items-center gap-2 rounded-lg bg-gold px-6 py-3 font-semibold text-maroon-dark shadow-lg transition hover:bg-gold-light"
-              >
-                Get Involved <ArrowRight className="h-5 w-5" />
-              </a>
-              <a
-                href="#events"
-                className="inline-flex items-center gap-2 rounded-lg border border-white/30 px-6 py-3 font-semibold text-white transition hover:bg-white/10"
-              >
-                <CalendarDays className="h-5 w-5" /> Upcoming Events
-              </a>
-            </div>
           </div>
 
           <div className="hidden justify-center lg:flex">
