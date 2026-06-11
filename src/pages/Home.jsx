@@ -30,9 +30,10 @@ export default function Home() {
 
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-28">
           <div>
-            <h1 className="font-display text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
-              Pensacola High School{' '}
-              <span className="text-gold">Student Government</span>
+            <h1 className="font-oswald text-4xl font-bold uppercase leading-tight tracking-wide sm:text-5xl lg:text-6xl">
+              Pensacola High School
+              <br />
+              <span className="text-gold">Student Government Association</span>
             </h1>
           </div>
 
