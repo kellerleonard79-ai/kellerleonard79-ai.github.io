@@ -75,6 +75,9 @@ export default function Home() {
                     <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon text-gold">
                       <CalendarDays className="h-6 w-6" />
                     </span>
+                    <h3 className="font-display text-lg font-bold text-gray-900">
+                      Upcoming Events
+                    </h3>
                   </div>
                   <a
                     href="#calendar"
@@ -105,6 +108,9 @@ export default function Home() {
                     <Instagram className="h-6 w-6" />
                   </span>
                   <div>
+                    <h3 className="font-display text-lg font-bold text-gray-900">
+                      Follow Our Instagrams!
+                    </h3>
                     <p className="text-sm text-gray-500">@pensacolahighsga</p>
                   </div>
                 </div>
