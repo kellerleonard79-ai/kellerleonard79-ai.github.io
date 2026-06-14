@@ -15,7 +15,7 @@ export default function Navbar() {
   const { pathname } = useLocation()
 
   return (
-    <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-md">
+    <header className="sticky top-0 z-50 bg-white shadow-[0_1px_0_rgba(67,11,17,0.06)]">
       {/* Heraldic top rule */}
       <div className="h-[3px] w-full bg-maroon" />
 

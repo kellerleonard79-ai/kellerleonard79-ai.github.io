@@ -31,9 +31,11 @@
   --color-gold: #7a1620;
   --color-gold-light: #94202c;
 
-  /* Typography */
-  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
-  --font-oswald: "Fraunces", Georgia, serif; /* legacy alias */
+  /* Typography — clean, premium grotesque pairing.
+     Display: Bricolage Grotesque (characterful, modern, strong at large sizes).
+     Body:    Hanken Grotesk (humanist, highly legible). */
+  --font-display: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif;
+  --font-oswald: "Bricolage Grotesque", sans-serif; /* legacy alias */
   --font-sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --shadow-card: 0 1px 2px rgba(67, 11, 17, 0.04), 0 8px 24px -16px rgba(67, 11, 17, 0.18);

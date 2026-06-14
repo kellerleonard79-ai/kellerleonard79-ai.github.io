@@ -23,30 +23,25 @@ export default function Home() {
       <Navbar />
 
       {/* ───────────────────────── Hero ───────────────────────── */}
-      <section id="home" className="relative overflow-hidden bg-maroon text-white">
-        {/* Atmosphere: soft highlights + oversized crest watermark */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.12),transparent_42%),radial-gradient(circle_at_100%_100%,rgba(0,0,0,0.35),transparent_50%)]" />
-        <div className="pointer-events-none absolute -left-16 -bottom-24 opacity-[0.06]">
-          <Crest className="h-[26rem] w-[26rem] object-contain" />
-        </div>
+      {/* Solid maroon banner, kept compact. Crest + wordmark lockup. */}
+      <section id="home" className="bg-maroon text-white">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 px-4 py-12 text-center sm:px-6 lg:flex-row lg:justify-between lg:gap-10 lg:py-14 lg:text-left lg:px-8">
+          {/* Crest medallion */}
+          <div className="reveal order-1 shrink-0 lg:order-2">
+            <div className="grid h-32 w-32 place-items-center rounded-full bg-white shadow-[0_20px_50px_-24px_rgba(0,0,0,0.7)] sm:h-36 sm:w-36 lg:h-40 lg:w-40">
+              <Crest className="h-24 w-24 object-contain sm:h-28 sm:w-28 lg:h-32 lg:w-32" />
+            </div>
+          </div>
 
-        <div className="relative mx-auto flex max-w-7xl flex-col items-center gap-12 px-4 py-16 sm:px-6 lg:flex-row lg:justify-between lg:py-20 lg:px-8">
           {/* Wordmark lockup */}
-          <div className="reveal w-full text-center lg:flex-1 lg:text-left">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/25 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-white/85">
-              Home of the Tigers
-            </span>
-            <h1 className="mt-5 font-display text-5xl font-semibold leading-[0.95] tracking-tight sm:text-6xl lg:text-[5.2rem]">
-              Pensacola
-              <br />
-              High School
+          <div className="reveal order-2 lg:order-1 lg:flex-1">
+            <h1 className="font-display text-4xl font-bold uppercase leading-[0.98] tracking-tight sm:text-5xl lg:text-6xl">
+              Pensacola High School
             </h1>
-            <div className="mx-auto mt-6 h-px w-44 bg-white/30 lg:mx-0" />
-            <p className="mt-6 font-sans text-base font-semibold uppercase tracking-[0.28em] text-white/80 sm:text-lg">
+            <p className="mt-3 font-sans text-sm font-semibold uppercase tracking-[0.32em] text-white/80 sm:text-base">
               Student Government Association
             </p>
-
-            <div className="mt-9 flex flex-wrap justify-center gap-3 lg:justify-start">
+            <div className="mt-7 flex flex-wrap justify-center gap-3 lg:justify-start">
               <Link
                 to="/about"
                 className="btn bg-white text-maroon shadow-sm hover:bg-mist-deep"
@@ -61,132 +56,93 @@ export default function Home() {
               </Link>
             </div>
           </div>
-
-          {/* Crest medallion */}
-          <div className="reveal shrink-0" style={{ animationDelay: '120ms' }}>
-            <div className="relative grid place-items-center">
-              <div className="absolute inset-0 -m-3 rounded-full border border-white/15" />
-              <div className="grid h-56 w-56 place-items-center rounded-full bg-white/95 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.6)] sm:h-64 sm:w-64 lg:h-72 lg:w-72">
-                <Crest className="h-40 w-40 object-contain sm:h-44 sm:w-44 lg:h-52 lg:w-52" />
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
       {/* ─────────────────── Announcements ─────────────────── */}
       <Announcements />
 
-      {/* ─────────────────── Stay Connected grid ─────────────────── */}
-      <section id="events" className="border-t border-line bg-mist py-16 sm:py-20">
+      {/* ─────────────────── Calendar + Instagram ─────────────────── */}
+      {/* Dense two-widget row — minimal chrome, no section heading. */}
+      <section id="events" className="border-t border-line bg-mist py-10 sm:py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <span className="eyebrow justify-center">Stay Connected</span>
-            <h2 className="mt-3 font-display text-3xl font-semibold text-ink sm:text-4xl">
-              What's New
-            </h2>
-            <p className="mx-auto mt-3 max-w-md text-ink-soft">
-              Follow our latest posts and never miss a school event.
-            </p>
-          </div>
-
-          <div className="mt-12 grid items-start gap-6 lg:grid-cols-2">
-            {/* Left — newsletter signup + school calendar */}
-            <div className="flex flex-col gap-6">
-              <NewsletterSignup />
-
-              {/* School calendar */}
-              <div className="card overflow-hidden">
-                <div className="flex items-center justify-between gap-3 border-b border-line p-5">
-                  <div className="flex items-center gap-3">
-                    <span className="icon-tile-solid h-10 w-10">
-                      <CalendarDays className="h-5 w-5" />
-                    </span>
-                    <h3 className="font-display text-lg font-semibold text-ink">
-                      Upcoming Events
-                    </h3>
-                  </div>
-                  <a href="#calendar" className="btn-outline btn-sm">
-                    Full View
-                  </a>
-                </div>
-                <div className="p-5">
-                  <iframe
-                    title="PHS SGA School Calendar"
-                    src={CALENDAR_SRC}
-                    className="w-full rounded-lg"
-                    style={{ border: 0 }}
-                    height="450"
-                    frameBorder="0"
-                    scrolling="no"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Right — Instagram feed */}
-            <div className="card overflow-hidden">
-              <div className="flex items-center justify-between gap-3 border-b border-line p-5">
-                <div className="flex items-center gap-3">
-                  <span className="icon-tile-solid h-10 w-10">
-                    <Instagram className="h-5 w-5" />
+          <div className="grid items-stretch gap-5 lg:grid-cols-2">
+            {/* Instagram feed */}
+            <div className="card flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="icon-tile-solid h-8 w-8 shrink-0">
+                    <Instagram className="h-4 w-4" />
                   </span>
-                  <div>
-                    <h3 className="font-display text-lg font-semibold text-ink">
-                      Follow Our Instagram
-                    </h3>
-                    <p className="text-sm text-ink-mute">@pensacolahighsga</p>
-                  </div>
+                  <span className="truncate font-display text-base font-bold text-ink">
+                    @pensacolahighsga
+                  </span>
                 </div>
                 <a
                   href="https://instagram.com/pensacolahighsga"
                   target="_blank"
                   rel="noreferrer"
-                  className="btn-primary btn-sm"
+                  className="btn-primary btn-sm shrink-0"
                 >
                   Follow
                 </a>
               </div>
-              <div className="p-5">
+              <div className="flex-1 p-3">
                 {/*
-                  SNAPWIDGET — Instagram embed for @pensacolahighsga
-                  Setup (one-time, done at snapwidget.com — free, no Meta review):
-                    1. Create a free account at https://snapwidget.com.
-                    2. Create Widget → Instagram → connect/enter @pensacolahighsga.
-                    3. Choose a "Grid" layout, copy the widget ID from the embed
-                       code (the number in https://snapwidget.com/embed/NNNNNN).
-                    4. Paste that number into SNAPWIDGET_ID at the top of this file.
-                  The script tag in index.html makes the iframe auto-resize.
+                  SNAPWIDGET — Instagram embed for @pensacolahighsga. Create a free
+                  widget at snapwidget.com, then paste its ID into SNAPWIDGET_ID at
+                  the top of this file. Until then a styled placeholder shows.
                 */}
                 {SNAPWIDGET_ID ? (
                   <iframe
                     title="PHS SGA Instagram"
                     src={`https://snapwidget.com/embed/${SNAPWIDGET_ID}`}
-                    className="snapwidget-widget w-full"
+                    className="snapwidget-widget h-full w-full"
                     allowTransparency="true"
                     frameBorder="0"
                     scrolling="no"
-                    style={{ border: 'none', overflow: 'hidden', width: '100%', height: '320px' }}
+                    style={{ border: 'none', overflow: 'hidden', width: '100%', height: '100%', minHeight: '380px' }}
                   />
                 ) : (
-                  <>
-                    <div className="grid grid-cols-3 gap-2">
-                      {Array.from({ length: 6 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="aspect-square animate-pulse rounded-lg bg-tint"
-                        />
-                      ))}
-                    </div>
-                    <div className="mt-4 rounded-lg border border-dashed border-line-strong p-4 text-center text-sm text-ink-mute">
-                      Instagram feed loads once a SnapWidget ID is set — see the
-                      setup note in <code>Home.jsx</code>.
-                    </div>
-                  </>
+                  <div className="grid grid-cols-3 gap-2">
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="aspect-square animate-pulse rounded-md bg-tint"
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
+
+            {/* School calendar */}
+            <div className="card flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="icon-tile-solid h-8 w-8 shrink-0">
+                    <CalendarDays className="h-4 w-4" />
+                  </span>
+                  <span className="font-display text-base font-bold text-ink">
+                    Upcoming Events
+                  </span>
+                </div>
+              </div>
+              <div className="flex-1 p-3">
+                <iframe
+                  title="PHS SGA School Calendar"
+                  src={CALENDAR_SRC}
+                  className="h-full min-h-[380px] w-full rounded-md"
+                  style={{ border: 0 }}
+                  frameBorder="0"
+                  scrolling="no"
+                />
+              </div>
+            </div>
           </div>
+
+          {/* Compact newsletter strip */}
+          <NewsletterSignup />
         </div>
       </section>
 
@@ -223,58 +179,52 @@ function NewsletterSignup() {
   }
 
   return (
-    <div className="card overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-line p-5">
-        <span className="icon-tile-solid h-10 w-10 shrink-0">
-          <Bell className="h-5 w-5" />
+    <div className="card mt-5 flex flex-col items-center gap-3 px-4 py-3.5 sm:flex-row sm:gap-4">
+      <div className="flex items-center gap-2.5 sm:shrink-0">
+        <span className="icon-tile-solid h-8 w-8 shrink-0">
+          <Bell className="h-4 w-4" />
         </span>
-        <h3 className="font-display text-lg font-semibold text-ink">
-          Get Updates About Upcoming Events
-        </h3>
+        <span className="font-display text-sm font-bold text-ink">
+          Get event updates
+        </span>
       </div>
-      <div className="p-5">
-        {subscribed ? (
-          <div className="flex items-center gap-3 rounded-lg border border-maroon/20 bg-tint px-5 py-4">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-maroon text-white">
-              <Check className="h-5 w-5" />
-            </span>
-            <p className="text-sm text-ink-soft">
-              You're on the list! Watch your inbox for the next update.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
-            <label htmlFor="events-email" className="sr-only">
-              Email address
-            </label>
-            <input
-              id="events-email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@students.pensacola.edu"
-              className="input"
-            />
-            <button
-              type="submit"
-              disabled={submitting}
-              className="btn-primary shrink-0"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Subscribing…
-                </>
-              ) : (
-                <>
-                  Subscribe <Send className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          </form>
-        )}
-        {error && <p className="mt-3 text-xs text-maroon">{error}</p>}
-      </div>
+      {subscribed ? (
+        <div className="flex flex-1 items-center gap-2 text-sm text-ink-soft">
+          <Check className="h-4 w-4 shrink-0 text-maroon" />
+          You're on the list! Watch your inbox for the next update.
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex w-full flex-1 flex-col gap-2.5 sm:flex-row">
+          <label htmlFor="events-email" className="sr-only">
+            Email address
+          </label>
+          <input
+            id="events-email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@students.pensacola.edu"
+            className="input flex-1"
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn-primary btn-sm shrink-0"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Subscribing…
+              </>
+            ) : (
+              <>
+                Subscribe <Send className="h-4 w-4" />
+              </>
+            )}
+          </button>
+        </form>
+      )}
+      {error && <p className="text-xs text-maroon sm:shrink-0">{error}</p>}
     </div>
   )
 }
@@ -297,16 +247,16 @@ function Announcements() {
   if (items.length === 0) return null
 
   return (
-    <section id="announcements" className="bg-white py-16 sm:py-20">
+    <section id="announcements" className="bg-white py-12 sm:py-14">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <span className="eyebrow justify-center">From the SGA</span>
-          <h2 className="mt-3 font-display text-3xl font-semibold text-ink sm:text-4xl">
+          <h2 className="mt-3 font-display text-3xl font-bold text-ink sm:text-4xl">
             Announcements
           </h2>
         </div>
 
-        <div className="mt-10 space-y-4">
+        <div className="mt-8 space-y-4">
           {items.map((a) => (
             <article key={a.id} className="card-pad">
               <div className="flex items-start gap-4">
