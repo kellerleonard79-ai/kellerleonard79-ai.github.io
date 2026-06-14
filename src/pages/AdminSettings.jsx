@@ -17,7 +17,6 @@ import {
   Lock,
   Download,
 } from 'lucide-react'
-import { Instagram } from '../components/BrandIcons.jsx'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import RequirePermission from '../components/RequirePermission.jsx'
@@ -1462,151 +1461,10 @@ function GeneralTab() {
   return (
     <div className="space-y-6">
       <PurposeTextSection />
-      <InstagramSection />
       <QuorumSection />
       <MeetingTitleSection />
       <NewsletterSection />
     </div>
-  )
-}
-
-// Manages site_settings.instagram_accounts — the labeled Instagram row shown in
-// the site footer. Each entry is { label, handle }; the handle is stored without
-// a leading @.
-function InstagramSection() {
-  const { settings, refresh } = useSiteSettings()
-  const [rows, setRows] = useState(null)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    if (settings && rows === null) {
-      setRows(
-        Array.isArray(settings.instagram_accounts)
-          ? settings.instagram_accounts.map((a) => ({
-              label: a?.label ?? '',
-              handle: a?.handle ?? '',
-            }))
-          : [],
-      )
-    }
-  }, [settings, rows])
-
-  function update(idx, patch) {
-    setRows((r) => r.map((row, i) => (i === idx ? { ...row, ...patch } : row)))
-    setSaved(false)
-  }
-
-  function addRow() {
-    setRows((r) => [...r, { label: '', handle: '' }])
-    setSaved(false)
-  }
-
-  function removeRow(idx) {
-    setRows((r) => r.filter((_, i) => i !== idx))
-    setSaved(false)
-  }
-
-  async function save() {
-    setSaving(true)
-    setSaved(false)
-    const cleaned = rows
-      .map((r) => ({
-        label: r.label.trim(),
-        handle: r.handle.trim().replace(/^@/, ''),
-      }))
-      .filter((r) => r.label || r.handle)
-    const { error } = await supabase
-      .from('site_settings')
-      .update({ instagram_accounts: cleaned })
-      .eq('id', 1)
-    if (!error) {
-      await refresh()
-      setRows(cleaned)
-      setSaved(true)
-    } else {
-      window.alert(error.message)
-    }
-    setSaving(false)
-  }
-
-  if (rows === null) {
-    return (
-      <Card title="Instagram accounts">
-        <Loading />
-      </Card>
-    )
-  }
-
-  return (
-    <Card
-      title="Instagram accounts"
-      desc="The labeled Instagram row shown in the site footer."
-    >
-      {rows.length === 0 ? (
-        <p className="py-2 text-sm text-gray-400">No accounts yet.</p>
-      ) : (
-        <div className="space-y-2">
-          {rows.map((row, idx) => (
-            <div
-              key={idx}
-              className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 p-3"
-            >
-              <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-gray-500">
-                  Label
-                </span>
-                <input
-                  value={row.label}
-                  onChange={(e) => update(idx, { label: e.target.value })}
-                  placeholder="e.g. SGA"
-                  className={`${inputClass} w-32`}
-                />
-              </label>
-              <label className="block min-w-[12rem] flex-1">
-                <span className="mb-1 block text-xs font-semibold text-gray-500">
-                  Instagram handle
-                </span>
-                <div className="flex items-stretch">
-                  <span className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 px-3 text-sm text-gray-400">
-                    <Instagram className="mr-1.5 h-4 w-4" />@
-                  </span>
-                  <input
-                    value={row.handle}
-                    onChange={(e) => update(idx, { handle: e.target.value })}
-                    placeholder="pensacolahighsga"
-                    className={`${inputClass} rounded-l-none`}
-                  />
-                </div>
-              </label>
-              <button
-                onClick={() => removeRow(idx)}
-                title="Remove account"
-                className="grid h-[42px] w-10 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <button
-        onClick={addRow}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-500 transition hover:border-maroon/40 hover:text-maroon"
-      >
-        <Plus className="h-4 w-4" /> Add account
-      </button>
-
-      <div className="mt-5 border-t border-gray-100 pt-4">
-        <SaveButton
-          onClick={save}
-          saving={saving}
-          saved={saved}
-          label="Save accounts"
-        />
-      </div>
-    </Card>
   )
 }
 
