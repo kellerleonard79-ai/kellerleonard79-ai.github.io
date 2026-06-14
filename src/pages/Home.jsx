@@ -4,7 +4,6 @@ import { CalendarDays, Megaphone, Bell, Send, Check, Loader2 } from 'lucide-reac
 import { Instagram } from '../components/BrandIcons.jsx'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
-import Crest from '../components/Crest.jsx'
 import supabase from '../lib/supabaseClient.js'
 
 // ── Embeds ──────────────────────────────────────────────────────────────────
@@ -34,40 +33,35 @@ export default function Home() {
         <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full border border-white/10" />
         <div className="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 rounded-full border border-white/10" />
 
-        <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[1fr_auto] lg:gap-16 lg:px-8 lg:py-28">
-          <div className="text-center lg:text-left">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
-              Home of the Tigers
-            </span>
-            <h1 className="mt-6 font-oswald text-4xl font-bold uppercase leading-[1.05] tracking-wide text-white sm:text-5xl lg:text-6xl">
-              <span className="block">Pensacola High School</span>
-              <span className="block">Student Government</span>
-            </h1>
-            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/75 lg:mx-0 sm:text-lg">
-              Representing every Tiger — building leadership, spirit, and a
-              stronger school community.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-              <Link
-                to="/join"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold uppercase tracking-wide text-maroon shadow-sm transition hover:bg-white/90"
-              >
-                Join SGA
-              </Link>
-              <a
-                href="#announcements"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-white/10"
-              >
-                Latest Updates
-              </a>
-            </div>
-          </div>
+        <div className="relative mx-auto flex max-w-5xl flex-col items-center px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-28">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
+            Home of the Tigers
+          </span>
 
-          {/* Crest — framed in a soft ring instead of a gold glow */}
-          <div className="hidden justify-self-end lg:block">
-            <div className="grid h-72 w-72 place-items-center rounded-full border border-white/15 bg-white/5 backdrop-blur-sm xl:h-80 xl:w-80">
-              <Crest className="h-52 w-52 object-contain drop-shadow-2xl xl:h-60 xl:w-60" />
-            </div>
+          {/* Masthead — full wordmark + crest lockup */}
+          <img
+            src="/masthead.png"
+            alt="Pensacola High School Student Government Association"
+            className="mt-8 w-full max-w-3xl object-contain drop-shadow-2xl"
+          />
+
+          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
+            Representing every Tiger — building leadership, spirit, and a
+            stronger school community.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/join"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold uppercase tracking-wide text-maroon shadow-sm transition hover:bg-white/90"
+            >
+              Join SGA
+            </Link>
+            <a
+              href="#announcements"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-white/10"
+            >
+              Latest Updates
+            </a>
           </div>
         </div>
 
