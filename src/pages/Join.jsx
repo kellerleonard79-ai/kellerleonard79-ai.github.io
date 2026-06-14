@@ -98,62 +98,56 @@ export default function Join() {
       <Navbar />
 
       <section className="relative overflow-hidden bg-maroon py-14 text-white sm:py-20">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.10),transparent_45%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.12),transparent_45%),radial-gradient(circle_at_100%_120%,rgba(0,0,0,0.35),transparent_55%)]" />
         <div className="relative mx-auto max-w-2xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-white/85">
             Home of the Tigers
           </span>
-          <h1 className="mt-5 font-display text-4xl font-semibold uppercase tracking-wide sm:text-5xl">
+          <h1 className="mt-5 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
             Join SGA
           </h1>
-          <p className="mx-auto mt-4 max-w-md text-white/75">
+          <p className="mx-auto mt-4 max-w-md text-white/70">
             Become a member of Pensacola High School Student Government. Fill out
             the form below to create your account.
           </p>
         </div>
-        <div className="absolute bottom-0 h-1 w-full bg-white/15" />
       </section>
 
-      <section className="bg-gray-50 py-12 sm:py-16">
+      <section className="border-t border-line bg-mist py-12 sm:py-16">
         <div className="mx-auto max-w-xl px-4 sm:px-6">
           {status === 'success' ? (
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-              <CheckCircle2 className="mx-auto h-14 w-14 text-green-600" />
-              <h2 className="mt-4 font-display text-2xl font-bold text-maroon">
+            <div className="card p-8 text-center">
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-maroon text-white">
+                <CheckCircle2 className="h-9 w-9" />
+              </div>
+              <h2 className="mt-5 font-display text-2xl font-semibold text-ink">
                 Registration received!
               </h2>
-              <p className="mt-2 text-gray-600">
+              <p className="mt-2 text-ink-soft">
                 Confirm your email address, then an SGA officer will review your
                 membership. You&apos;ll be able to log in once your account is
                 approved.
               </p>
-              <Link
-                to="/"
-                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-maroon px-6 py-3 font-semibold text-white transition hover:bg-maroon-dark"
-              >
+              <Link to="/" className="btn-primary mt-6">
                 <ArrowLeft className="h-5 w-5" /> Back to Home
               </Link>
             </div>
           ) : (
-            <form
-              onSubmit={handleSubmit}
-              className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8"
-            >
-              <div className="mb-6 flex items-center gap-3">
+            <form onSubmit={handleSubmit} className="card p-6 sm:p-8">
+              <div className="mb-6 flex items-center gap-3 border-b border-line pb-5">
                 <Crest className="h-12 w-12 shrink-0 object-contain" />
                 <div>
-                  <h2 className="font-display text-xl font-bold text-maroon">
+                  <h2 className="font-display text-xl font-semibold text-ink">
                     Member Registration
                   </h2>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-ink-mute">
                     All fields are required.
                   </p>
                 </div>
               </div>
 
               {error && (
-                <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="mb-5 rounded-lg border border-maroon/25 bg-tint px-4 py-3 text-sm text-maroon-dark">
                   {error}
                 </div>
               )}
@@ -193,7 +187,7 @@ export default function Join() {
                   />
                 ))}
 
-                <hr className="border-gray-100" />
+                <hr className="hr-line" />
 
                 <Field label="Email" htmlFor="email">
                   <input
@@ -222,7 +216,7 @@ export default function Join() {
                   />
                 </Field>
 
-                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-mist p-4">
                   <input
                     type="checkbox"
                     checked={form.is_candidate_application}
@@ -232,13 +226,13 @@ export default function Join() {
                         is_candidate_application: e.target.checked,
                       }))
                     }
-                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
+                    className="mt-0.5 h-4 w-4 rounded border-line-strong accent-maroon focus:ring-maroon/30"
                   />
-                  <span className="text-sm text-gray-700">
-                    <span className="font-semibold text-gray-900">
+                  <span className="text-sm text-ink-soft">
+                    <span className="font-semibold text-ink">
                       I&apos;m running for a position
                     </span>
-                    <span className="mt-0.5 block text-gray-500">
+                    <span className="mt-0.5 block text-ink-mute">
                       Check this if you&apos;re applying as a candidate, not just
                       a general member. An officer will follow up about your
                       candidacy.
@@ -250,7 +244,7 @@ export default function Join() {
               <button
                 type="submit"
                 disabled={status === 'submitting'}
-                className="mt-7 flex w-full items-center justify-center gap-2 rounded-lg bg-maroon px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-primary mt-7 w-full py-3"
               >
                 {status === 'submitting' ? (
                   <>
@@ -264,8 +258,8 @@ export default function Join() {
                 )}
               </button>
 
-              <p className="mt-4 text-center text-sm text-gray-500">
-                <Link to="/" className="font-medium text-maroon hover:underline">
+              <p className="mt-4 text-center text-sm text-ink-mute">
+                <Link to="/" className="font-semibold text-maroon hover:underline">
                   ← Back to Home
                 </Link>
               </p>
@@ -279,21 +273,20 @@ export default function Join() {
   )
 }
 
-const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+const inputClass = 'input'
 
 // Renders a single schema-driven field (Grade, Shirt Size, or any admin-added
 // custom field). Checkbox fields render inline; text/select use the Field shell.
 function DynamicField({ field, value, onChange }) {
   if (field.type === 'checkbox') {
     return (
-      <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+      <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-soft">
         <input
           type="checkbox"
           required={field.required}
           checked={Boolean(value)}
           onChange={(e) => onChange(e.target.checked)}
-          className="h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
+          className="h-4 w-4 rounded border-line-strong accent-maroon focus:ring-maroon/30"
         />
         {field.label}
       </label>
@@ -337,9 +330,7 @@ function DynamicField({ field, value, onChange }) {
 function Field({ label, htmlFor, children }) {
   return (
     <label htmlFor={htmlFor} className="block">
-      <span className="mb-1.5 block text-sm font-semibold text-gray-700">
-        {label}
-      </span>
+      <span className="field-label">{label}</span>
       {children}
     </label>
   )

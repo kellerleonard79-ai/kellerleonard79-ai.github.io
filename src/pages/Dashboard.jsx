@@ -105,27 +105,25 @@ function DashboardHub() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-mist">
       <Navbar />
 
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         {/* Welcome header */}
-        <header className="flex flex-wrap items-start justify-between gap-4">
+        <header className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900">
+            <span className="eyebrow">Officer Dashboard</span>
+            <h1 className="mt-2 font-display text-3xl font-semibold text-ink">
               Welcome, {profile?.full_name ?? firstName}
             </h1>
-            <p className="mt-1 flex items-center gap-2 text-sm text-gray-500">
-              <span className="inline-flex items-center rounded-full bg-maroon/10 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-maroon">
+            <p className="mt-2 flex items-center gap-2 text-sm text-ink-mute">
+              <span className="badge-soft">
                 {profile?.clearance_level ?? 'member'}
               </span>
               {profile?.student_id && <span>ID {profile.student_id}</span>}
             </p>
           </div>
-          <button
-            onClick={signOut}
-            className="text-sm font-medium text-gray-500 transition hover:text-maroon"
-          >
+          <button onClick={signOut} className="btn-ghost btn-sm">
             Sign out
           </button>
         </header>
@@ -152,40 +150,35 @@ function DashboardCard({ title, desc, icon: Icon, to }) {
       <span className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 bg-maroon transition-transform duration-300 group-hover:scale-x-100" />
 
       <div className="flex items-start justify-between">
-        <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon/8 text-maroon transition-colors group-hover:bg-maroon group-hover:text-white">
+        <span className="grid h-11 w-11 place-items-center rounded-lg bg-tint text-maroon transition-colors group-hover:bg-maroon group-hover:text-white">
           <Icon className="h-5 w-5" />
         </span>
         {available ? (
-          <ArrowUpRight className="h-5 w-5 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-maroon" />
+          <ArrowUpRight className="h-5 w-5 text-line-strong transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-maroon" />
         ) : (
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-            Soon
-          </span>
+          <span className="badge-soft">Soon</span>
         )}
       </div>
 
-      <h2 className="mt-4 font-display text-lg font-bold text-gray-900">
+      <h2 className="mt-4 font-display text-lg font-semibold text-ink">
         {title}
       </h2>
-      <p className="mt-0.5 text-sm text-gray-500">{desc}</p>
+      <p className="mt-0.5 text-sm text-ink-mute">{desc}</p>
     </>
   )
 
-  const base =
-    'group relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition'
+  const base = 'group relative overflow-hidden card p-5'
 
   if (!available) {
     return (
-      <div className={`${base} cursor-default border-gray-200 opacity-70`}>
-        {inner}
-      </div>
+      <div className={`${base} cursor-default opacity-70`}>{inner}</div>
     )
   }
 
   return (
     <Link
       to={to}
-      className={`${base} border-gray-200 hover:-translate-y-0.5 hover:border-maroon/30 hover:shadow-md`}
+      className={`${base} transition-all duration-200 hover:-translate-y-0.5 hover:border-maroon/35 hover:shadow-[var(--shadow-lift)]`}
     >
       {inner}
     </Link>
