@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { CalendarDays, Megaphone, Bell, Send, Check, Loader2 } from 'lucide-react'
 import { Instagram } from '../components/BrandIcons.jsx'
 import Navbar from '../components/Navbar.jsx'
@@ -34,35 +33,12 @@ export default function Home() {
         <div className="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 rounded-full border border-white/10" />
 
         <div className="relative mx-auto flex max-w-5xl flex-col items-center px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-28">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
-            Home of the Tigers
-          </span>
-
           {/* Masthead — full wordmark + crest lockup */}
           <img
             src="/masthead.png"
             alt="Pensacola High School Student Government Association"
-            className="mt-8 w-full max-w-3xl object-contain drop-shadow-2xl"
+            className="w-full max-w-3xl object-contain drop-shadow-2xl"
           />
-
-          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
-            Representing every Tiger — building leadership, spirit, and a
-            stronger school community.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to="/join"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold uppercase tracking-wide text-maroon shadow-sm transition hover:bg-white/90"
-            >
-              Join SGA
-            </Link>
-            <a
-              href="#announcements"
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-white/10"
-            >
-              Latest Updates
-            </a>
-          </div>
         </div>
 
         {/* clean white baseline divider */}
