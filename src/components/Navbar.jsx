@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Menu, X, LogIn, LogOut, UserPlus, LayoutDashboard, UserCircle } from 'lucide-react'
 import Crest from './Crest.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 
+// Links with a `to` are real routes (React Router); the rest are placeholder
+// on-page anchors for pages you'll build later.
 const links = [
   { label: 'Home', to: '/' },
   { label: 'About', to: '/about' },
@@ -12,22 +14,18 @@ const links = [
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const { session, isStaff, signOut } = useAuth()
-  const { pathname } = useLocation()
 
   return (
-    <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-md">
-      {/* Heraldic top rule */}
-      <div className="h-[3px] w-full bg-maroon" />
-
-      <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 border-b border-line px-4 py-3 sm:px-6 lg:px-8">
-        {/* Brand lockup */}
-        <Link to="/" className="group flex items-center gap-3">
-          <Crest className="h-11 w-11 shrink-0 object-contain transition-transform duration-300 group-hover:scale-105" />
-          <span className="flex flex-col leading-none">
-            <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-ink-mute">
+    <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+        {/* Brand */}
+        <Link to="/" className="flex items-center gap-3">
+          <Crest className="h-11 w-11 shrink-0 object-contain" />
+          <span className="flex flex-col leading-tight">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">
               Pensacola High School
             </span>
-            <span className="mt-1 font-display text-[19px] font-semibold leading-none tracking-tight text-maroon">
+            <span className="font-display text-lg font-semibold uppercase tracking-wide text-maroon">
               Student Government
             </span>
           </span>
@@ -35,50 +33,60 @@ export default function Navbar() {
 
         {/* Desktop nav */}
         <div className="hidden items-center gap-1 lg:flex">
-          {links.map((l) => {
-            const active = l.to === pathname
-            return (
-              <Link
-                key={l.label}
-                to={l.to}
-                className={`relative rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                  active ? 'text-maroon' : 'text-ink-soft hover:text-maroon'
-                }`}
-              >
+          {links.map((l, i) => {
+            const cls = `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              i === 0
+                ? 'text-maroon'
+                : 'text-gray-600 hover:bg-maroon/5 hover:text-maroon'
+            }`
+            return l.to ? (
+              <Link key={l.label} to={l.to} className={cls}>
                 {l.label}
-                <span
-                  className={`absolute inset-x-3 -bottom-px h-0.5 origin-left bg-maroon transition-transform duration-300 ${
-                    active ? 'scale-x-100' : 'scale-x-0'
-                  }`}
-                />
               </Link>
+            ) : (
+              <a key={l.label} href={l.href} className={cls}>
+                {l.label}
+              </a>
             )
           })}
 
-          <span className="mx-2 h-5 w-px bg-line" />
-
           {isStaff && (
-            <Link to="/dashboard" className="btn-ghost btn-sm">
+            <Link
+              to="/dashboard"
+              className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+            >
               <LayoutDashboard className="h-4 w-4" /> Dashboard
             </Link>
           )}
 
           {session && (
-            <Link to="/dashboard/profile" className="btn-outline btn-sm">
-              <UserCircle className="h-4 w-4" /> Profile
+            <Link
+              to="/dashboard/profile"
+              className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+            >
+              <UserCircle className="h-4 w-4" /> My Profile
             </Link>
           )}
 
           {session ? (
-            <button onClick={signOut} className="btn-primary btn-sm">
+            <button
+              onClick={signOut}
+              className="ml-1 inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
+            >
               <LogOut className="h-4 w-4" /> Sign Out
             </button>
           ) : (
             <>
-              <Link to="/join" className="btn-outline btn-sm">
+              <Link
+                to="/join"
+                className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+              >
                 <UserPlus className="h-4 w-4" /> Join SGA
               </Link>
-              <Link to="/login" className="btn-primary btn-sm">
+              <Link
+                to="/login"
+                className="ml-1 inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
+              >
                 <LogIn className="h-4 w-4" /> Member Login
               </Link>
             </>
@@ -98,26 +106,37 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="border-b border-line bg-white lg:hidden">
+        <div className="border-t border-gray-200 bg-white lg:hidden">
           <div className="space-y-1 px-4 py-3">
-            {links.map((l) => (
-              <Link
-                key={l.label}
-                to={l.to}
-                onClick={() => setOpen(false)}
-                className="block rounded-md px-3 py-2 text-base font-semibold text-ink-soft hover:bg-mist hover:text-maroon"
-              >
-                {l.label}
-              </Link>
-            ))}
-
-            <div className="my-2 h-px bg-line" />
+            {links.map((l) => {
+              const cls =
+                'block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-maroon/5 hover:text-maroon'
+              return l.to ? (
+                <Link
+                  key={l.label}
+                  to={l.to}
+                  onClick={() => setOpen(false)}
+                  className={cls}
+                >
+                  {l.label}
+                </Link>
+              ) : (
+                <a
+                  key={l.label}
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  className={cls}
+                >
+                  {l.label}
+                </a>
+              )
+            })}
 
             {isStaff && (
               <Link
                 to="/dashboard"
                 onClick={() => setOpen(false)}
-                className="btn-ghost w-full justify-center"
+                className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-maroon px-4 py-2 text-base font-semibold text-maroon"
               >
                 <LayoutDashboard className="h-4 w-4" /> Dashboard
               </Link>
@@ -127,7 +146,7 @@ export default function Navbar() {
               <Link
                 to="/dashboard/profile"
                 onClick={() => setOpen(false)}
-                className="btn-outline mt-2 w-full justify-center"
+                className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-maroon px-4 py-2 text-base font-semibold text-maroon"
               >
                 <UserCircle className="h-4 w-4" /> My Profile
               </Link>
@@ -139,7 +158,7 @@ export default function Navbar() {
                   setOpen(false)
                   signOut()
                 }}
-                className="btn-primary mt-2 w-full justify-center"
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-maroon px-4 py-2 text-base font-semibold text-white"
               >
                 <LogOut className="h-4 w-4" /> Sign Out
               </button>
@@ -148,14 +167,14 @@ export default function Navbar() {
                 <Link
                   to="/join"
                   onClick={() => setOpen(false)}
-                  className="btn-outline mt-2 w-full justify-center"
+                  className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-maroon px-4 py-2 text-base font-semibold text-maroon"
                 >
                   <UserPlus className="h-4 w-4" /> Join SGA
                 </Link>
                 <Link
                   to="/login"
                   onClick={() => setOpen(false)}
-                  className="btn-primary mt-2 w-full justify-center"
+                  className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-maroon px-4 py-2 text-base font-semibold text-white"
                 >
                   <LogIn className="h-4 w-4" /> Member Login
                 </Link>

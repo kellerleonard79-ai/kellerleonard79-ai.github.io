@@ -21,10 +21,9 @@ export default function Footer() {
     : []
 
   return (
-    <footer id="contact" className="bg-maroon-deep text-white">
-      <div className="h-[3px] w-full bg-maroon-light" />
+    <footer id="contact" className="bg-maroon-dark text-white">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
+        <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
           {/* Brand */}
           <div className="max-w-sm">
             <div className="flex items-center gap-3">
@@ -35,7 +34,7 @@ export default function Footer() {
                 Student Government
               </span>
             </div>
-            <p className="mt-4 text-sm leading-relaxed text-white/55">
+            <p className="mt-4 text-sm leading-relaxed text-white/60">
               Representing every Tiger — building leadership, spirit, and
               community.
             </p>
@@ -43,14 +42,14 @@ export default function Footer() {
 
           {/* Quick links */}
           <nav className="flex flex-col gap-3">
-            <h3 className="font-sans text-[11px] font-bold uppercase tracking-[0.22em] text-white/45">
+            <h3 className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
               Explore
             </h3>
             {quickLinks.map((l) => (
               <a
                 key={l.label}
                 href={l.href}
-                className="w-fit text-sm text-white/75 transition hover:text-white"
+                className="text-sm text-white/70 transition hover:text-white"
               >
                 {l.label}
               </a>
@@ -59,17 +58,17 @@ export default function Footer() {
 
           {/* Contact */}
           <div className="flex flex-col gap-3">
-            <h3 className="font-sans text-[11px] font-bold uppercase tracking-[0.22em] text-white/45">
+            <h3 className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
               Contact
             </h3>
             <a
               href="mailto:sga@pensacolahigh.edu"
-              className="flex items-center gap-2 text-sm text-white/75 transition hover:text-white"
+              className="flex items-center gap-2 text-sm text-white/70 transition hover:text-white"
             >
               <Mail className="h-4 w-4 shrink-0" />
               sga@pensacolahigh.edu
             </a>
-            <p className="flex items-start gap-2 text-sm text-white/75">
+            <p className="flex items-start gap-2 text-sm text-white/70">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
               500 W Maxwell St, Pensacola, FL 32501
             </p>
@@ -79,7 +78,7 @@ export default function Footer() {
         {/* Instagram accounts row */}
         {accounts.length > 0 && (
           <div className="mt-12 border-t border-white/10 pt-10">
-            <h3 className="text-center font-sans text-[11px] font-bold uppercase tracking-[0.22em] text-white/45">
+            <h3 className="text-center font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
               Follow Our Instagrams
             </h3>
             <div className="mt-6 flex flex-wrap items-start justify-center gap-x-8 gap-y-6">
@@ -91,7 +90,7 @@ export default function Footer() {
                   rel="noreferrer"
                   className="group flex flex-col items-center gap-2"
                 >
-                  <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 text-white transition group-hover:bg-white group-hover:text-maroon">
+                  <span className="grid h-12 w-12 place-items-center rounded-full border border-white/20 text-white transition group-hover:bg-white group-hover:text-maroon">
                     <Instagram className="h-6 w-6" />
                   </span>
                   {a.label && (
@@ -108,7 +107,7 @@ export default function Footer() {
 
       {/* Bottom bar */}
       <div className="border-t border-white/10">
-        <div className="mx-auto max-w-7xl px-4 py-5 text-xs text-white/45 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-5 text-xs text-white/50 sm:px-6 lg:px-8">
           <p>
             © {new Date().getFullYear()} Pensacola High School SGA. All rights
             reserved.

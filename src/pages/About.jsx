@@ -96,43 +96,40 @@ export default function About() {
 
       {/* Hero */}
       <section className="relative overflow-hidden bg-maroon py-16 text-white sm:py-20">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.12),transparent_45%),radial-gradient(circle_at_100%_120%,rgba(0,0,0,0.35),transparent_55%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.10),transparent_45%)]" />
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-white/95 shadow-lg">
-            <Crest className="h-14 w-14 object-contain" />
-          </div>
-          <span className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/25 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-white/85">
-            Who We Are
-          </span>
-          <h1 className="mt-4 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+          <Crest className="mx-auto h-16 w-16 object-contain" />
+          <h1 className="mt-5 font-display text-4xl font-semibold uppercase tracking-wide sm:text-5xl">
             About SGA
           </h1>
-          <p className="mx-auto mt-4 max-w-md text-white/70">
+          <p className="mx-auto mt-4 max-w-md text-white/75">
             {settings?.school_name ??
               'Pensacola High School Student Government Association'}
           </p>
         </div>
+        <div className="absolute bottom-0 h-1 w-full bg-white/15" />
       </section>
 
       {/* Purpose */}
       <section className="bg-white py-14 sm:py-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
-          <SectionHeading eyebrow="Our Mission">Our Purpose</SectionHeading>
-          <p className="mt-7 whitespace-pre-line text-center text-lg leading-relaxed text-ink-soft">
+          <SectionHeading>Our Purpose</SectionHeading>
+          <p className="mt-6 whitespace-pre-line text-center text-lg leading-relaxed text-gray-700">
             {purpose || 'Our purpose statement is coming soon.'}
           </p>
         </div>
       </section>
 
       {/* Officers */}
-      <section className="border-t border-line bg-mist py-14 sm:py-16">
+      <section className="bg-gray-50 py-14 sm:py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           {loading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-maroon" />
             </div>
           ) : officers.length === 0 ? (
-            <p className="text-center text-ink-mute">
+            <p className="text-center text-gray-400">
               Officers will be listed here once positions are assigned.
             </p>
           ) : (
@@ -140,10 +137,8 @@ export default function About() {
               {/* Executive officers */}
               {exec.length > 0 && (
                 <div>
-                  <SectionHeading eyebrow="Leadership">
-                    Executive Officers
-                  </SectionHeading>
-                  <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                  <SectionHeading>Executive Officers</SectionHeading>
+                  <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     {exec.map((o) => (
                       <OfficerCard key={o.id} officer={o} />
                     ))}
@@ -157,13 +152,11 @@ export default function About() {
                 if (!list || list.length === 0) return null
                 return (
                   <div key={key} className="mt-14">
-                    <div className="flex items-center gap-4">
-                      <h3 className="font-display text-xl font-semibold text-maroon">
-                        {label}
-                      </h3>
-                      <span className="h-px flex-1 bg-line-strong" />
-                    </div>
-                    <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                    <h3 className="font-display text-xl font-bold text-maroon">
+                      {label}
+                    </h3>
+                    <div className="mx-auto mt-2 h-1 w-16 rounded-full bg-maroon" />
+                    <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                       {list.map((o) => (
                         <OfficerCard key={o.id} officer={o} />
                       ))}
@@ -180,10 +173,8 @@ export default function About() {
       {!loading && committees.length > 0 && (
         <section className="bg-white py-14 sm:py-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <SectionHeading eyebrow="Getting Things Done">
-              Committees
-            </SectionHeading>
-            <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <SectionHeading>Committees</SectionHeading>
+            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {committees.map((c) => (
                 <CommitteeCard key={c.id} committee={c} />
               ))}
@@ -197,23 +188,22 @@ export default function About() {
   )
 }
 
-function SectionHeading({ children, eyebrow }) {
+function SectionHeading({ children }) {
   return (
-    <div className="flex flex-col items-center text-center">
-      {eyebrow && <span className="eyebrow">{eyebrow}</span>}
-      <h2 className="mt-3 font-display text-3xl font-semibold text-ink sm:text-4xl">
+    <div className="text-center">
+      <h2 className="font-display text-3xl font-bold text-maroon sm:text-4xl">
         {children}
       </h2>
-      <span className="rule-accent mt-4" />
+      <div className="mx-auto mt-3 h-1 w-20 rounded-full bg-maroon" />
     </div>
   )
 }
 
 function OfficerCard({ officer }) {
   return (
-    <div className="card-interactive flex flex-col items-center p-6 text-center">
+    <div className="flex flex-col items-center rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm transition hover:border-maroon/30 hover:shadow-md">
       <Avatar name={officer.full_name} src={officer.photo_url} />
-      <p className="mt-4 font-display text-lg font-semibold text-ink">
+      <p className="mt-4 font-display text-lg font-bold text-gray-900">
         {officer.full_name ?? 'Officer'}
       </p>
       <p className="mt-0.5 text-sm font-semibold text-maroon">
@@ -225,45 +215,45 @@ function OfficerCard({ officer }) {
 
 function CommitteeCard({ committee }) {
   return (
-    <div className="card-interactive flex h-full flex-col p-6">
+    <div className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-maroon/30 hover:shadow-md">
       <div className="flex items-center gap-3">
-        <span className="icon-tile h-10 w-10 shrink-0">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-maroon/8 text-maroon">
           <UsersRound className="h-5 w-5" />
         </span>
-        <h3 className="font-display text-lg font-semibold text-ink">
+        <h3 className="font-display text-lg font-bold text-gray-900">
           {committee.name}
         </h3>
       </div>
       {committee.description && (
-        <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+        <p className="mt-3 text-sm leading-relaxed text-gray-600">
           {committee.description}
         </p>
       )}
       {committee.members.length > 0 ? (
-        <ul className="mt-4 space-y-1.5 border-t border-line pt-4">
+        <ul className="mt-4 space-y-1.5 border-t border-gray-100 pt-4">
           {committee.members.map((m) => (
             <li
               key={m.id}
               className="flex items-center justify-between gap-2 text-sm"
             >
               <span className="min-w-0">
-                <span className="truncate text-ink">{m.name}</span>
+                <span className="truncate text-gray-800">{m.name}</span>
                 {m.title && (
-                  <span className="ml-1.5 text-xs text-ink-mute">
+                  <span className="ml-1.5 text-xs text-gray-400">
                     {m.title}
                   </span>
                 )}
               </span>
               {m.isChair && (
-                <span className="badge-soft">
-                  <Crown className="h-3 w-3" /> Chair
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-maroon/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-maroon">
+                  <Crown className="h-3 w-3 text-maroon" /> Chair
                 </span>
               )}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="mt-4 border-t border-line pt-4 text-sm text-ink-mute">
+        <p className="mt-4 border-t border-gray-100 pt-4 text-sm text-gray-400">
           Members to be announced.
         </p>
       )}
@@ -282,7 +272,7 @@ function Avatar({ name, src }) {
     )
   }
   return (
-    <span className="grid h-24 w-24 place-items-center rounded-full bg-tint font-display text-2xl font-semibold text-maroon ring-2 ring-maroon/15">
+    <span className="grid h-24 w-24 place-items-center rounded-full bg-maroon/10 font-display text-2xl font-bold text-maroon ring-2 ring-maroon/20">
       {initials(name)}
     </span>
   )

@@ -1,43 +1,26 @@
 @import "tailwindcss";
 
-/* ============================================================================
-   PHS SGA — design system
-   Aesthetic: collegiate / institutional. Maroon & white only. A serif
-   masthead (Fraunces) paired with a clean grotesk (Hanken) — heraldic gravitas
-   to match the school crest, kept compact, minimal, and professional.
-   ========================================================================== */
-
+/* School brand palette — clean maroon & white only.
+   Defining colors here makes utilities like bg-maroon, text-maroon, etc.
+   available throughout the app. */
 @theme {
-  /* Brand maroon family */
   --color-maroon: #7a1620;
-  --color-maroon-dark: #5e1019;
-  --color-maroon-deep: #430b11; /* footer / deepest panels */
-  --color-maroon-light: #94202c;
+  --color-maroon-dark: #561016;
+  --color-maroon-light: #9b2330;
 
-  /* Maroon tints — used instead of neutral grays so the palette stays strictly
-     maroon & white. */
-  --color-mist: #faf5f5; /* faint maroon-tinted section background */
-  --color-mist-deep: #f3e9e9; /* slightly stronger tint */
-  --color-tint: #f6ecec; /* icon tiles, soft fills */
-
-  /* Ink — warm near-blacks/grays for text on white. Neutral, not a hue. */
-  --color-ink: #1c1517;
-  --color-ink-soft: #4a3f42;
-  --color-ink-mute: #7b6e71;
-  --color-line: #e9dede; /* hairline borders (warm) */
-  --color-line-strong: #ddcccc;
-
-  /* Legacy aliases — degrade any straggling gold utility to maroon. */
+  /* Legacy accent tokens are mapped onto the maroon family so any straggling
+     `*-gold` utility degrades gracefully to the brand color instead of yellow.
+     The UI no longer uses gold intentionally. */
   --color-gold: #7a1620;
-  --color-gold-light: #94202c;
+  --color-gold-light: #9b2330;
 
-  /* Typography */
-  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
-  --font-oswald: "Fraunces", Georgia, serif; /* legacy alias */
-  --font-sans: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
-
-  --shadow-card: 0 1px 2px rgba(67, 11, 17, 0.04), 0 8px 24px -16px rgba(67, 11, 17, 0.18);
-  --shadow-lift: 0 2px 4px rgba(67, 11, 17, 0.05), 0 18px 40px -24px rgba(67, 11, 17, 0.28);
+  /* League Spartan — a clean geometric sans used for all headings/display.
+     Body copy and subheaders use Montserrat, a neutral sans, for readability.
+     `--font-oswald` is kept as a legacy alias so any straggling `font-oswald`
+     utility renders the new display face instead of breaking. */
+  --font-display: "League Spartan", system-ui, sans-serif;
+  --font-oswald: "League Spartan", system-ui, sans-serif;
+  --font-sans: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 html {
@@ -46,115 +29,16 @@ html {
 
 body {
   background-color: #ffffff;
-  color: var(--color-ink);
+  color: #1f2937;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Display face for headings with crisp optical sizing. Color is inherited
-   (ink on white surfaces via <body>, white on maroon panels) so headings never
-   fight a parent `text-white`. */
+/* All headings adopt the League Spartan display face with slightly tightened
+   tracking for a crisp, modern look. Individual headings can still override the
+   family with a font-* utility where needed. */
 h1, h2, h3, h4 {
   font-family: var(--font-display);
-  font-optical-sizing: auto;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
 }
-
-::selection {
-  background: var(--color-maroon);
-  color: #ffffff;
-}
-
-/* Consistent, on-brand focus ring everywhere. */
-*:focus-visible {
-  outline: 2px solid var(--color-maroon);
-  outline-offset: 2px;
-}
-
-/* Thin maroon scrollbar for a finished feel (WebKit). */
-::-webkit-scrollbar { width: 11px; height: 11px; }
-::-webkit-scrollbar-thumb {
-  background: var(--color-line-strong);
-  border: 3px solid #fff;
-  border-radius: 999px;
-}
-::-webkit-scrollbar-thumb:hover { background: var(--color-maroon-light); }
-
-/* ============================================================================
-   Component layer — reusable, coherent primitives.
-   ========================================================================== */
-@layer components {
-
-  /* — Editorial type helpers — */
-  .eyebrow {
-    @apply inline-flex items-center gap-2 font-sans text-[11px] font-bold uppercase tracking-[0.22em] text-maroon;
-  }
-  .eyebrow-mute {
-    @apply inline-flex items-center gap-2 font-sans text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-mute;
-  }
-  /* Short heraldic rule used under section titles. */
-  .rule-accent {
-    @apply block h-px w-10 bg-maroon;
-  }
-
-  /* — Buttons — (variants are self-contained; v4 @apply can't nest custom classes) */
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-55;
-  }
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-55 bg-maroon text-white shadow-sm hover:bg-maroon-dark active:translate-y-px;
-  }
-  .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-55 border border-maroon/30 bg-white text-maroon hover:border-maroon hover:bg-tint;
-  }
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-55 text-ink-soft hover:bg-mist hover:text-maroon;
-  }
-  .btn-sm { @apply px-3 py-1.5 text-[13px]; }
-
-  /* — Surfaces — */
-  .card {
-    @apply rounded-xl border border-line bg-white shadow-[var(--shadow-card)];
-  }
-  .card-pad {
-    @apply rounded-xl border border-line bg-white shadow-[var(--shadow-card)] p-5 sm:p-6;
-  }
-  .card-interactive {
-    @apply rounded-xl border border-line bg-white shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-0.5 hover:border-maroon/35 hover:shadow-[var(--shadow-lift)];
-  }
-
-  /* — Inputs — */
-  .field-label {
-    @apply mb-1.5 block text-[13px] font-semibold text-ink-soft;
-  }
-  .input {
-    @apply w-full rounded-md border border-line-strong bg-white px-3.5 py-2.5 text-ink placeholder:text-ink-mute/70 outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/15;
-  }
-
-  /* — Badges / chips — */
-  .badge {
-    @apply inline-flex items-center gap-1 rounded-full bg-maroon px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white;
-  }
-  .badge-soft {
-    @apply inline-flex items-center gap-1 rounded-full bg-tint px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-maroon;
-  }
-
-  /* — Icon tile (maroon tint, used in cards/headers) — */
-  .icon-tile {
-    @apply grid place-items-center rounded-lg bg-tint text-maroon;
-  }
-  .icon-tile-solid {
-    @apply grid place-items-center rounded-lg bg-maroon text-white;
-  }
-
-  /* — Hairline divider — */
-  .hr-line { @apply border-0 border-t border-line; }
-}
-
-/* Subtle staggered page-load reveal for hero/section intros. */
-@keyframes phs-rise {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.reveal { animation: phs-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
