@@ -148,11 +148,11 @@ function DashboardCard({ title, desc, icon: Icon, to }) {
 
   const inner = (
     <>
-      {/* gold accent bar that grows on hover */}
-      <span className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 bg-gradient-to-r from-gold to-gold-light transition-transform duration-300 group-hover:scale-x-100" />
+      {/* accent bar that grows on hover */}
+      <span className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 bg-maroon transition-transform duration-300 group-hover:scale-x-100" />
 
       <div className="flex items-start justify-between">
-        <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon/8 text-maroon transition-colors group-hover:bg-maroon group-hover:text-gold">
+        <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon/8 text-maroon transition-colors group-hover:bg-maroon group-hover:text-white">
           <Icon className="h-5 w-5" />
         </span>
         {available ? (

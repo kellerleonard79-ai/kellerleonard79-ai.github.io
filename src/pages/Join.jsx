@@ -97,21 +97,22 @@ export default function Join() {
     <div className="min-h-screen bg-white">
       <Navbar />
 
-      <section className="relative overflow-hidden bg-gradient-to-br from-maroon-dark via-maroon to-maroon-dark py-14 text-white sm:py-20">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(200,162,74,0.18),transparent_45%)]" />
+      <section className="relative overflow-hidden bg-maroon py-14 text-white sm:py-20">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.10),transparent_45%)]" />
         <div className="relative mx-auto max-w-2xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-gold-light">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
             Home of the Tigers
           </span>
-          <h1 className="mt-5 font-display text-4xl font-bold sm:text-5xl">
-            Join <span className="text-gold">SGA</span>
+          <h1 className="mt-5 font-display text-4xl font-semibold uppercase tracking-wide sm:text-5xl">
+            Join SGA
           </h1>
-          <p className="mx-auto mt-4 max-w-md text-white/80">
+          <p className="mx-auto mt-4 max-w-md text-white/75">
             Become a member of Pensacola High School Student Government. Fill out
             the form below to create your account.
           </p>
         </div>
-        <div className="absolute bottom-0 h-1.5 w-full bg-gradient-to-r from-gold via-gold-light to-gold" />
+        <div className="absolute bottom-0 h-1 w-full bg-white/15" />
       </section>
 
       <section className="bg-gray-50 py-12 sm:py-16">
@@ -249,7 +250,7 @@ export default function Join() {
               <button
                 type="submit"
                 disabled={status === 'submitting'}
-                className="mt-7 flex w-full items-center justify-center gap-2 rounded-lg bg-gold px-6 py-3 font-semibold text-maroon-dark shadow-lg transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-7 flex w-full items-center justify-center gap-2 rounded-lg bg-maroon px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {status === 'submitting' ? (
                   <>

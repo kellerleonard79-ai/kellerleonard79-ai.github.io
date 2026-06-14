@@ -1,15 +1,24 @@
 @import "tailwindcss";
 
-/* School brand palette — maroon & white with gold / light-grey accents.
-   Defining colors here makes utilities like bg-maroon, text-gold, etc. available. */
+/* School brand palette — clean maroon & white only.
+   Defining colors here makes utilities like bg-maroon, text-maroon, etc.
+   available throughout the app. */
 @theme {
   --color-maroon: #7a1620;
   --color-maroon-dark: #561016;
   --color-maroon-light: #9b2330;
-  --color-gold: #c8a24a;
-  --color-gold-light: #e3c97e;
-  --font-display: Georgia, "Times New Roman", serif;
+
+  /* Legacy accent tokens are mapped onto the maroon family so any straggling
+     `*-gold` utility degrades gracefully to the brand color instead of yellow.
+     The UI no longer uses gold intentionally. */
+  --color-gold: #7a1620;
+  --color-gold-light: #9b2330;
+
+  /* Oswald — a straight-lined, condensed sans used for all headings/display.
+     Body copy uses a clean neutral sans for readability. */
+  --font-display: "Oswald", system-ui, sans-serif;
   --font-oswald: "Oswald", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 html {
@@ -19,5 +28,13 @@ html {
 body {
   background-color: #ffffff;
   color: #1f2937;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings adopt the Oswald display face with tightened tracking for a crisp,
+   straight-lined look. */
+h1, h2, h3, h4 {
+  letter-spacing: 0.01em;
 }

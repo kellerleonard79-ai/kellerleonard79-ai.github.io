@@ -22,10 +22,10 @@ export default function Navbar() {
         <Link to="/" className="flex items-center gap-3">
           <Crest className="h-11 w-11 shrink-0 object-contain" />
           <span className="flex flex-col leading-tight">
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-gold">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">
               Pensacola High School
             </span>
-            <span className="font-display text-lg font-bold text-maroon">
+            <span className="font-display text-lg font-semibold uppercase tracking-wide text-maroon">
               Student Government
             </span>
           </span>

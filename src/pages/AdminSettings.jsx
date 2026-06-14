@@ -232,7 +232,6 @@ function BrandingTab() {
       }
       if (s.accent_color) {
         root.style.setProperty('--color-accent', s.accent_color)
-        root.style.setProperty('--color-gold', s.accent_color)
       }
       if (s.bg_color) root.style.setProperty('--color-bg', s.bg_color)
     }
@@ -391,7 +390,7 @@ function BrandingTab() {
           <ColorField
             label="Accent"
             value={form.accent_color}
-            onChange={setColor('accent_color', ['--color-accent', '--color-gold'])}
+            onChange={setColor('accent_color', ['--color-accent'])}
           />
           <ColorField
             label="Background"

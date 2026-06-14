@@ -175,7 +175,7 @@ function AccountCard({ account, onOpen }) {
         onClick={onOpen}
         className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-maroon/30 hover:shadow-md"
       >
-        <span className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 bg-gradient-to-r from-gold to-gold-light transition-transform duration-300 group-hover:scale-x-100" />
+        <span className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 bg-maroon transition-transform duration-300 group-hover:scale-x-100" />
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-display font-bold text-gray-900">
             {account.name}

@@ -19,10 +19,10 @@ function applyBranding(settings) {
   if (settings.primary_color) {
     root.style.setProperty('--color-primary', settings.primary_color)
     root.style.setProperty('--color-maroon', settings.primary_color)
-  }
-  if (settings.accent_color) {
-    root.style.setProperty('--color-accent', settings.accent_color)
-    root.style.setProperty('--color-gold', settings.accent_color)
+    // The UI is intentionally maroon + white only — keep the legacy accent /
+    // gold tokens locked to the primary brand color so no gold leaks back in.
+    root.style.setProperty('--color-accent', settings.primary_color)
+    root.style.setProperty('--color-gold', settings.primary_color)
   }
   if (settings.bg_color) {
     root.style.setProperty('--color-bg', settings.bg_color)

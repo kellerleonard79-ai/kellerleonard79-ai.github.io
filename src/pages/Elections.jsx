@@ -436,7 +436,7 @@ function ApplicationRow({
             <button
               onClick={approveCandidate}
               disabled={busy || !positionId}
-              className="inline-flex h-[42px] w-full items-center justify-center gap-1.5 rounded-lg bg-gold px-4 font-semibold text-maroon-dark transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              className="inline-flex h-[42px] w-full items-center justify-center gap-1.5 rounded-lg bg-maroon px-4 font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1018,7 +1018,7 @@ function CandidateRow({
     setDraft((d) => ({ ...d, [field]: e.target.value }))
 
   return (
-    <li className={`p-4 ${isTop && !hasWinner ? 'bg-gold/[0.06]' : ''}`}>
+    <li className={`p-4 ${isTop && !hasWinner ? 'bg-maroon/[0.06]' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <p className="font-semibold text-gray-900">

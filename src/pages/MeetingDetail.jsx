@@ -120,7 +120,7 @@ function DetailContent() {
           to={`/dashboard/meetings/${meeting.id}/agenda`}
           className="group rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm transition hover:border-maroon/30 hover:shadow-md"
         >
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-maroon/8 text-maroon transition group-hover:bg-maroon group-hover:text-gold">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-maroon/8 text-maroon transition group-hover:bg-maroon group-hover:text-white">
             <ClipboardList className="h-6 w-6" />
           </span>
           <h2 className="mt-3 font-display text-lg font-bold text-gray-900">
@@ -133,7 +133,7 @@ function DetailContent() {
           to={`/dashboard/meetings/${meeting.id}/session`}
           className="group rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm transition hover:border-maroon/30 hover:shadow-md"
         >
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-maroon/8 text-maroon transition group-hover:bg-maroon group-hover:text-gold">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-maroon/8 text-maroon transition group-hover:bg-maroon group-hover:text-white">
             <QrCode className="h-6 w-6" />
           </span>
           <h2 className="mt-3 font-display text-lg font-bold text-gray-900">

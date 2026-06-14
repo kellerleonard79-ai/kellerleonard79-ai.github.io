@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { CalendarDays, Megaphone, Bell, Send, Check, Loader2 } from 'lucide-react'
 import { Instagram } from '../components/BrandIcons.jsx'
 import Navbar from '../components/Navbar.jsx'
@@ -24,27 +25,54 @@ export default function Home() {
       {/* ───────────────────────── Hero ───────────────────────── */}
       <section
         id="home"
-        className="relative overflow-hidden bg-gradient-to-br from-maroon-dark via-maroon to-maroon-dark text-white"
+        className="relative overflow-hidden bg-maroon text-white"
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(200,162,74,0.18),transparent_42%)]" />
+        {/* Subtle depth: a darker corner wash + a faint diagonal sheen, all in
+            the maroon family — no gold. */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.10),transparent_45%)]" />
+        <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full border border-white/10" />
+        <div className="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 rounded-full border border-white/10" />
 
-        {/* crest — absolutely positioned so the heading can use the full width */}
-        <div className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 lg:block xl:right-16">
-          <div className="relative">
-            <div className="absolute inset-0 scale-110 rounded-full bg-gold/20 blur-3xl" />
-            <Crest className="relative h-80 w-80 object-contain drop-shadow-2xl" />
+        <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[1fr_auto] lg:gap-16 lg:px-8 lg:py-28">
+          <div className="text-center lg:text-left">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
+              Home of the Tigers
+            </span>
+            <h1 className="mt-6 font-oswald text-4xl font-bold uppercase leading-[1.05] tracking-wide text-white sm:text-5xl lg:text-6xl">
+              <span className="block">Pensacola High School</span>
+              <span className="block">Student Government</span>
+            </h1>
+            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/75 lg:mx-0 sm:text-lg">
+              Representing every Tiger — building leadership, spirit, and a
+              stronger school community.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+              <Link
+                to="/join"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold uppercase tracking-wide text-maroon shadow-sm transition hover:bg-white/90"
+              >
+                Join SGA
+              </Link>
+              <a
+                href="#announcements"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-white/10"
+              >
+                Latest Updates
+              </a>
+            </div>
+          </div>
+
+          {/* Crest — framed in a soft ring instead of a gold glow */}
+          <div className="hidden justify-self-end lg:block">
+            <div className="grid h-72 w-72 place-items-center rounded-full border border-white/15 bg-white/5 backdrop-blur-sm xl:h-80 xl:w-80">
+              <Crest className="h-52 w-52 object-contain drop-shadow-2xl xl:h-60 xl:w-60" />
+            </div>
           </div>
         </div>
 
-        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-          <h1 className="font-oswald text-4xl font-bold uppercase leading-tight tracking-wide text-white sm:text-5xl lg:text-5xl xl:text-6xl">
-            <span className="block whitespace-nowrap">Pensacola High School</span>
-            <span className="block whitespace-nowrap">Student Government</span>
-          </h1>
-        </div>
-
-        {/* gold divider */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-gold via-gold-light to-gold" />
+        {/* clean white baseline divider */}
+        <div className="h-1 w-full bg-white/15" />
       </section>
 
       {/* ─────────────────── Announcements ─────────────────── */}
@@ -60,7 +88,7 @@ export default function Home() {
             <p className="mt-3 text-gray-600">
               Follow our latest posts and never miss a school event.
             </p>
-            <div className="mx-auto mt-4 h-1 w-20 rounded-full bg-gold" />
+            <div className="mx-auto mt-4 h-1 w-20 rounded-full bg-maroon" />
           </div>
 
           <div className="mt-12 grid items-start gap-8 lg:grid-cols-2">
@@ -72,7 +100,7 @@ export default function Home() {
               <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between gap-3 border-b border-gray-100 p-5">
                   <div className="flex items-center gap-3">
-                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon text-gold">
+                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon text-white">
                       <CalendarDays className="h-6 w-6" />
                     </span>
                     <h3 className="font-display text-lg font-bold text-gray-900">
@@ -201,7 +229,7 @@ function NewsletterSignup() {
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="flex items-center gap-3 border-b border-gray-100 p-5">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-maroon text-gold">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-maroon text-white">
           <Bell className="h-6 w-6" />
         </span>
         <div>
@@ -212,8 +240,8 @@ function NewsletterSignup() {
       </div>
       <div className="p-5">
         {subscribed ? (
-          <div className="flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/5 px-5 py-4">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gold text-maroon-dark">
+          <div className="flex items-center gap-3 rounded-xl border border-maroon/20 bg-maroon/5 px-5 py-4">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-maroon text-white">
               <Check className="h-5 w-5" />
             </span>
             <p className="text-sm text-gray-700">
@@ -281,7 +309,7 @@ function Announcements() {
           <h2 className="font-display text-3xl font-bold text-maroon sm:text-4xl">
             Announcements
           </h2>
-          <div className="mx-auto mt-4 h-1 w-20 rounded-full bg-gold" />
+          <div className="mx-auto mt-4 h-1 w-20 rounded-full bg-maroon" />
         </div>
 
         <div className="mt-10 space-y-4">

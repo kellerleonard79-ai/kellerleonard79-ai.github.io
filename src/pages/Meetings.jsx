@@ -288,7 +288,7 @@ function CreateMeetingForm({ onCreated }) {
       <button
         type="submit"
         disabled={submitting}
-        className="mt-5 inline-flex items-center justify-center gap-2 rounded-lg bg-gold px-5 py-2.5 font-semibold text-maroon-dark shadow transition hover:bg-gold-light disabled:opacity-60"
+        className="mt-5 inline-flex items-center justify-center gap-2 rounded-lg bg-maroon px-5 py-2.5 font-semibold text-white shadow-sm transition hover:bg-maroon-dark disabled:opacity-60"
       >
         {submitting ? (
           <>

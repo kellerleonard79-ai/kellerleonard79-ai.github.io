@@ -156,7 +156,7 @@ function CommitteesContent() {
                   className="group flex h-full w-full flex-col rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-maroon/30 hover:shadow-md"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon/8 text-maroon transition-colors group-hover:bg-maroon group-hover:text-gold">
+                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon/8 text-maroon transition-colors group-hover:bg-maroon group-hover:text-white">
                       <UsersRound className="h-5 w-5" />
                     </span>
                     <ChevronRight className="h-5 w-5 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-maroon" />
@@ -176,7 +176,7 @@ function CommitteesContent() {
                     </span>
                     {chair && (
                       <span className="inline-flex items-center gap-1 text-maroon">
-                        <Crown className="h-3.5 w-3.5 text-gold" />
+                        <Crown className="h-3.5 w-3.5 text-maroon" />
                         {chair.member?.full_name ?? 'Chair'}
                       </span>
                     )}
@@ -531,8 +531,8 @@ function MembersSection({ committee, members, canManage, onChanged }) {
                     {row.member?.full_name ?? 'Member'}
                   </span>
                   {row.is_chair && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-maroon">
-                      <Crown className="h-3 w-3 text-gold" /> Chair
+                    <span className="inline-flex items-center gap-1 rounded-full bg-maroon/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-maroon">
+                      <Crown className="h-3 w-3 text-maroon" /> Chair
                     </span>
                   )}
                 </p>
@@ -550,8 +550,8 @@ function MembersSection({ committee, members, canManage, onChanged }) {
                     title={row.is_chair ? 'Remove as chair' : 'Make chair'}
                     className={`grid h-8 w-8 place-items-center rounded-lg transition disabled:opacity-50 ${
                       row.is_chair
-                        ? 'text-gold hover:bg-gold/10'
-                        : 'text-gray-300 hover:bg-gray-100 hover:text-gold'
+                        ? 'text-maroon hover:bg-maroon/10'
+                        : 'text-gray-300 hover:bg-gray-100 hover:text-maroon'
                     }`}
                   >
                     {busyId === row.id ? (

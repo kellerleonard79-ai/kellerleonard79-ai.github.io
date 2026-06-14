@@ -95,19 +95,20 @@ export default function About() {
       <Navbar />
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-maroon-dark via-maroon to-maroon-dark py-16 text-white sm:py-20">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(200,162,74,0.18),transparent_45%)]" />
+      <section className="relative overflow-hidden bg-maroon py-16 text-white sm:py-20">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.10),transparent_45%)]" />
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
           <Crest className="mx-auto h-16 w-16 object-contain" />
-          <h1 className="mt-5 font-display text-4xl font-bold sm:text-5xl">
-            About <span className="text-gold">SGA</span>
+          <h1 className="mt-5 font-display text-4xl font-semibold uppercase tracking-wide sm:text-5xl">
+            About SGA
           </h1>
-          <p className="mx-auto mt-4 max-w-md text-white/80">
+          <p className="mx-auto mt-4 max-w-md text-white/75">
             {settings?.school_name ??
               'Pensacola High School Student Government Association'}
           </p>
         </div>
-        <div className="absolute bottom-0 h-1.5 w-full bg-gradient-to-r from-gold via-gold-light to-gold" />
+        <div className="absolute bottom-0 h-1 w-full bg-white/15" />
       </section>
 
       {/* Purpose */}
@@ -154,7 +155,7 @@ export default function About() {
                     <h3 className="font-display text-xl font-bold text-maroon">
                       {label}
                     </h3>
-                    <div className="mx-auto mt-2 h-1 w-16 rounded-full bg-gold" />
+                    <div className="mx-auto mt-2 h-1 w-16 rounded-full bg-maroon" />
                     <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                       {list.map((o) => (
                         <OfficerCard key={o.id} officer={o} />
@@ -193,7 +194,7 @@ function SectionHeading({ children }) {
       <h2 className="font-display text-3xl font-bold text-maroon sm:text-4xl">
         {children}
       </h2>
-      <div className="mx-auto mt-3 h-1 w-20 rounded-full bg-gold" />
+      <div className="mx-auto mt-3 h-1 w-20 rounded-full bg-maroon" />
     </div>
   )
 }
@@ -244,8 +245,8 @@ function CommitteeCard({ committee }) {
                 )}
               </span>
               {m.isChair && (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-maroon">
-                  <Crown className="h-3 w-3 text-gold" /> Chair
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-maroon/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-maroon">
+                  <Crown className="h-3 w-3 text-maroon" /> Chair
                 </span>
               )}
             </li>
@@ -266,12 +267,12 @@ function Avatar({ name, src }) {
       <img
         src={src}
         alt={name ?? 'Officer'}
-        className="h-24 w-24 rounded-full object-cover ring-2 ring-gold/40"
+        className="h-24 w-24 rounded-full object-cover ring-2 ring-maroon/20"
       />
     )
   }
   return (
-    <span className="grid h-24 w-24 place-items-center rounded-full bg-maroon/10 font-display text-2xl font-bold text-maroon ring-2 ring-gold/40">
+    <span className="grid h-24 w-24 place-items-center rounded-full bg-maroon/10 font-display text-2xl font-bold text-maroon ring-2 ring-maroon/20">
       {initials(name)}
     </span>
   )

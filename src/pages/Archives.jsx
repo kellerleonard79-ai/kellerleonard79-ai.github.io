@@ -353,7 +353,7 @@ function ArchiveCard({ item, canManage, onDeleted }) {
         <div className="min-w-0">
           <h3 className="font-display font-bold text-gray-900">{item.title}</h3>
           {item.category && (
-            <span className="mt-1 inline-flex items-center rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-maroon">
+            <span className="mt-1 inline-flex items-center rounded-full bg-maroon/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-maroon">
               {item.category}
             </span>
           )}

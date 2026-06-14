@@ -16,7 +16,7 @@ export default function Crest({ className = '' }) {
   if (failed) {
     return (
       <div
-        className={`grid place-items-center rounded-full bg-maroon font-display font-bold text-gold ${className}`}
+        className={`grid place-items-center rounded-full bg-maroon font-display font-bold tracking-wide text-white ${className}`}
         aria-label="School crest"
       >
         PHS
