@@ -23,29 +23,42 @@ export default function Home() {
       <Navbar />
 
       {/* ───────────────────────── Hero ───────────────────────── */}
-      <section id="home" className="bg-maroon text-white">
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-12 px-4 py-20 sm:px-6 lg:flex-row lg:justify-between lg:gap-16 lg:px-8 lg:py-28">
-          {/* Wordmark */}
+      <section
+        id="home"
+        className="relative overflow-hidden bg-maroon text-white"
+      >
+        {/* Subtle maroon-on-maroon depth — no gold, no decorative shapes. */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
+
+        <div className="relative mx-auto flex max-w-7xl flex-col items-center gap-12 px-4 py-16 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:gap-16 lg:px-8 lg:py-24">
+          {/* Wordmark lockup */}
           <div className="w-full text-center lg:flex-1 lg:text-left">
-            <h1 className="font-display text-5xl font-extrabold uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="font-oswald text-5xl font-bold uppercase leading-[0.92] tracking-wide sm:text-6xl lg:text-7xl">
               Pensacola High School
             </h1>
 
-            <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/75 lg:mx-0 sm:text-lg">
+            {/* divider rule under the wordmark */}
+            <div className="mx-auto mt-6 h-px w-full max-w-xl bg-white/30 lg:mx-0" />
+
+            <p className="mt-6 font-oswald text-xl font-semibold uppercase tracking-[0.2em] text-white/90 sm:text-2xl">
+              Student Government Association
+            </p>
+
+            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/70 lg:mx-0">
               Representing every Tiger — building leadership, spirit, and a
               stronger school community.
             </p>
 
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
               <Link
                 to="/join"
-                className="inline-flex items-center justify-center rounded-lg bg-white px-7 py-3 text-sm font-semibold uppercase tracking-wide text-maroon transition hover:bg-white/90"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold uppercase tracking-wide text-maroon shadow-sm transition hover:bg-white/90"
               >
                 Join SGA
               </Link>
               <a
                 href="#announcements"
-                className="inline-flex items-center justify-center rounded-lg border border-white/40 px-7 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-white/10"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/40 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-white/10"
               >
                 Latest Updates
               </a>
@@ -54,9 +67,12 @@ export default function Home() {
 
           {/* Crest */}
           <div className="shrink-0">
-            <Crest className="h-44 w-44 object-contain drop-shadow-xl sm:h-56 sm:w-56 lg:h-72 lg:w-72 xl:h-80 xl:w-80" />
+            <Crest className="h-44 w-44 object-contain drop-shadow-2xl sm:h-56 sm:w-56 lg:h-72 lg:w-72 xl:h-80 xl:w-80" />
           </div>
         </div>
+
+        {/* clean white baseline divider */}
+        <div className="relative h-1 w-full bg-white/15" />
       </section>
 
       {/* ─────────────────── Announcements ─────────────────── */}
