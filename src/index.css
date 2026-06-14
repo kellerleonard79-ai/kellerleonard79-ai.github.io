@@ -14,10 +14,12 @@
   --color-gold: #7a1620;
   --color-gold-light: #9b2330;
 
-  /* Oswald — a straight-lined, condensed sans used for all headings/display.
-     Body copy uses a clean neutral sans for readability. */
-  --font-display: "Oswald", system-ui, sans-serif;
-  --font-oswald: "Oswald", system-ui, sans-serif;
+  /* League Spartan — a clean geometric sans used for all headings/display.
+     Body copy and subheaders use Inter, a neutral sans, for readability.
+     `--font-oswald` is kept as a legacy alias so any straggling `font-oswald`
+     utility renders the new display face instead of breaking. */
+  --font-display: "League Spartan", system-ui, sans-serif;
+  --font-oswald: "League Spartan", system-ui, sans-serif;
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -33,8 +35,10 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Headings adopt the Oswald display face with tightened tracking for a crisp,
-   straight-lined look. */
+/* All headings adopt the League Spartan display face with slightly tightened
+   tracking for a crisp, modern look. Individual headings can still override the
+   family with a font-* utility where needed. */
 h1, h2, h3, h4 {
-  letter-spacing: 0.01em;
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
 }
