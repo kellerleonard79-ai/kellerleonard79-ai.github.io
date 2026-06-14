@@ -1,6 +1,7 @@
 import { Mail, MapPin } from 'lucide-react'
-import { Instagram, Facebook, Youtube } from './BrandIcons.jsx'
+import { Instagram } from './BrandIcons.jsx'
 import Crest from './Crest.jsx'
+import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 
 // A deliberately simple footer: brand + a couple of essentials, contact, and a
 // clean bottom bar. Newsletter signup lives on the homepage, so it isn't
@@ -12,6 +13,13 @@ const quickLinks = [
 ]
 
 export default function Footer() {
+  const { settings } = useSiteSettings()
+  // Admin-managed Instagram accounts (Admin Settings → General). Only entries
+  // with a handle are linkable, so skip the rest.
+  const accounts = Array.isArray(settings?.instagram_accounts)
+    ? settings.instagram_accounts.filter((a) => a?.handle?.trim())
+    : []
+
   return (
     <footer id="contact" className="bg-maroon-dark text-white">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -30,18 +38,6 @@ export default function Footer() {
               Representing every Tiger — building leadership, spirit, and
               community.
             </p>
-            <div className="mt-5 flex gap-3">
-              {[Instagram, Facebook, Youtube].map((Icon, i) => (
-                <a
-                  key={i}
-                  href="#social"
-                  className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white hover:text-maroon"
-                  aria-label="Social media link"
-                >
-                  <Icon className="h-4 w-4" />
-                </a>
-              ))}
-            </div>
           </div>
 
           {/* Quick links */}
@@ -78,6 +74,35 @@ export default function Footer() {
             </p>
           </div>
         </div>
+
+        {/* Instagram accounts row */}
+        {accounts.length > 0 && (
+          <div className="mt-12 border-t border-white/10 pt-10">
+            <h3 className="text-center font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
+              Follow Our Instagrams
+            </h3>
+            <div className="mt-6 flex flex-wrap items-start justify-center gap-x-8 gap-y-6">
+              {accounts.map((a, i) => (
+                <a
+                  key={i}
+                  href={`https://instagram.com/${a.handle.trim().replace(/^@/, '')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group flex flex-col items-center gap-2"
+                >
+                  <span className="grid h-12 w-12 place-items-center rounded-full border border-white/20 text-white transition group-hover:bg-white group-hover:text-maroon">
+                    <Instagram className="h-6 w-6" />
+                  </span>
+                  {a.label && (
+                    <span className="text-xs font-semibold uppercase tracking-wide text-white/70 transition group-hover:text-white">
+                      {a.label}
+                    </span>
+                  )}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom bar */}
