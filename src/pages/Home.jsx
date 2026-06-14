@@ -30,9 +30,6 @@ export default function Home() {
         {/* Subtle depth: a darker corner wash + a faint diagonal sheen, all in
             the maroon family — no gold. */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.10),transparent_45%)]" />
-        <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full border border-white/10" />
-        <div className="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 rounded-full border border-white/10" />
 
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[1fr_auto] lg:gap-16 lg:px-8 lg:py-28">
           <div className="text-center lg:text-left">
@@ -63,11 +60,9 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Crest — framed in a soft ring instead of a gold glow */}
+          {/* Crest */}
           <div className="hidden justify-self-end lg:block">
-            <div className="grid h-72 w-72 place-items-center rounded-full border border-white/15 bg-white/5 backdrop-blur-sm xl:h-80 xl:w-80">
-              <Crest className="h-52 w-52 object-contain drop-shadow-2xl xl:h-60 xl:w-60" />
-            </div>
+            <Crest className="h-80 w-80 object-contain drop-shadow-2xl xl:h-96 xl:w-96" />
           </div>
         </div>
 
