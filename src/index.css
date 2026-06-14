@@ -15,12 +15,12 @@
   --color-gold-light: #9b2330;
 
   /* League Spartan — a clean geometric sans used for all headings/display.
-     Body copy and subheaders use Inter, a neutral sans, for readability.
+     Body copy and subheaders use Montserrat, a neutral sans, for readability.
      `--font-oswald` is kept as a legacy alias so any straggling `font-oswald`
      utility renders the new display face instead of breaking. */
   --font-display: "League Spartan", system-ui, sans-serif;
   --font-oswald: "League Spartan", system-ui, sans-serif;
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 html {
