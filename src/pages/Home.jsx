@@ -23,38 +23,28 @@ export default function Home() {
       <Navbar />
 
       {/* ───────────────────────── Hero ───────────────────────── */}
-      <section id="home" className="bg-maroon text-white">
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-12 px-4 py-20 sm:px-6 lg:flex-row lg:justify-between lg:gap-16 lg:px-8 lg:py-28">
-          {/* Wordmark */}
+      <section
+        id="home"
+        className="bg-gradient-to-br from-maroon-light via-maroon to-maroon-dark text-white"
+      >
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-10 px-4 py-16 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:gap-14 lg:px-8 lg:py-20">
+          {/* Wordmark lockup */}
           <div className="w-full text-center lg:flex-1 lg:text-left">
-            <h1 className="font-display text-5xl font-extrabold uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="font-display text-5xl font-extrabold uppercase leading-[0.92] tracking-tight sm:text-6xl lg:text-7xl">
               Pensacola High School
             </h1>
 
-            <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/75 lg:mx-0 sm:text-lg">
-              Representing every Tiger — building leadership, spirit, and a
-              stronger school community.
-            </p>
+            {/* divider rule */}
+            <div className="mx-auto mt-5 h-0.5 w-full bg-white/70 lg:mx-0" />
 
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-              <Link
-                to="/join"
-                className="inline-flex items-center justify-center rounded-lg bg-white px-7 py-3 text-sm font-semibold uppercase tracking-wide text-maroon transition hover:bg-white/90"
-              >
-                Join SGA
-              </Link>
-              <a
-                href="#announcements"
-                className="inline-flex items-center justify-center rounded-lg border border-white/40 px-7 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-white/10"
-              >
-                Latest Updates
-              </a>
-            </div>
+            <p className="mt-5 font-display text-2xl font-bold uppercase tracking-[0.12em] text-white sm:text-3xl">
+              Student Government Association
+            </p>
           </div>
 
           {/* Crest */}
           <div className="shrink-0">
-            <Crest className="h-44 w-44 object-contain drop-shadow-xl sm:h-56 sm:w-56 lg:h-72 lg:w-72 xl:h-80 xl:w-80" />
+            <Crest className="h-44 w-44 object-contain drop-shadow-xl sm:h-56 sm:w-56 lg:h-64 lg:w-64 xl:h-72 xl:w-72" />
           </div>
         </div>
       </section>
