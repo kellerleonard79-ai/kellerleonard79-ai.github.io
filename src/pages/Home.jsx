@@ -26,14 +26,16 @@ export default function Home() {
       {/* Solid maroon banner, kept compact. Crest + wordmark lockup. */}
       <section id="home" className="bg-maroon text-white">
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 px-4 py-12 text-center sm:px-6 lg:flex-row lg:justify-between lg:gap-10 lg:py-14 lg:text-left lg:px-8">
-          {/* Crest — sits directly on the maroon, fully transparent. */}
+          {/* Crest medallion */}
           <div className="reveal order-1 shrink-0 lg:order-2">
-            <Crest className="h-32 w-32 object-contain sm:h-36 sm:w-36 lg:h-44 lg:w-44" />
+            <div className="grid h-32 w-32 place-items-center rounded-full bg-white shadow-[0_20px_50px_-24px_rgba(0,0,0,0.7)] sm:h-36 sm:w-36 lg:h-40 lg:w-40">
+              <Crest className="h-24 w-24 object-contain sm:h-28 sm:w-28 lg:h-32 lg:w-32" />
+            </div>
           </div>
 
           {/* Wordmark lockup */}
           <div className="reveal order-2 lg:order-1 lg:flex-1">
-            <h1 className="font-serif text-4xl font-medium leading-[1.02] tracking-[-0.01em] sm:text-5xl lg:text-6xl">
+            <h1 className="font-display text-4xl font-bold uppercase leading-[0.98] tracking-tight sm:text-5xl lg:text-6xl">
               Pensacola High School
             </h1>
             <p className="mt-3 font-sans text-sm font-semibold uppercase tracking-[0.32em] text-white/80 sm:text-base">
