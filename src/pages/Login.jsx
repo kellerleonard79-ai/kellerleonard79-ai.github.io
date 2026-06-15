@@ -11,7 +11,7 @@ export default function Login() {
   const [params] = useSearchParams()
   const redirect = params.get('redirect') || '/'
 
-  const [email, setEmail] = useState('')
+  const [studentId, setStudentId] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -20,6 +20,18 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setSubmitting(true)
+
+    // Supabase Auth signs in by email, so resolve the student number first.
+    const { data: email, error: lookupError } = await supabase.rpc(
+      'email_for_student_id',
+      { p_student_id: studentId.trim() },
+    )
+    if (lookupError || !email) {
+      setSubmitting(false)
+      setError('No account found for that student number.')
+      return
+    }
+
     const { data, error: signInError } = await supabase.auth.signInWithPassword(
       { email, password },
     )
@@ -70,19 +82,20 @@ export default function Login() {
             </div>
           )}
 
-          <label htmlFor="email" className="block">
+          <label htmlFor="studentId" className="block">
             <span className="mb-1.5 block text-sm font-semibold text-maroon">
-              Email
+              Student Number
             </span>
             <input
-              id="email"
-              type="email"
+              id="studentId"
+              type="text"
+              inputMode="numeric"
               required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username"
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
               className={inputClass}
-              placeholder="you@example.com"
+              placeholder="e.g. 1234567"
             />
           </label>
 
