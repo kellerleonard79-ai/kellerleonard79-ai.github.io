@@ -42,7 +42,7 @@ export default function Home() {
       <Announcements />
 
       {/* ─────────────────── Stay Connected grid ─────────────────── */}
-      <section id="events" className="bg-gray-50 py-16 sm:py-20">
+      <section id="events" className="bg-gray-50 py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="font-display text-3xl font-bold text-maroon sm:text-4xl">
@@ -265,7 +265,7 @@ function Announcements() {
   if (items.length === 0) return null
 
   return (
-    <section id="announcements" className="bg-white py-16 sm:py-20">
+    <section id="announcements" className="bg-white py-12 sm:py-16">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="font-display text-3xl font-bold text-maroon sm:text-4xl">
