@@ -29,12 +29,6 @@ const CARDS = [
     to: '/dashboard/meetings',
   },
   {
-    title: 'My Profile',
-    desc: 'Your info and attendance',
-    icon: UserCircle,
-    to: '/dashboard/profile',
-  },
-  {
     title: 'Archives',
     desc: 'Documents and resources',
     icon: Archive,
