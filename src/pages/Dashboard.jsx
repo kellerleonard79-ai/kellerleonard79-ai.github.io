@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import {
   Users,
   CalendarCheck,
-  UserCircle,
   Vote,
   Wallet,
   Archive,
