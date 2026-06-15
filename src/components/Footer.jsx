@@ -3,12 +3,6 @@ import { Mail, MapPin } from 'lucide-react'
 // A deliberately simple footer: brand + a couple of essentials, contact, and a
 // clean bottom bar. Newsletter signup lives on the homepage, so it isn't
 // duplicated here.
-const quickLinks = [
-  { label: 'About', href: '/#/about' },
-  { label: 'Join SGA', href: '/#/join' },
-  { label: 'Member Login', href: '/#/login' },
-]
-
 export default function Footer() {
   return (
     <footer id="contact" className="bg-maroon text-white">
@@ -24,22 +18,6 @@ export default function Footer() {
               />
             </div>
           </div>
-
-          {/* Quick links */}
-          <nav className="flex flex-col gap-3">
-            <h3 className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
-              Explore
-            </h3>
-            {quickLinks.map((l) => (
-              <a
-                key={l.label}
-                href={l.href}
-                className="text-sm text-white/70 transition hover:text-white"
-              >
-                {l.label}
-              </a>
-            ))}
-          </nav>
 
           {/* Contact */}
           <div className="flex flex-col gap-3">
