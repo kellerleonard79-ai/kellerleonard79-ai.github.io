@@ -99,10 +99,10 @@ export default function About() {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.10),transparent_45%)]" />
         <div className="relative mx-auto flex max-w-3xl items-center justify-center gap-3 px-4 sm:px-6">
-          <h1 className="font-display text-3xl font-semibold uppercase leading-none tracking-wide sm:text-4xl">
+          <h1 className="font-display text-3xl font-semibold uppercase tracking-wide sm:text-4xl">
             About Us
           </h1>
-          <Crest className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14" />
+          <Crest className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" />
         </div>
         <div className="absolute bottom-0 h-1 w-full bg-white/15" />
       </section>
