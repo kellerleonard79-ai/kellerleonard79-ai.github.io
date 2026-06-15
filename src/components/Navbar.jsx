@@ -20,7 +20,7 @@ export default function Navbar() {
         {/* Brand */}
         <Link to="/" className="flex items-center">
           <img
-            src="/masthead.png"
+            src="/maroon-phs-sga-logo.png"
             alt="Pensacola High School Student Government Association"
             className="h-11 w-auto shrink-0 object-contain"
           />
