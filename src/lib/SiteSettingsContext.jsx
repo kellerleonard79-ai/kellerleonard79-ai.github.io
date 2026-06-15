@@ -31,6 +31,7 @@ function applyBranding(settings) {
   // school name (e.g. "Pensacola High School" → "PHS") plus "SGA".
   if (settings.school_name) {
     const acronym = settings.school_name
+      .replace(/\bStudent Government Association\b/i, '')
       .replace(/\bSGA\b/i, '')
       .split(/\s+/)
       .filter(Boolean)
