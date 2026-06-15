@@ -1,6 +1,5 @@
 import { Mail, MapPin } from 'lucide-react'
 import { Instagram, Facebook, Youtube } from './BrandIcons.jsx'
-import Crest from './Crest.jsx'
 
 // A deliberately simple footer: brand + a couple of essentials, contact, and a
 // clean bottom bar. Newsletter signup lives on the homepage, so it isn't
@@ -19,7 +18,11 @@ export default function Footer() {
           {/* Brand */}
           <div className="max-w-sm">
             <div className="flex items-center gap-3">
-              <Crest className="h-11 w-11 object-contain" />
+              <img
+                src="/white-phs-sga-logo.png"
+                alt="PHS SGA logo"
+                className="h-11 w-11 object-contain"
+              />
               <span className="font-display text-base font-semibold uppercase leading-tight tracking-wide">
                 Pensacola High
                 <br />
