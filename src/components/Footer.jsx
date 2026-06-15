@@ -24,10 +24,6 @@ export default function Footer() {
                 className="h-16 w-auto object-contain"
               />
             </div>
-            <p className="mt-4 text-sm leading-relaxed text-white/60">
-              Representing every Tiger — building leadership, spirit, and
-              community.
-            </p>
             <div className="mt-5 flex gap-3">
               {[Instagram, Facebook, Youtube].map((Icon, i) => (
                 <a
