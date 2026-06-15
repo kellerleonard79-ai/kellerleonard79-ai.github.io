@@ -56,7 +56,7 @@ function Gate({ icon, title, sub, action }) {
       <Navbar />
       <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
         {icon}
-        <h1 className="mt-4 font-display text-2xl font-bold text-gray-900">
+        <h1 className="mt-4 font-display text-2xl font-bold text-maroon">
           {title}
         </h1>
         {sub && <p className="mt-2 text-gray-600">{sub}</p>}

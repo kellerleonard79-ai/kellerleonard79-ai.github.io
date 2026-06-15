@@ -78,7 +78,7 @@ function AdminContent() {
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900">
+            <h1 className="font-display text-3xl font-bold text-maroon">
               Admin Settings
             </h1>
             <p className="mt-1 text-gray-500">
@@ -105,7 +105,7 @@ function AdminContent() {
                 className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-lg border-b-2 px-3.5 py-2.5 text-sm font-semibold transition ${
                   active
                     ? 'border-maroon text-maroon'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                    : 'border-transparent text-gray-500 hover:text-maroon'
                 }`}
               >
                 <Icon className="h-4 w-4" /> {t.label}
@@ -135,7 +135,7 @@ function Card({ title, desc, children }) {
       {(title || desc) && (
         <div className="border-b border-gray-100 p-5">
           {title && (
-            <h2 className="font-display text-lg font-bold text-gray-900">
+            <h2 className="font-display text-lg font-bold text-maroon">
               {title}
             </h2>
           )}
@@ -148,7 +148,7 @@ function Card({ title, desc, children }) {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
 
 function SaveButton({ onClick, saving, saved, disabled, label = 'Save changes' }) {
   return (
@@ -356,7 +356,7 @@ function BrandingTab() {
             />
             <label
               htmlFor="logo-upload"
-              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-gray-50"
             >
               {uploading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -444,7 +444,7 @@ function expandHex(hex) {
 function Labeled({ label, children }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+      <span className="mb-1.5 block text-sm font-semibold text-maroon">
         {label}
       </span>
       {children}
@@ -668,7 +668,7 @@ function TierRow({ role, memberCount, allOrders, onChanged }) {
             <label
               key={key}
               className={`flex items-center gap-2 text-sm ${
-                locked ? 'text-gray-400' : 'cursor-pointer text-gray-700'
+                locked ? 'text-gray-400' : 'cursor-pointer text-maroon'
               }`}
             >
               <input
@@ -1056,7 +1056,7 @@ function JoinFormTab() {
                   <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gray-300" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium text-gray-800">
+                      <span className="truncate text-sm font-medium text-maroon">
                         {field.label}
                       </span>
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
@@ -1156,7 +1156,7 @@ function JoinFormTab() {
                 </button>
                 <button
                   onClick={() => setShowAdd(false)}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-maroon hover:bg-gray-50"
                 >
                   Cancel
                 </button>
@@ -1556,7 +1556,7 @@ function QuorumSection() {
         {OPTIONS.map(([val, label]) => (
           <label
             key={val}
-            className="flex cursor-pointer items-center gap-2.5 text-sm text-gray-700"
+            className="flex cursor-pointer items-center gap-2.5 text-sm text-maroon"
           >
             <input
               type="radio"
@@ -1698,7 +1698,7 @@ function NewsletterSection() {
                 key={e.email}
                 className="flex items-center justify-between gap-4 px-4 py-2.5 text-sm"
               >
-                <span className="truncate text-gray-900">{e.email}</span>
+                <span className="truncate text-maroon">{e.email}</span>
                 <span className="shrink-0 text-xs text-gray-400">
                   {new Date(e.created_at).toLocaleDateString()}
                 </span>

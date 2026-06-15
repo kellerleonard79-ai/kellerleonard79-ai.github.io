@@ -162,7 +162,7 @@ function SessionContent() {
     <Shell>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-gray-900">
+          <h1 className="font-display text-2xl font-bold text-maroon">
             {meeting.title}
           </h1>
           <p className="mt-1 text-gray-500">{formatDate(meeting.date)}</p>
@@ -178,7 +178,7 @@ function SessionContent() {
       {/* Stat cards */}
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border border-gray-200 bg-white p-5 text-center shadow-sm">
-          <p className="text-3xl font-bold text-gray-900">
+          <p className="text-3xl font-bold text-maroon">
             {present} <span className="text-lg font-medium text-gray-400">/ {total}</span>
           </p>
           <p className="mt-1 text-sm text-gray-500">Members present</p>
@@ -229,7 +229,7 @@ function SessionContent() {
             onClick={toggleSession}
             className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition ${
               meeting.is_active
-                ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'border border-gray-300 text-maroon hover:bg-gray-50'
                 : 'border border-green-300 text-green-700 hover:bg-green-50'
             }`}
           >
@@ -245,7 +245,7 @@ function SessionContent() {
 
       {/* Manual attendance */}
       <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="font-semibold text-gray-900">Manual attendance</h2>
+        <h2 className="font-semibold text-maroon">Manual attendance</h2>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -262,7 +262,7 @@ function SessionContent() {
                 className="flex flex-wrap items-center justify-between gap-2 py-2.5"
               >
                 <div>
-                  <p className="font-medium text-gray-900">{m.full_name}</p>
+                  <p className="font-medium text-maroon">{m.full_name}</p>
                   <p className="text-xs text-gray-400">{m.student_id}</p>
                 </div>
                 <div className="flex gap-1.5">
@@ -284,7 +284,7 @@ function SessionContent() {
       {/* Check-ins */}
       <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Check-ins</h2>
+          <h2 className="font-semibold text-maroon">Check-ins</h2>
           <div className="flex items-center gap-3 text-sm">
             <span className="text-gray-400">{checkIns.length} total</span>
             <button
@@ -301,7 +301,7 @@ function SessionContent() {
           <ul className="mt-3 divide-y divide-gray-100">
             {checkIns.map((a, i) => (
               <li key={i} className="flex items-center justify-between py-2.5">
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-maroon">
                   {a.profiles?.full_name ?? 'Member'}
                 </span>
                 <span className="flex items-center gap-3">

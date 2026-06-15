@@ -25,7 +25,7 @@ export default function CheckinQR({ url, size = 200, downloadName = 'checkin-qr.
       <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={download}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-maroon transition hover:bg-gray-50"
         >
           <Download className="h-4 w-4" /> Download QR
         </button>

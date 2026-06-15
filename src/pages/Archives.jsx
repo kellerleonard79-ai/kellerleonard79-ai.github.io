@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Link as LinkIcon,
   Loader2,
+  Lock,
   Plus,
   Trash2,
   X,
@@ -32,6 +33,7 @@ export default function Archives() {
 function ArchivesContent() {
   const { profile, hasPermission } = useAuth()
   const [items, setItems] = useState([])
+  const [roles, setRoles] = useState([]) // all tiers, ascending by order
   const [loading, setLoading] = useState(true)
   const [folder, setFolder] = useState(null) // selected folder prefix, null = all
   const [activeTags, setActiveTags] = useState([]) // multi-select tag filter
@@ -39,6 +41,16 @@ function ArchivesContent() {
   // Items the viewer is allowed to manage (own uploads, or archive admin).
   const canManage = (item) =>
     hasPermission('manage_committees') || item.uploaded_by === profile?.id
+
+  // Tier list drives the upload selector, the per-item visibility badge, and
+  // the SCI edit control. Loaded once; readable by any authenticated user.
+  useEffect(() => {
+    supabase
+      .from('roles')
+      .select('name, order')
+      .order('order', { ascending: true })
+      .then(({ data }) => setRoles(data ?? []))
+  }, [])
 
   async function load() {
     // Never select file_url — its presence is exposed via the has_file flag and
@@ -94,7 +106,7 @@ function ArchivesContent() {
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900">
+            <h1 className="font-display text-3xl font-bold text-maroon">
               Archives
             </h1>
             <p className="mt-1 text-gray-500">
@@ -131,6 +143,7 @@ function ArchivesContent() {
             {hasPermission('upload_archives') && (
               <UploadPanel
                 folders={folders.allPaths}
+                roles={roles}
                 onUploaded={load}
               />
             )}
@@ -154,8 +167,10 @@ function ArchivesContent() {
                   <ArchiveCard
                     key={item.id}
                     item={item}
+                    roles={roles}
                     canManage={canManage(item)}
-                    onDeleted={load}
+                    canEditVisibility={profile?.role?.is_admin === true}
+                    onChanged={load}
                   />
                 ))}
               </ul>
@@ -193,7 +208,7 @@ function FolderTree({ folders, selected, onSelect, total }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="border-b border-gray-100 px-4 py-3">
-        <h2 className="font-display text-sm font-bold uppercase tracking-wide text-gray-700">
+        <h2 className="font-display text-sm font-bold uppercase tracking-wide text-maroon">
           Folders
         </h2>
       </div>
@@ -271,7 +286,7 @@ function TagFilter({ tags, active, onToggle, onClear }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-        <h2 className="font-display text-sm font-bold uppercase tracking-wide text-gray-700">
+        <h2 className="font-display text-sm font-bold uppercase tracking-wide text-maroon">
           Tags
         </h2>
         {active.length > 0 && (
@@ -306,11 +321,20 @@ function TagFilter({ tags, active, onToggle, onClear }) {
   )
 }
 
+// Label for a visibility threshold: the tier whose order matches, or a
+// fallback when the item is open to everyone / the tier is unknown.
+function tierLabel(roles, order) {
+  const match = roles.find((r) => r.order === order)
+  if (match) return `${match.name} & up`
+  return order > 0 ? `Tier ${order} & up` : 'All members'
+}
+
 // ─────────────────────────── Item card ───────────────────────────
-function ArchiveCard({ item, canManage, onDeleted }) {
+function ArchiveCard({ item, roles, canManage, canEditVisibility, onChanged }) {
   const [opening, setOpening] = useState(false)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [savingVis, setSavingVis] = useState(false)
 
   async function openFile() {
     setOpening(true)
@@ -344,14 +368,30 @@ function ArchiveCard({ item, canManage, onDeleted }) {
       setError('Could not delete this item.')
       return
     }
-    onDeleted()
+    onChanged()
+  }
+
+  // SCI / admin re-classifies an existing item's minimum viewing tier.
+  async function updateVisibility(newOrder) {
+    setSavingVis(true)
+    setError('')
+    const { error: updError } = await supabase
+      .from('archive_items')
+      .update({ visibility_min_role_order: newOrder })
+      .eq('id', item.id)
+    setSavingVis(false)
+    if (updError) {
+      setError('Could not update who can view this item.')
+      return
+    }
+    onChanged()
   }
 
   return (
     <li className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-display font-bold text-gray-900">{item.title}</h3>
+          <h3 className="font-display font-bold text-maroon">{item.title}</h3>
           {item.category && (
             <span className="mt-1 inline-flex items-center rounded-full bg-maroon/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-maroon">
               {item.category}
@@ -396,6 +436,31 @@ function ArchiveCard({ item, canManage, onDeleted }) {
         ))}
       </div>
 
+      {/* Who can view this item — read-only badge, or an editable selector
+          for the uploader / SCI (archive admin). */}
+      <div className="mt-3 flex items-center gap-2 text-xs">
+        <Lock className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        {canEditVisibility ? (
+          <select
+            value={item.visibility_min_role_order}
+            disabled={savingVis}
+            onChange={(e) => updateVisibility(Number(e.target.value))}
+            className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20 disabled:opacity-60"
+          >
+            {roles.map((r) => (
+              <option key={r.order} value={r.order}>
+                {r.name} & up
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="text-gray-500">
+            {tierLabel(roles, item.visibility_min_role_order)}
+          </span>
+        )}
+        {savingVis && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
+      </div>
+
       <div className="mt-auto flex items-center justify-between gap-3 pt-4">
         <p className="text-xs text-gray-400">
           {item.uploader?.full_name ?? 'Unknown'} ·{' '}
@@ -432,7 +497,7 @@ function ArchiveCard({ item, canManage, onDeleted }) {
 }
 
 // ─────────────────────────── Upload panel ───────────────────────────
-function UploadPanel({ folders, onUploaded }) {
+function UploadPanel({ folders, roles, onUploaded }) {
   const { profile } = useAuth()
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
@@ -443,28 +508,30 @@ function UploadPanel({ folders, onUploaded }) {
   const [driveLink, setDriveLink] = useState('')
   const [file, setFile] = useState(null)
   const [visibility, setVisibility] = useState(null) // role.order value
-  const [roleOptions, setRoleOptions] = useState([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const fileRef = useRef(null)
 
+  // The admin tier can classify items to any tier; everyone else can only
+  // restrict down to their own tier, never hide from tiers above them. Admins
+  // also act as the ceiling even if their role.order isn't the literal max.
+  const isAdmin = profile?.role?.is_admin === true
   const myOrder = profile?.role?.order ?? 0
 
-  // Visibility options: roles at or below the uploader's own tier — they can
-  // only restrict down to their level, never hide from tiers above them.
+  // Visibility options derived from the shared roles list (no extra fetch).
+  // Fall back to the full list if tier metadata is missing so the selector is
+  // never empty — that previously left every upload pinned at "visible to all".
+  const roleOptions = useMemo(() => {
+    const filtered = roles.filter((r) => isAdmin || r.order <= myOrder)
+    return filtered.length ? filtered : roles
+  }, [roles, isAdmin, myOrder])
+
+  // Default to the lowest tier (most open) that can still see it.
   useEffect(() => {
-    supabase
-      .from('roles')
-      .select('name, order')
-      .lte('order', myOrder)
-      .order('order', { ascending: true })
-      .then(({ data }) => {
-        const opts = data ?? []
-        setRoleOptions(opts)
-        // Default to the lowest tier (most open) that can still see it.
-        setVisibility(opts.length ? opts[0].order : 0)
-      })
-  }, [myOrder])
+    if (visibility == null && roleOptions.length) {
+      setVisibility(roleOptions[0].order)
+    }
+  }, [roleOptions, visibility])
 
   function reset() {
     setTitle('')
@@ -561,7 +628,7 @@ function UploadPanel({ folders, onUploaded }) {
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-maroon/10 text-maroon">
             <Upload className="h-5 w-5" />
           </span>
-          <h2 className="font-display text-lg font-bold text-gray-900">
+          <h2 className="font-display text-lg font-bold text-maroon">
             Upload to Archives
           </h2>
         </div>
@@ -570,7 +637,7 @@ function UploadPanel({ folders, onUploaded }) {
             reset()
             setOpen(false)
           }}
-          className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+          className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
         >
           <X className="h-4 w-4" />
         </button>

@@ -138,7 +138,7 @@ function Result({ icon, title, sub }) {
   return (
     <>
       <div className="mt-5 flex justify-center">{icon}</div>
-      <h1 className="mt-4 font-display text-2xl font-bold text-gray-900">
+      <h1 className="mt-4 font-display text-2xl font-bold text-maroon">
         {title}
       </h1>
       {sub && <p className="mt-2 text-gray-600">{sub}</p>}

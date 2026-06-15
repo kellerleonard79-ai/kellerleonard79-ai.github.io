@@ -96,7 +96,7 @@ function BookkeepingContent() {
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900">
+            <h1 className="font-display text-3xl font-bold text-maroon">
               Bookkeeping
             </h1>
             <p className="mt-1 text-gray-500">
@@ -177,7 +177,7 @@ function AccountCard({ account, onOpen }) {
       >
         <span className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 bg-maroon transition-transform duration-300 group-hover:scale-x-100" />
         <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display font-bold text-gray-900">
+          <h3 className="font-display font-bold text-maroon">
             {account.name}
           </h3>
           <ArrowUpRight className="h-5 w-5 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-maroon" />
@@ -187,7 +187,7 @@ function AccountCard({ account, onOpen }) {
             {account.description}
           </p>
         )}
-        <p className="mt-4 font-display text-2xl font-bold text-gray-900">
+        <p className="mt-4 font-display text-2xl font-bold text-maroon">
           {balance == null ? (
             <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
           ) : (
@@ -280,7 +280,7 @@ function NewAccountPanel({ onCreated }) {
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-maroon/10 text-maroon">
             <Wallet className="h-5 w-5" />
           </span>
-          <h2 className="font-display text-lg font-bold text-gray-900">
+          <h2 className="font-display text-lg font-bold text-maroon">
             New Account
           </h2>
         </div>
@@ -289,7 +289,7 @@ function NewAccountPanel({ onCreated }) {
             reset()
             setOpen(false)
           }}
-          className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+          className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
         >
           <X className="h-4 w-4" />
         </button>
@@ -444,7 +444,7 @@ function AccountLedger({ account, canManage, onBack }) {
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900">
+            <h1 className="font-display text-3xl font-bold text-maroon">
               {account.name}
             </h1>
             {account.description && (
@@ -452,7 +452,7 @@ function AccountLedger({ account, canManage, onBack }) {
             )}
           </div>
           <div className="text-right">
-            <p className="font-display text-3xl font-bold text-gray-900">
+            <p className="font-display text-3xl font-bold text-maroon">
               {money(currentBalance)}
             </p>
             <p className="text-xs text-gray-400">Current balance</p>
@@ -466,7 +466,7 @@ function AccountLedger({ account, canManage, onBack }) {
 
           <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
-              <h2 className="font-display text-sm font-bold uppercase tracking-wide text-gray-700">
+              <h2 className="font-display text-sm font-bold uppercase tracking-wide text-maroon">
                 Ledger
               </h2>
               <button
@@ -543,7 +543,7 @@ function AccountLedger({ account, canManage, onBack }) {
                           <td className="px-5 py-3 text-gray-600">
                             {t.notes}
                           </td>
-                          <td className="whitespace-nowrap px-5 py-3 text-right font-semibold text-gray-900">
+                          <td className="whitespace-nowrap px-5 py-3 text-right font-semibold text-maroon">
                             {money(t.runningBalance)}
                           </td>
                           {canManage && (
@@ -617,7 +617,7 @@ function AddTransactionPanel({ account, onAdded }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="border-b border-gray-100 px-5 py-3">
-        <h2 className="font-display text-sm font-bold uppercase tracking-wide text-gray-700">
+        <h2 className="font-display text-sm font-bold uppercase tracking-wide text-maroon">
           Add Transaction
         </h2>
       </div>

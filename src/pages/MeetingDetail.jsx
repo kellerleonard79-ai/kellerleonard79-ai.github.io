@@ -99,7 +99,7 @@ function DetailContent() {
         ) : (
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="font-display text-2xl font-bold text-gray-900">
+              <h1 className="font-display text-2xl font-bold text-maroon">
                 {meeting.title}
               </h1>
               <p className="mt-1 text-gray-500">{formatDate(meeting.date)}</p>
@@ -123,7 +123,7 @@ function DetailContent() {
           <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-maroon/8 text-maroon transition group-hover:bg-maroon group-hover:text-white">
             <ClipboardList className="h-6 w-6" />
           </span>
-          <h2 className="mt-3 font-display text-lg font-bold text-gray-900">
+          <h2 className="mt-3 font-display text-lg font-bold text-maroon">
             Agenda
           </h2>
           <p className="text-sm text-gray-500">View and edit</p>
@@ -136,7 +136,7 @@ function DetailContent() {
           <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-maroon/8 text-maroon transition group-hover:bg-maroon group-hover:text-white">
             <QrCode className="h-6 w-6" />
           </span>
-          <h2 className="mt-3 font-display text-lg font-bold text-gray-900">
+          <h2 className="mt-3 font-display text-lg font-bold text-maroon">
             QR Session
           </h2>
           <SessionBadge active={meeting.is_active} />
@@ -210,7 +210,7 @@ function EditMeeting({ meeting, onDone, onCancel }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <label className="block">
-        <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+        <span className="mb-1.5 block text-sm font-semibold text-maroon">
           Title
         </span>
         <input
@@ -220,7 +220,7 @@ function EditMeeting({ meeting, onDone, onCancel }) {
         />
       </label>
       <label className="block">
-        <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+        <span className="mb-1.5 block text-sm font-semibold text-maroon">
           Date
         </span>
         <input
@@ -240,7 +240,7 @@ function EditMeeting({ meeting, onDone, onCancel }) {
         </button>
         <button
           onClick={onCancel}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-maroon hover:bg-gray-50"
         >
           Cancel
         </button>
@@ -262,4 +262,4 @@ function Shell({ children }) {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'

@@ -192,7 +192,7 @@ function OfficerCard({ officer }) {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm transition hover:border-maroon/30 hover:shadow-md">
       <Avatar name={officer.full_name} src={officer.photo_url} />
-      <p className="mt-4 font-display text-lg font-bold text-gray-900">
+      <p className="mt-4 font-display text-lg font-bold text-maroon">
         {officer.full_name ?? 'Officer'}
       </p>
       <p className="mt-0.5 text-sm font-semibold text-maroon">
@@ -209,7 +209,7 @@ function CommitteeCard({ committee }) {
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-maroon/8 text-maroon">
           <UsersRound className="h-5 w-5" />
         </span>
-        <h3 className="font-display text-lg font-bold text-gray-900">
+        <h3 className="font-display text-lg font-bold text-maroon">
           {committee.name}
         </h3>
       </div>
@@ -226,7 +226,7 @@ function CommitteeCard({ committee }) {
               className="flex items-center justify-between gap-2 text-sm"
             >
               <span className="min-w-0">
-                <span className="truncate text-gray-800">{m.name}</span>
+                <span className="truncate text-maroon">{m.name}</span>
                 {m.title && (
                   <span className="ml-1.5 text-xs text-gray-400">
                     {m.title}

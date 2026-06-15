@@ -59,7 +59,7 @@ function MeetingsContent() {
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900">
+            <h1 className="font-display text-3xl font-bold text-maroon">
               Meetings
             </h1>
             <p className="mt-1 text-gray-500">Schedule, agendas, and attendance</p>
@@ -132,7 +132,7 @@ function MeetingsContent() {
               />
               <button
                 type="submit"
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-maroon transition hover:bg-gray-50"
               >
                 Search
               </button>
@@ -170,7 +170,7 @@ function MeetingRow({ meeting }) {
       >
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="truncate font-semibold text-gray-900">
+            <p className="truncate font-semibold text-maroon">
               {meeting.title}
             </p>
             {meeting.is_active && (
@@ -245,7 +245,7 @@ function CreateMeetingForm({ onCreated }) {
       )}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+          <span className="mb-1.5 block text-sm font-semibold text-maroon">
             Title
           </span>
           <input
@@ -261,7 +261,7 @@ function CreateMeetingForm({ onCreated }) {
           />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+          <span className="mb-1.5 block text-sm font-semibold text-maroon">
             Date
           </span>
           <input
@@ -274,7 +274,7 @@ function CreateMeetingForm({ onCreated }) {
         </label>
       </div>
       <label className="mt-4 block">
-        <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+        <span className="mb-1.5 block text-sm font-semibold text-maroon">
           Agenda summary <span className="font-normal text-gray-400">(optional)</span>
         </span>
         <textarea
@@ -303,4 +303,4 @@ function CreateMeetingForm({ onCreated }) {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'

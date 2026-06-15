@@ -112,7 +112,7 @@ function DashboardHub() {
         {/* Welcome header */}
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900">
+            <h1 className="font-display text-3xl font-bold text-maroon">
               Welcome, {profile?.full_name ?? firstName}
             </h1>
             <p className="mt-1 flex items-center gap-2 text-sm text-gray-500">
@@ -130,8 +130,8 @@ function DashboardHub() {
           </button>
         </header>
 
-        {/* Card grid */}
-        <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
+        {/* Compact vertical list */}
+        <div className="mt-8 flex flex-col gap-2">
           {cards.map((card) => (
             <DashboardCard key={card.title} {...card} />
           ))}
@@ -149,30 +149,29 @@ function DashboardCard({ title, desc, icon: Icon, to }) {
   const inner = (
     <>
       {/* accent bar that grows on hover */}
-      <span className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 bg-maroon transition-transform duration-300 group-hover:scale-x-100" />
+      <span className="absolute inset-y-0 left-0 w-0.5 origin-top scale-y-0 bg-maroon transition-transform duration-300 group-hover:scale-y-100" />
 
-      <div className="flex items-start justify-between">
-        <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon/8 text-maroon transition-colors group-hover:bg-maroon group-hover:text-white">
-          <Icon className="h-5 w-5" />
-        </span>
-        {available ? (
-          <ArrowUpRight className="h-5 w-5 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-maroon" />
-        ) : (
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-            Soon
-          </span>
-        )}
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-maroon/8 text-maroon transition-colors group-hover:bg-maroon group-hover:text-white">
+        <Icon className="h-4.5 w-4.5" />
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <h2 className="font-display text-sm font-bold text-maroon">{title}</h2>
+        <p className="truncate text-xs text-gray-500">{desc}</p>
       </div>
 
-      <h2 className="mt-4 font-display text-lg font-bold text-gray-900">
-        {title}
-      </h2>
-      <p className="mt-0.5 text-sm text-gray-500">{desc}</p>
+      {available ? (
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-maroon" />
+      ) : (
+        <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+          Soon
+        </span>
+      )}
     </>
   )
 
   const base =
-    'group relative overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition'
+    'group relative flex items-center gap-3 overflow-hidden rounded-xl border bg-white px-4 py-3 shadow-sm transition'
 
   if (!available) {
     return (
@@ -185,7 +184,7 @@ function DashboardCard({ title, desc, icon: Icon, to }) {
   return (
     <Link
       to={to}
-      className={`${base} border-gray-200 hover:-translate-y-0.5 hover:border-maroon/30 hover:shadow-md`}
+      className={`${base} border-gray-200 hover:border-maroon/30 hover:shadow-md`}
     >
       {inner}
     </Link>

@@ -234,8 +234,8 @@ export default function Join() {
                     }
                     className="mt-0.5 h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
                   />
-                  <span className="text-sm text-gray-700">
-                    <span className="font-semibold text-gray-900">
+                  <span className="text-sm text-maroon">
+                    <span className="font-semibold text-maroon">
                       I&apos;m running for a position
                     </span>
                     <span className="mt-0.5 block text-gray-500">
@@ -280,14 +280,14 @@ export default function Join() {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
 
 // Renders a single schema-driven field (Grade, Shirt Size, or any admin-added
 // custom field). Checkbox fields render inline; text/select use the Field shell.
 function DynamicField({ field, value, onChange }) {
   if (field.type === 'checkbox') {
     return (
-      <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+      <label className="flex cursor-pointer items-center gap-2 text-sm text-maroon">
         <input
           type="checkbox"
           required={field.required}
@@ -337,7 +337,7 @@ function DynamicField({ field, value, onChange }) {
 function Field({ label, htmlFor, children }) {
   return (
     <label htmlFor={htmlFor} className="block">
-      <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+      <span className="mb-1.5 block text-sm font-semibold text-maroon">
         {label}
       </span>
       {children}

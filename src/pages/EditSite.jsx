@@ -37,7 +37,7 @@ function EditSiteContent() {
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900">
+            <h1 className="font-display text-3xl font-bold text-maroon">
               Edit Public Site
             </h1>
             <p className="mt-1 text-gray-500">
@@ -73,7 +73,7 @@ function Section({ icon: Icon, title, desc, children }) {
           <Icon className="h-5 w-5" />
         </span>
         <div>
-          <h2 className="font-display text-lg font-bold text-gray-900">{title}</h2>
+          <h2 className="font-display text-lg font-bold text-maroon">{title}</h2>
           {desc && <p className="text-sm text-gray-500">{desc}</p>}
         </div>
       </div>
@@ -205,7 +205,7 @@ function AnnouncementsSection() {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="truncate font-semibold text-gray-900">
+                    <p className="truncate font-semibold text-maroon">
                       {item.title}
                     </p>
                     {item.is_published ? (
@@ -277,7 +277,7 @@ function SignupToggleSection() {
     >
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="font-semibold text-gray-900">
+          <p className="font-semibold text-maroon">
             Signups are currently{' '}
             <span className={enabled ? 'text-green-600' : 'text-gray-500'}>
               {enabled ? 'open' : 'closed'}
@@ -434,7 +434,7 @@ function NewsletterSection() {
                 key={e.email}
                 className="flex items-center justify-between gap-4 px-4 py-2.5 text-sm"
               >
-                <span className="truncate text-gray-900">{e.email}</span>
+                <span className="truncate text-maroon">{e.email}</span>
                 <span className="shrink-0 text-xs text-gray-400">
                   {new Date(e.created_at).toLocaleDateString()}
                 </span>

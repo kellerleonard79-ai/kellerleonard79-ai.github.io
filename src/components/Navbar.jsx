@@ -110,7 +110,7 @@ export default function Navbar() {
           <div className="space-y-1 px-4 py-3">
             {links.map((l) => {
               const cls =
-                'block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-maroon/5 hover:text-maroon'
+                'block rounded-md px-3 py-2 text-base font-medium text-maroon hover:bg-maroon/5 hover:text-maroon'
               return l.to ? (
                 <Link
                   key={l.label}

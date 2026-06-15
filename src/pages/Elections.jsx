@@ -115,7 +115,7 @@ function ElectionsContent() {
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900">
+            <h1 className="font-display text-3xl font-bold text-maroon">
               Elections
             </h1>
             <p className="mt-1 text-gray-500">
@@ -186,7 +186,7 @@ function Section({ icon: Icon, title, desc, action, children }) {
           <Icon className="h-5 w-5" />
         </span>
         <div className="min-w-0">
-          <h2 className="font-display text-lg font-bold text-gray-900">
+          <h2 className="font-display text-lg font-bold text-maroon">
             {title}
           </h2>
           {desc && <p className="text-sm text-gray-500">{desc}</p>}
@@ -355,7 +355,7 @@ function ApplicationRow({
     <li className="rounded-xl border border-amber-200 bg-amber-50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-semibold text-gray-900">
+          <p className="truncate font-semibold text-maroon">
             {a.full_name ?? 'Applicant'}
           </p>
           <p className="mt-0.5 truncate text-sm text-gray-500">
@@ -499,7 +499,7 @@ function CyclesList({ cycles, candidates, canManage, onOpen, onChanged }) {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="truncate font-semibold text-gray-900">
+                    <p className="truncate font-semibold text-maroon">
                       {c.name}
                     </p>
                     {c.is_open ? (
@@ -631,7 +631,7 @@ function CreateCycleForm({ onCancel, onCreated }) {
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:text-gray-700"
+          className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:text-maroon"
         >
           Cancel
         </button>
@@ -752,7 +752,7 @@ function CycleDetail({
           <button
             onClick={toggleOpen}
             disabled={togglingOpen}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-white disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-maroon transition hover:bg-white disabled:opacity-60"
           >
             {togglingOpen ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -768,7 +768,7 @@ function CycleDetail({
 
       {/* Pending applications inside the cycle */}
       <div className="mb-8">
-        <h3 className="mb-3 flex items-center gap-2 font-display text-base font-bold text-gray-900">
+        <h3 className="mb-3 flex items-center gap-2 font-display text-base font-bold text-maroon">
           <Users className="h-4 w-4 text-maroon" /> Pending Applications
         </h3>
         {pending.length === 0 ? (
@@ -783,7 +783,7 @@ function CycleDetail({
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3.5"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-gray-900">
+                  <p className="truncate font-semibold text-maroon">
                     {c.member?.full_name ?? 'Member'}
                   </p>
                   <p className="mt-0.5 text-sm text-gray-500">
@@ -814,7 +814,7 @@ function CycleDetail({
 
       {/* Candidates grouped by position */}
       <div>
-        <h3 className="mb-3 flex items-center gap-2 font-display text-base font-bold text-gray-900">
+        <h3 className="mb-3 flex items-center gap-2 font-display text-base font-bold text-maroon">
           <Trophy className="h-4 w-4 text-maroon" /> Candidates
         </h3>
         {groups.length === 0 ? (
@@ -906,13 +906,13 @@ function PositionGroup({ group, cycle, roles, canManage, onChanged }) {
   return (
     <div className="rounded-xl border border-gray-200">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gray-50 px-4 py-3">
-        <h4 className="font-semibold text-gray-900">{group.title}</h4>
+        <h4 className="font-semibold text-maroon">{group.title}</h4>
         {canManage && !hasWinner && group.candidates.length > 0 && (
           <div className="flex items-center gap-2">
             <select
               value={upgradeRoleId}
               onChange={(e) => setUpgradeRoleId(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-700 outline-none focus:border-maroon"
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-maroon outline-none focus:border-maroon"
               title="Optionally upgrade the winner's role"
             >
               <option value="">Keep current role</option>
@@ -1021,7 +1021,7 @@ function CandidateRow({
     <li className={`p-4 ${isTop && !hasWinner ? 'bg-maroon/[0.06]' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <p className="font-semibold text-gray-900">
+          <p className="font-semibold text-maroon">
             {candidate.member?.full_name ?? 'Member'}
           </p>
           <StatusBadge status={candidate.status} />
@@ -1045,7 +1045,7 @@ function CandidateRow({
             <button
               onClick={onRevoke}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-maroon transition hover:bg-gray-50 disabled:opacity-60"
             >
               <RotateCcw className="h-4 w-4" /> Revoke
             </button>
@@ -1121,6 +1121,6 @@ function CandidateRow({
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500'
+  'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500'
 
 const selectClass = inputClass

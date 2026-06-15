@@ -64,7 +64,7 @@ export default function Home() {
                       <Instagram className="h-6 w-6" />
                     </span>
                     <div>
-                      <h3 className="font-display text-lg font-bold text-gray-900">
+                      <h3 className="font-display text-lg font-bold text-maroon">
                         Follow Our Instagrams!
                       </h3>
                       <p className="text-sm text-gray-500">@pensacolahighsga</p>
@@ -127,7 +127,7 @@ export default function Home() {
                   <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon text-white">
                     <CalendarDays className="h-6 w-6" />
                   </span>
-                  <h3 className="font-display text-lg font-bold text-gray-900">
+                  <h3 className="font-display text-lg font-bold text-maroon">
                     Upcoming Events
                   </h3>
                 </div>
@@ -192,7 +192,7 @@ function NewsletterSignup() {
           <Bell className="h-6 w-6" />
         </span>
         <div>
-          <h3 className="font-display text-lg font-bold text-gray-900">
+          <h3 className="font-display text-lg font-bold text-maroon">
             Get Updates About Upcoming Events
           </h3>
         </div>
@@ -203,7 +203,7 @@ function NewsletterSignup() {
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-maroon text-white">
               <Check className="h-5 w-5" />
             </span>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-maroon">
               You're on the list! Watch your inbox for the next update.
             </p>
           </div>
@@ -219,7 +219,7 @@ function NewsletterSignup() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@students.pensacola.edu"
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20"
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-maroon placeholder-gray-400 outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20"
             />
             <button
               type="submit"
@@ -283,7 +283,7 @@ function Announcements() {
                 </span>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <h3 className="font-display text-lg font-bold text-gray-900">
+                    <h3 className="font-display text-lg font-bold text-maroon">
                       {a.title}
                     </h3>
                     <span className="text-xs text-gray-400">

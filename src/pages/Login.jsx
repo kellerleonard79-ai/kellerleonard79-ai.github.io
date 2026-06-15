@@ -71,7 +71,7 @@ export default function Login() {
           )}
 
           <label htmlFor="email" className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+            <span className="mb-1.5 block text-sm font-semibold text-maroon">
               Email
             </span>
             <input
@@ -87,7 +87,7 @@ export default function Login() {
           </label>
 
           <label htmlFor="password" className="mt-4 block">
-            <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+            <span className="mb-1.5 block text-sm font-semibold text-maroon">
               Password
             </span>
             <input
@@ -132,4 +132,4 @@ export default function Login() {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'

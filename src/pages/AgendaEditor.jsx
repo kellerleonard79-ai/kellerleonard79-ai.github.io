@@ -296,7 +296,7 @@ function EditorContent() {
           >
             <ChevronLeft className="h-4 w-4" /> Meeting
           </Link>
-          <h1 className="mt-1 font-display text-2xl font-bold text-gray-900">
+          <h1 className="mt-1 font-display text-2xl font-bold text-maroon">
             Agenda Editor
           </h1>
           <p className="text-sm text-gray-500">
@@ -306,7 +306,7 @@ function EditorContent() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPublicView((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-maroon transition hover:bg-gray-50"
           >
             {publicView ? (
               <>
@@ -321,7 +321,7 @@ function EditorContent() {
           <button
             onClick={exportPdf}
             disabled={exporting}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-maroon transition hover:bg-gray-50 disabled:opacity-60"
           >
             {exporting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -822,7 +822,7 @@ function AgendaItem({ item, sectionType, ctx, isDragging, onDragStart, onDrop })
   if (ctx.publicView) {
     return (
       <div className="py-2">
-        <p className="font-medium text-gray-900">{item.content}</p>
+        <p className="font-medium text-maroon">{item.content}</p>
         {item.status && item.status !== 'No status' && (
           <span className="text-xs text-gray-500">Status: {item.status}</span>
         )}
@@ -871,7 +871,7 @@ function AgendaItem({ item, sectionType, ctx, isDragging, onDragStart, onDrop })
               if (e.target.value !== item.content)
                 ctx.updateItem(item.id, { content: e.target.value })
             }}
-            className="w-full border-0 bg-transparent p-0 font-medium text-gray-900 outline-none focus:ring-0"
+            className="w-full border-0 bg-transparent p-0 font-medium text-maroon outline-none focus:ring-0"
           />
 
           {/* sub-items */}
@@ -885,7 +885,7 @@ function AgendaItem({ item, sectionType, ctx, isDragging, onDragStart, onDrop })
                       if (e.target.value !== s.content)
                         ctx.updateItem(s.id, { content: e.target.value })
                     }}
-                    className="w-full border-0 bg-transparent p-0 text-sm text-gray-700 outline-none focus:ring-0"
+                    className="w-full border-0 bg-transparent p-0 text-sm text-maroon outline-none focus:ring-0"
                   />
                   <button
                     onClick={() => ctx.deleteItem(s.id)}
@@ -925,7 +925,7 @@ function AgendaItem({ item, sectionType, ctx, isDragging, onDragStart, onDrop })
                 status: e.target.value === 'No status' ? null : e.target.value,
               })
             }
-            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 outline-none focus:border-maroon"
+            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-maroon outline-none focus:border-maroon"
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o} value={o}>
@@ -961,7 +961,7 @@ function AddItemInput({ placeholder, onAdd, small }) {
         placeholder={placeholder}
         className={`flex-1 rounded-lg border border-gray-200 bg-white px-3 ${
           small ? 'py-1 text-sm' : 'py-2'
-        } text-gray-700 outline-none placeholder:text-gray-400 focus:border-maroon/40 focus:ring-2 focus:ring-maroon/10`}
+        } text-maroon outline-none placeholder:text-gray-400 focus:border-maroon/40 focus:ring-2 focus:ring-maroon/10`}
       />
       <button
         type="submit"
@@ -979,7 +979,7 @@ function SectionCard({ title, children }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="border-b border-gray-100 bg-gray-50/70 px-5 py-3">
-        <h2 className="font-semibold text-gray-900">{title}</h2>
+        <h2 className="font-semibold text-maroon">{title}</h2>
       </div>
       <div className="p-5">{children}</div>
     </section>
@@ -988,7 +988,7 @@ function SectionCard({ title, children }) {
 
 function Checkbox({ label, checked, onChange }) {
   return (
-    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+    <label className="inline-flex items-center gap-2 text-sm text-maroon">
       <input
         type="checkbox"
         checked={checked}
@@ -1006,7 +1006,7 @@ function Detail({ label, value }) {
       <dt className="text-xs font-semibold uppercase tracking-wide text-gray-400">
         {label}
       </dt>
-      <dd className="text-gray-800">{value}</dd>
+      <dd className="text-maroon">{value}</dd>
     </div>
   )
 }
@@ -1039,4 +1039,4 @@ function fromLocalInput(v) {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+  'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'

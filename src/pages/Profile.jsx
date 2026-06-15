@@ -106,7 +106,7 @@ function ProfileContent({ profileId, backTo, backLabel, allowAdminControls }) {
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="font-display text-3xl font-bold text-gray-900">
+            <h1 className="font-display text-3xl font-bold text-maroon">
               {profile.full_name ?? 'Member'}
             </h1>
             {profile.student_id && (
@@ -155,7 +155,7 @@ function ProfileContent({ profileId, backTo, backLabel, allowAdminControls }) {
 
       {/* Attendance */}
       <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-        <h2 className="font-display text-lg font-bold text-gray-900">Attendance</h2>
+        <h2 className="font-display text-lg font-bold text-maroon">Attendance</h2>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
           <StatBox
@@ -185,7 +185,7 @@ function ProfileContent({ profileId, backTo, backLabel, allowAdminControls }) {
                 className="flex items-center justify-between gap-4 py-3.5"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-gray-900">
+                  <p className="truncate font-medium text-maroon">
                     {a.meetings?.title ?? 'Meeting'}
                     {a.meetings?.date && (
                       <span className="text-gray-500">
@@ -212,7 +212,7 @@ function Field({ label, value, children }) {
   return (
     <div>
       <dt className="text-sm text-gray-400">{label}</dt>
-      <dd className="mt-1 text-gray-900">
+      <dd className="mt-1 text-maroon">
         {children ?? (value ? value : <span className="text-gray-400">—</span>)}
       </dd>
     </div>
@@ -306,7 +306,7 @@ function AdminControls({ profile, onChanged }) {
   return (
     <section className="mt-6 rounded-2xl border border-maroon/20 bg-white p-6 shadow-sm sm:p-8">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-bold text-gray-900">
+        <h2 className="font-display text-lg font-bold text-maroon">
           Officer controls
         </h2>
         <span className="rounded-full bg-maroon/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-maroon">
@@ -331,7 +331,7 @@ function AdminControls({ profile, onChanged }) {
 
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+          <span className="mb-1.5 block text-sm font-semibold text-maroon">
             Role / clearance
           </span>
           <select
@@ -350,7 +350,7 @@ function AdminControls({ profile, onChanged }) {
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+          <span className="mb-1.5 block text-sm font-semibold text-maroon">
             Elected position
           </span>
           <select
@@ -373,7 +373,7 @@ function AdminControls({ profile, onChanged }) {
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+          <span className="mb-1.5 block text-sm font-semibold text-maroon">
             Member status
           </span>
           <select
@@ -389,7 +389,7 @@ function AdminControls({ profile, onChanged }) {
         </label>
 
         <div className="block">
-          <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+          <span className="mb-1.5 block text-sm font-semibold text-maroon">
             Dues
           </span>
           <button
@@ -425,7 +425,7 @@ function AdminControls({ profile, onChanged }) {
 }
 
 const selectClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
 
 function StatBox({ value, label, className }) {
   return (

@@ -74,7 +74,7 @@ function SecurityContent() {
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900">
+            <h1 className="font-display text-3xl font-bold text-maroon">
               Security Clearance
             </h1>
             <p className="mt-1 text-gray-500">
@@ -123,7 +123,7 @@ function Section({ icon: Icon, title, desc, children }) {
           <Icon className="h-5 w-5" />
         </span>
         <div>
-          <h2 className="font-display text-lg font-bold text-gray-900">{title}</h2>
+          <h2 className="font-display text-lg font-bold text-maroon">{title}</h2>
           {desc && <p className="text-sm text-gray-500">{desc}</p>}
         </div>
       </div>
@@ -134,7 +134,7 @@ function Section({ icon: Icon, title, desc, children }) {
 
 // ───────────────────────── Create account ─────────────────────────
 const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
 
 const EMPTY_ACCOUNT = {
   full_name: '',
@@ -325,7 +325,7 @@ function CreateAccountSection({ roles, onChanged }) {
 function AccountField({ label, children }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+      <span className="mb-1.5 block text-sm font-semibold text-maroon">
         {label}
       </span>
       {children}
@@ -404,7 +404,7 @@ function PendingSection({ pending, roles, onChanged }) {
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-gray-900">
+                  <p className="truncate font-semibold text-maroon">
                     {m.full_name ?? 'Applicant'}
                   </p>
                   <p className="mt-0.5 truncate text-sm text-gray-500">
@@ -478,7 +478,7 @@ function RolesSection({ members, roles, onChanged }) {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="truncate font-semibold text-gray-900">
+                    <p className="truncate font-semibold text-maroon">
                       {m.full_name ?? 'Member'}
                     </p>
                     {(m.status ?? 'active') !== 'active' && (
@@ -505,7 +505,7 @@ function RolesSection({ members, roles, onChanged }) {
                       value={m.role_id ?? ''}
                       onChange={(e) => changeRole(m, e.target.value)}
                       disabled={busy}
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20 disabled:opacity-60"
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20 disabled:opacity-60"
                     >
                       {!m.role_id && <option value="">— None —</option>}
                       {roles.map((r) => (
