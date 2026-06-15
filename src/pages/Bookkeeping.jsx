@@ -10,6 +10,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   X,
+  Pencil,
+  Save,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
@@ -25,6 +27,11 @@ export default function Bookkeeping() {
     </RequirePermission>
   )
 }
+
+// Default `order` of the Executive Officer tier. Deleting an account is gated on
+// the role hierarchy (Executive Officer and above) rather than a permission key,
+// mirroring the RLS delete policy. Used as a fallback if the role was renamed.
+const EXEC_OFFICER_ORDER = 4
 
 // Format a numeric amount as USD currency.
 function money(n) {
@@ -52,8 +59,11 @@ function withRunningBalance(transactions, startingBalance) {
 }
 
 function BookkeepingContent() {
-  const { hasPermission } = useAuth()
+  const { hasPermission, profile } = useAuth()
   const canManage = hasPermission('manage_bookkeeping')
+  // Executive Officers (and any tier above them) may delete accounts.
+  const canDelete =
+    profile?.role?.is_admin || (profile?.role?.order ?? 0) >= EXEC_OFFICER_ORDER
 
   const [accounts, setAccounts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -82,7 +92,9 @@ function BookkeepingContent() {
         <AccountLedger
           account={account}
           canManage={canManage}
+          canDelete={canDelete}
           onBack={() => setSelectedId(null)}
+          onChanged={loadAccounts}
         />
       )
     }
@@ -126,9 +138,9 @@ function BookkeepingContent() {
               </p>
             </div>
           ) : (
-            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
               {accounts.map((account) => (
-                <AccountCard
+                <AccountRow
                   key={account.id}
                   account={account}
                   onOpen={() => setSelectedId(account.id)}
@@ -143,11 +155,11 @@ function BookkeepingContent() {
   )
 }
 
-// ─────────────────────────── Account card ───────────────────────────
-function AccountCard({ account, onOpen }) {
+// ─────────────────────────── Account row ───────────────────────────
+function AccountRow({ account, onOpen }) {
   const [balance, setBalance] = useState(null)
 
-  // Balance = starting_balance + Σ credits − Σ debits. Fetched per card so the
+  // Balance = starting_balance + Σ credits − Σ debits. Fetched per row so the
   // overview reflects the latest ledger without loading every transaction up front.
   useEffect(() => {
     let active = true
@@ -173,28 +185,32 @@ function AccountCard({ account, onOpen }) {
     <li>
       <button
         onClick={onOpen}
-        className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-maroon/30 hover:shadow-md"
+        className="group flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-gray-50"
       >
-        <span className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 bg-maroon transition-transform duration-300 group-hover:scale-x-100" />
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display font-bold text-maroon">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-maroon/10 text-maroon">
+          <Wallet className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-display font-bold text-maroon">
             {account.name}
           </h3>
-          <ArrowUpRight className="h-5 w-5 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-maroon" />
-        </div>
-        {account.description && (
-          <p className="mt-1 line-clamp-2 text-sm text-gray-500">
-            {account.description}
-          </p>
-        )}
-        <p className="mt-4 font-display text-2xl font-bold text-maroon">
-          {balance == null ? (
-            <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
-          ) : (
-            money(balance)
+          {account.description && (
+            <p className="truncate text-sm text-gray-500">
+              {account.description}
+            </p>
           )}
-        </p>
-        <p className="mt-0.5 text-xs text-gray-400">Current balance</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="font-display text-lg font-bold text-maroon">
+            {balance == null ? (
+              <Loader2 className="ml-auto h-4 w-4 animate-spin text-gray-300" />
+            ) : (
+              money(balance)
+            )}
+          </p>
+          <p className="text-xs text-gray-400">Current balance</p>
+        </div>
+        <ArrowUpRight className="h-5 w-5 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-maroon" />
       </button>
     </li>
   )
@@ -363,10 +379,163 @@ function NewAccountPanel({ onCreated }) {
   )
 }
 
+// ─────────────────────────── Edit account panel ───────────────────────────
+function EditAccountPanel({ account, onSaved, onCancel }) {
+  const { profile } = useAuth()
+  const [name, setName] = useState(account.name)
+  const [description, setDescription] = useState(account.description ?? '')
+  const [startingBalance, setStartingBalance] = useState(
+    String(account.starting_balance ?? ''),
+  )
+  const [visibility, setVisibility] = useState(
+    account.visibility_min_role_order ?? 0,
+  )
+  const [roleOptions, setRoleOptions] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const myOrder = profile?.role?.order ?? 0
+
+  // Same rule as account creation: a manager can only restrict visibility down
+  // to their own tier, never hide it from tiers above them.
+  useEffect(() => {
+    supabase
+      .from('roles')
+      .select('name, order')
+      .lte('order', myOrder)
+      .order('order', { ascending: true })
+      .then(({ data }) => setRoleOptions(data ?? []))
+  }, [myOrder])
+
+  async function submit(e) {
+    e.preventDefault()
+    setError('')
+    const n = name.trim()
+    if (!n) return
+    setSaving(true)
+    const { error: updateError } = await supabase
+      .from('accounts')
+      .update({
+        name: n,
+        description: description.trim(),
+        starting_balance: Number(startingBalance) || 0,
+        visibility_min_role_order: visibility ?? 0,
+      })
+      .eq('id', account.id)
+    setSaving(false)
+    if (updateError) {
+      setError('Could not save changes. Please try again.')
+      return
+    }
+    onSaved()
+  }
+
+  const inputClass =
+    'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-gray-100 p-5">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-maroon/10 text-maroon">
+            <Pencil className="h-5 w-5" />
+          </span>
+          <h2 className="font-display text-lg font-bold text-maroon">
+            Edit Account
+          </h2>
+        </div>
+        <button
+          onClick={onCancel}
+          className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <form onSubmit={submit} className="space-y-4 p-5">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Account name"
+          className={inputClass}
+        />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Description"
+          rows={2}
+          className={`${inputClass} resize-y`}
+        />
+
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Starting balance
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            value={startingBalance}
+            onChange={(e) => setStartingBalance(e.target.value)}
+            placeholder="0.00"
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Minimum tier to view
+          </label>
+          <select
+            value={visibility ?? ''}
+            onChange={(e) => setVisibility(Number(e.target.value))}
+            className={inputClass}
+          >
+            {roleOptions.map((r) => (
+              <option key={r.order} value={r.order}>
+                {r.name} and above
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-400">
+            You can only restrict down to your own tier — higher tiers can always
+            see it.
+          </p>
+        </div>
+
+        {error && <p className="text-xs text-red-600">{error}</p>}
+
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={saving || !name.trim()}
+            className="inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Save Changes
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
+  )
+}
+
 // ─────────────────────────── Account ledger ───────────────────────────
-function AccountLedger({ account, canManage, onBack }) {
+function AccountLedger({ account, canManage, canDelete, onBack, onChanged }) {
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   async function load() {
     const { data } = await supabase
@@ -420,6 +589,27 @@ function AccountLedger({ account, canManage, onBack }) {
     URL.revokeObjectURL(url)
   }
 
+  async function deleteAccount() {
+    if (
+      !window.confirm(
+        `Delete the "${account.name}" account and all of its transactions? This cannot be undone.`,
+      )
+    )
+      return
+    setDeleting(true)
+    const { error } = await supabase
+      .from('accounts')
+      .delete()
+      .eq('id', account.id)
+    setDeleting(false)
+    if (error) {
+      window.alert('Could not delete the account.')
+      return
+    }
+    onChanged?.()
+    onBack()
+  }
+
   async function deleteTransaction(id) {
     if (!window.confirm('Delete this transaction? This cannot be undone.'))
       return
@@ -450,6 +640,32 @@ function AccountLedger({ account, canManage, onBack }) {
             {account.description && (
               <p className="mt-1 text-gray-500">{account.description}</p>
             )}
+            {(canManage || canDelete) && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {canManage && (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-600 transition hover:border-maroon hover:text-maroon"
+                  >
+                    <Pencil className="h-4 w-4" /> Edit
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    onClick={deleteAccount}
+                    disabled={deleting}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {deleting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    Delete Account
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <div className="text-right">
             <p className="font-display text-3xl font-bold text-maroon">
@@ -460,6 +676,17 @@ function AccountLedger({ account, canManage, onBack }) {
         </div>
 
         <div className="mt-8 space-y-6">
+          {editing && (
+            <EditAccountPanel
+              account={account}
+              onSaved={() => {
+                setEditing(false)
+                onChanged?.()
+              }}
+              onCancel={() => setEditing(false)}
+            />
+          )}
+
           {canManage && (
             <AddTransactionPanel account={account} onAdded={load} />
           )}

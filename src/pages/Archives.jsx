@@ -13,6 +13,7 @@ import {
   Loader2,
   Lock,
   Plus,
+  Search,
   Trash2,
   X,
 } from 'lucide-react'
@@ -37,6 +38,8 @@ function ArchivesContent() {
   const [loading, setLoading] = useState(true)
   const [folder, setFolder] = useState(null) // selected folder prefix, null = all
   const [activeTags, setActiveTags] = useState([]) // multi-select tag filter
+  const [category, setCategory] = useState(null) // selected category, null = all
+  const [search, setSearch] = useState('') // free-text search
 
   // Items the viewer is allowed to manage (own uploads, or archive admin).
   const canManage = (item) =>
@@ -78,21 +81,54 @@ function ArchivesContent() {
     return [...set].sort((a, b) => a.localeCompare(b))
   }, [items])
 
+  // Category filter options: a few common defaults always shown, merged with
+  // any categories actually present on items (case-insensitive de-dup).
+  const allCategories = useMemo(() => {
+    const seen = new Map() // lowercased -> display label
+    for (const def of ['Design', 'HOCO', 'Elections']) {
+      seen.set(def.toLowerCase(), def)
+    }
+    items.forEach((i) => {
+      const c = (i.category ?? '').trim()
+      if (c && !seen.has(c.toLowerCase())) seen.set(c.toLowerCase(), c)
+    })
+    return [...seen.values()].sort((a, b) => a.localeCompare(b))
+  }, [items])
+
   const visible = useMemo(() => {
+    const q = search.trim().toLowerCase()
     return items.filter((i) => {
       // Folder match: exact folder or any descendant of the selected prefix.
       if (folder != null) {
         const path = i.folder_path ?? ''
         if (path !== folder && !path.startsWith(folder + '/')) return false
       }
+      // Category match (case-insensitive).
+      if (category != null) {
+        if ((i.category ?? '').trim().toLowerCase() !== category.toLowerCase())
+          return false
+      }
       // Tag match: item must carry every selected tag.
       if (activeTags.length) {
         const tags = i.tags ?? []
         if (!activeTags.every((t) => tags.includes(t))) return false
       }
+      // Free-text search across title, description, category and tags.
+      if (q) {
+        const haystack = [
+          i.title,
+          i.description,
+          i.category,
+          ...(i.tags ?? []),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
       return true
     })
-  }, [items, folder, activeTags])
+  }, [items, folder, category, activeTags, search])
 
   function toggleTag(tag) {
     setActiveTags((prev) =>
@@ -130,6 +166,11 @@ function ArchivesContent() {
               onSelect={setFolder}
               total={items.length}
             />
+            <CategoryFilter
+              categories={allCategories}
+              active={category}
+              onSelect={setCategory}
+            />
             <TagFilter
               tags={allTags}
               active={activeTags}
@@ -138,8 +179,27 @@ function ArchivesContent() {
             />
           </aside>
 
-          {/* Main: upload panel + item list */}
+          {/* Main: search + upload panel + item list */}
           <div className="space-y-6">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search archives by title, description, category or tag…"
+                className="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-10 pr-10 text-sm shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  title="Clear search"
+                  className="absolute right-2.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
             {hasPermission('upload_archives') && (
               <UploadPanel
                 folders={folders.allPaths}
@@ -162,7 +222,7 @@ function ArchivesContent() {
                 </p>
               </div>
             ) : (
-              <ul className="grid gap-4 sm:grid-cols-2">
+              <ul className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                 {visible.map((item) => (
                   <ArchiveCard
                     key={item.id}
@@ -280,6 +340,46 @@ function FolderRow({ label, icon: Icon, active, depth, count, onClick }) {
   )
 }
 
+// ─────────────────────────── Category filter ───────────────────────────
+function CategoryFilter({ categories, active, onSelect }) {
+  if (categories.length === 0) return null
+  return (
+    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+        <h2 className="font-display text-sm font-bold uppercase tracking-wide text-maroon">
+          Filters
+        </h2>
+        {active != null && (
+          <button
+            onClick={() => onSelect(null)}
+            className="text-xs font-medium text-gray-400 hover:text-maroon"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2 p-4">
+        {categories.map((cat) => {
+          const on = active != null && active.toLowerCase() === cat.toLowerCase()
+          return (
+            <button
+              key={cat}
+              onClick={() => onSelect(on ? null : cat)}
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition ${
+                on
+                  ? 'bg-maroon text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {cat}
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 // ─────────────────────────── Tag filter ───────────────────────────
 function TagFilter({ tags, active, onToggle, onClear }) {
   if (tags.length === 0) return null
@@ -388,84 +488,74 @@ function ArchiveCard({ item, roles, canManage, canEditVisibility, onChanged }) {
   }
 
   return (
-    <li className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+    <li className="flex flex-col gap-4 p-4 transition hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-6 sm:px-5">
+      {/* Left: title, category, description, folder + tags */}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-display font-bold text-maroon">{item.title}</h3>
           {item.category && (
-            <span className="mt-1 inline-flex items-center rounded-full bg-maroon/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-maroon">
+            <span className="inline-flex items-center rounded-full bg-maroon/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-maroon">
               {item.category}
             </span>
           )}
         </div>
-        {canManage && (
-          <button
-            onClick={remove}
-            disabled={deleting}
-            title="Delete"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-          >
-            {deleting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4" />
-            )}
-          </button>
+
+        {item.description && (
+          <p className="mt-1 text-sm text-gray-600">{item.description}</p>
         )}
-      </div>
 
-      {item.description && (
-        <p className="mt-2 text-sm text-gray-600">{item.description}</p>
-      )}
-
-      <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-gray-400">
-        {item.folder_path && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-gray-400">
+          {item.folder_path && (
+            <span className="inline-flex items-center gap-1">
+              <Folder className="h-3 w-3" />
+              {item.folder_path}
+            </span>
+          )}
+          {(item.tags ?? []).map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-gray-500"
+            >
+              <Tag className="h-3 w-3" />
+              {tag}
+            </span>
+          ))}
           <span className="inline-flex items-center gap-1">
-            <Folder className="h-3 w-3" />
-            {item.folder_path}
+            {item.uploader?.full_name ?? 'Unknown'} ·{' '}
+            {new Date(item.created_at).toLocaleDateString()}
           </span>
-        )}
-        {(item.tags ?? []).map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-gray-500"
-          >
-            <Tag className="h-3 w-3" />
-            {tag}
-          </span>
-        ))}
+        </div>
       </div>
 
-      {/* Who can view this item — read-only badge, or an editable selector
-          for the uploader / SCI (archive admin). */}
-      <div className="mt-3 flex items-center gap-2 text-xs">
-        <Lock className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-        {canEditVisibility ? (
-          <select
-            value={item.visibility_min_role_order}
-            disabled={savingVis}
-            onChange={(e) => updateVisibility(Number(e.target.value))}
-            className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20 disabled:opacity-60"
-          >
-            {roles.map((r) => (
-              <option key={r.order} value={r.order}>
-                {r.name} & up
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span className="text-gray-500">
-            {tierLabel(roles, item.visibility_min_role_order)}
-          </span>
-        )}
-        {savingVis && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
-      </div>
+      {/* Right: visibility, open action, delete */}
+      <div className="flex shrink-0 flex-wrap items-center gap-3 sm:justify-end">
+        {/* Who can view this item — read-only badge, or an editable selector
+            for the uploader / SCI (archive admin). */}
+        <div className="flex items-center gap-1.5 text-xs">
+          <Lock className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+          {canEditVisibility ? (
+            <select
+              value={item.visibility_min_role_order}
+              disabled={savingVis}
+              onChange={(e) => updateVisibility(Number(e.target.value))}
+              className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20 disabled:opacity-60"
+            >
+              {roles.map((r) => (
+                <option key={r.order} value={r.order}>
+                  {r.name} & up
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-gray-500">
+              {tierLabel(roles, item.visibility_min_role_order)}
+            </span>
+          )}
+          {savingVis && (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
+          )}
+        </div>
 
-      <div className="mt-auto flex items-center justify-between gap-3 pt-4">
-        <p className="text-xs text-gray-400">
-          {item.uploader?.full_name ?? 'Unknown'} ·{' '}
-          {new Date(item.created_at).toLocaleDateString()}
-        </p>
         {item.has_file ? (
           <button
             onClick={openFile}
@@ -490,8 +580,26 @@ function ArchiveCard({ item, roles, canManage, canEditVisibility, onChanged }) {
             Open link
           </a>
         )}
+
+        {canManage && (
+          <button
+            onClick={remove}
+            disabled={deleting}
+            title="Delete"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+          >
+            {deleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+          </button>
+        )}
       </div>
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+
+      {error && (
+        <p className="w-full text-xs text-red-600 sm:basis-full">{error}</p>
+      )}
     </li>
   )
 }

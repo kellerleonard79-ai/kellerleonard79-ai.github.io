@@ -1,12 +1,65 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, Search, ArrowRight, Loader2, Circle, CircleCheck } from 'lucide-react'
+import { ChevronLeft, Search, ArrowRight, Loader2, Circle, CircleCheck, Download, X } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import RequireStaff from '../components/RequireStaff.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
-import { gradeLabel } from '../lib/format.js'
+import { gradeLabel, todayISO } from '../lib/format.js'
+
+// Exportable columns. `value(m, ctx)` returns a stringifiable cell value.
+const EXPORT_FIELDS = [
+  { key: 'full_name', label: 'Name', value: (m) => m.full_name ?? '' },
+  { key: 'student_id', label: 'Student ID', value: (m) => m.student_id ?? '' },
+  { key: 'grade_level', label: 'Grade', value: (m) => gradeLabel(m.grade_level) },
+  {
+    key: 'position',
+    label: 'Position',
+    value: (m) => m.position || m.role?.name || '',
+  },
+  { key: 'role', label: 'Role', value: (m) => m.role?.name ?? '' },
+  { key: 'shirt_size', label: 'Shirt Size', value: (m) => m.shirt_size ?? '' },
+  { key: 'email', label: 'Email', value: (m) => m.email ?? '' },
+  {
+    key: 'dues_paid',
+    label: 'Dues',
+    value: (m) => (m.dues_paid ? 'Paid' : 'Unpaid'),
+  },
+  { key: 'status', label: 'Member Status', value: (m) => m.status ?? '' },
+  {
+    key: 'unexcused',
+    label: 'Unexcused Absences',
+    value: (m, ctx) => String(ctx.unexcused[m.id] ?? 0),
+  },
+]
+
+// RFC 4180-ish escaping: wrap in quotes and double any inner quotes when the
+// value contains a comma, quote, or newline.
+function csvCell(v) {
+  const s = String(v ?? '')
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+function buildCsv(rows, fields, ctx) {
+  const cols = EXPORT_FIELDS.filter((f) => fields.includes(f.key))
+  const header = cols.map((c) => csvCell(c.label)).join(',')
+  const body = rows
+    .map((m) => cols.map((c) => csvCell(c.value(m, ctx))).join(','))
+    .join('\n')
+  return `${header}\n${body}`
+}
+
+function downloadCsv(text, filename) {
+  // Prepend a BOM so Excel reads UTF-8 correctly.
+  const blob = new Blob(['﻿', text], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 export default function MemberDirectory() {
   return (
@@ -31,13 +84,19 @@ function DirectoryContent() {
   const [duesFilter, setDuesFilter] = useState('all') // all | paid | unpaid
   const [roleFilter, setRoleFilter] = useState('all') // all | <role_id>
 
+  // CSV export
+  const [exportOpen, setExportOpen] = useState(false)
+  const [exportFields, setExportFields] = useState(() =>
+    ['full_name', 'student_id', 'grade_level', 'position', 'dues_paid'],
+  )
+
   useEffect(() => {
     async function load() {
       const [{ data: m }, { data: r }, { data: att }] = await Promise.all([
         supabase
           .from('profiles')
           .select(
-            'id, full_name, student_id, grade_level, position, role_id, dues_paid, status, role:roles(name)',
+            'id, full_name, student_id, grade_level, position, role_id, dues_paid, status, email, shirt_size, role:roles(name)',
           )
           .order('full_name', { ascending: true }),
         supabase.from('roles').select('id, name').order('order', { ascending: true }),
@@ -98,6 +157,22 @@ function DirectoryContent() {
     return list
   }, [members, query, duesFilter, roleFilter, sort, unexcused])
 
+  function toggleField(key) {
+    setExportFields((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    )
+  }
+
+  function handleExport() {
+    // Keep CSV columns in the canonical EXPORT_FIELDS order, not click order.
+    const ordered = EXPORT_FIELDS.filter((f) =>
+      exportFields.includes(f.key),
+    ).map((f) => f.key)
+    const csv = buildCsv(filtered, ordered, { unexcused })
+    downloadCsv(csv, `member-directory-${todayISO()}.csv`)
+    setExportOpen(false)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -114,13 +189,32 @@ function DirectoryContent() {
                 : `${filtered.length} of ${members.length} members`}
             </p>
           </div>
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-maroon"
-          >
-            <ChevronLeft className="h-4 w-4" /> Dashboard
-          </Link>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setExportOpen((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-maroon shadow-sm transition hover:border-maroon/40 hover:bg-maroon/5"
+            >
+              <Download className="h-4 w-4" /> Export CSV
+            </button>
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-maroon"
+            >
+              <ChevronLeft className="h-4 w-4" /> Dashboard
+            </Link>
+          </div>
         </div>
+
+        {exportOpen && (
+          <ExportPanel
+            fields={exportFields}
+            onToggle={toggleField}
+            onExport={handleExport}
+            onClose={() => setExportOpen(false)}
+            count={filtered.length}
+          />
+        )}
 
         {/* Search */}
         <div className="relative mt-6">
@@ -259,6 +353,67 @@ function DuesDot({ paid, canEdit, onToggle }) {
     >
       <Icon className="h-5 w-5" />
     </button>
+  )
+}
+
+function ExportPanel({ fields, onToggle, onExport, onClose, count }) {
+  return (
+    <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-display text-lg font-bold text-maroon">
+            Export to CSV
+          </h2>
+          <p className="mt-0.5 text-sm text-gray-500">
+            Choose the fields to include. Exports the {count} member
+            {count === 1 ? '' : 's'} currently shown.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
+          title="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {EXPORT_FIELDS.map((f) => {
+          const checked = fields.includes(f.key)
+          return (
+            <label
+              key={f.key}
+              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                checked
+                  ? 'border-maroon/40 bg-maroon/5 text-maroon'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggle(f.key)}
+                className="h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
+              />
+              {f.label}
+            </label>
+          )
+        })}
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <button
+          type="button"
+          onClick={onExport}
+          disabled={fields.length === 0 || count === 0}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon/90 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Download className="h-4 w-4" /> Download CSV
+        </button>
+      </div>
+    </div>
   )
 }
 
