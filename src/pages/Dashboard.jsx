@@ -2,11 +2,9 @@ import { Link } from 'react-router-dom'
 import {
   Users,
   CalendarCheck,
-  Globe,
   UserCircle,
   Vote,
   Wallet,
-  ShieldCheck,
   Archive,
   UsersRound,
   Settings2,
@@ -31,24 +29,10 @@ const CARDS = [
     to: '/dashboard/meetings',
   },
   {
-    title: 'Edit Public Site',
-    desc: 'Announcements and settings',
-    icon: Globe,
-    to: '/dashboard/admin/announcements',
-    permission: 'edit_site',
-  },
-  {
     title: 'My Profile',
     desc: 'Your info and attendance',
     icon: UserCircle,
     to: '/dashboard/profile',
-  },
-  {
-    title: 'Security Clearance',
-    desc: 'Approvals and member roles',
-    icon: ShieldCheck,
-    to: '/dashboard/admin/members',
-    permission: 'manage_roles',
   },
   {
     title: 'Archives',
@@ -79,10 +63,12 @@ const CARDS = [
   },
   {
     title: 'Admin Panel',
-    desc: 'Branding, tiers, forms and more',
+    desc: 'Site, members, branding and settings',
     icon: Settings2,
     to: '/dashboard/admin',
-    permission: 'manage_roles',
+    // Reachable by anyone with at least one admin-area permission; the panel
+    // itself narrows to the sections they can use.
+    anyPermission: ['edit_site', 'manage_roles'],
   },
 ]
 
@@ -98,11 +84,13 @@ function DashboardHub() {
   const { profile, signOut, hasPermission } = useAuth()
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Tiger'
 
-  // Cards with a `permission` are only shown to roles that hold it; cards
-  // without one are visible to everyone who can reach the dashboard.
-  const cards = CARDS.filter(
-    (card) => !card.permission || hasPermission(card.permission),
-  )
+  // A card shows when: it has no gate; the viewer holds its `permission`; or the
+  // viewer holds any of its `anyPermission` list. Otherwise it's hidden.
+  const cards = CARDS.filter((card) => {
+    if (card.permission) return hasPermission(card.permission)
+    if (card.anyPermission) return card.anyPermission.some(hasPermission)
+    return true
+  })
 
   return (
     <div className="min-h-screen bg-gray-50">
