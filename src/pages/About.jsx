@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Loader2, Crown, UsersRound } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
-import Crest from '../components/Crest.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 
@@ -94,24 +93,18 @@ export default function About() {
     <div className="min-h-screen bg-white">
       <Navbar />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-maroon py-8 text-white">
+      {/* Purpose */}
+      <section className="relative overflow-hidden bg-maroon py-14 text-white sm:py-16">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.10),transparent_45%)]" />
-        <div className="relative mx-auto flex max-w-3xl items-center justify-center gap-3 px-4 sm:px-6">
-          <h1 className="font-display text-3xl font-semibold uppercase tracking-wide sm:text-4xl">
-            About Us
-          </h1>
-          <Crest className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10" />
-        </div>
-        <div className="absolute bottom-0 h-1 w-full bg-white/15" />
-      </section>
-
-      {/* Purpose */}
-      <section className="bg-white py-14 sm:py-16">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6">
-          <SectionHeading>Our Purpose</SectionHeading>
-          <p className="mt-6 whitespace-pre-line text-center text-lg leading-relaxed text-gray-700">
+        <div className="relative mx-auto max-w-3xl px-4 sm:px-6">
+          <div className="text-center">
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">
+              Our Purpose
+            </h2>
+            <div className="mx-auto mt-3 h-1 w-20 rounded-full bg-white/40" />
+          </div>
+          <p className="mt-6 whitespace-pre-line text-center text-lg leading-relaxed text-white/85">
             {purpose || 'Our purpose statement is coming soon.'}
           </p>
         </div>
