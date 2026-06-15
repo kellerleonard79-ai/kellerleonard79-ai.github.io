@@ -30,7 +30,7 @@ export default function Home() {
           <img
             src="/masthead.png"
             alt="Pensacola High School Student Government Association"
-            className="w-full max-w-5xl object-contain drop-shadow-2xl"
+            className="w-full max-w-3xl object-contain drop-shadow-2xl"
           />
         </div>
 
