@@ -17,17 +17,12 @@ export default function Footer() {
         <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
           {/* Brand */}
           <div className="max-w-sm">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center">
               <img
                 src="/white-phs-sga-logo.png"
                 alt="PHS SGA logo"
-                className="h-11 w-11 object-contain"
+                className="h-28 w-auto object-contain"
               />
-              <span className="font-display text-base font-semibold uppercase leading-tight tracking-wide">
-                Pensacola High
-                <br />
-                Student Government
-              </span>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-white/60">
               Representing every Tiger — building leadership, spirit, and

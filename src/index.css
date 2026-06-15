@@ -34,7 +34,9 @@ body {
 }
 
 /* Headings adopt the League Spartan display face with tightened tracking for a
-   crisp, geometric look. */
-h1, h2, h3, h4 {
+   crisp, geometric look, set in all caps. The `.font-display` class catches
+   display-styled headers that aren't semantic heading elements. */
+h1, h2, h3, h4, .font-display {
   letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
