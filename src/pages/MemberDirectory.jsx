@@ -34,6 +34,19 @@ const EXPORT_FIELDS = [
   },
 ]
 
+// Elected-position groups, in display order. A member is an "executive officer"
+// by virtue of their elected position group — independent of their role tier
+// (an exec officer may sit on the SCI/Admin tier), so this is the axis the
+// Position filter keys off, not role_id.
+const POSITION_GROUPS = [
+  { value: 'exec', label: 'Executive officers' },
+  { value: 'senior', label: 'Senior officers' },
+  { value: 'junior', label: 'Junior officers' },
+  { value: 'sophomore', label: 'Sophomore officers' },
+  { value: 'freshman', label: 'Freshman officers' },
+  { value: 'custom', label: 'Other officers' },
+]
+
 // RFC 4180-ish escaping: wrap in quotes and double any inner quotes when the
 // value contains a comma, quote, or newline.
 function csvCell(v) {
@@ -83,6 +96,7 @@ function DirectoryContent() {
   const [sort, setSort] = useState('name') // name | worst (most unexcused first)
   const [duesFilter, setDuesFilter] = useState('all') // all | paid | unpaid
   const [roleFilter, setRoleFilter] = useState('all') // all | <role_id>
+  const [positionFilter, setPositionFilter] = useState('all') // all | <group>
 
   // CSV export
   const [exportOpen, setExportOpen] = useState(false)
@@ -96,7 +110,7 @@ function DirectoryContent() {
         supabase
           .from('profiles')
           .select(
-            'id, full_name, student_id, grade_level, position, role_id, dues_paid, status, email, shirt_size, role:roles(name)',
+            'id, full_name, student_id, grade_level, position, role_id, dues_paid, status, email, shirt_size, role:roles(name), elected_position:elected_positions(group)',
           )
           .order('full_name', { ascending: true }),
         supabase.from('roles').select('id, name').order('order', { ascending: true }),
@@ -146,6 +160,11 @@ function DirectoryContent() {
       if (duesFilter === 'paid' && !m.dues_paid) return false
       if (duesFilter === 'unpaid' && m.dues_paid) return false
       if (roleFilter !== 'all' && m.role_id !== roleFilter) return false
+      if (
+        positionFilter !== 'all' &&
+        m.elected_position?.group !== positionFilter
+      )
+        return false
       return true
     })
 
@@ -155,7 +174,15 @@ function DirectoryContent() {
       )
     }
     return list
-  }, [members, query, duesFilter, roleFilter, sort, unexcused])
+  }, [members, query, duesFilter, roleFilter, positionFilter, sort, unexcused])
+
+  // Only offer position groups that actually have members, in canonical order.
+  const positionOptions = useMemo(() => {
+    const present = new Set(
+      members.map((m) => m.elected_position?.group).filter(Boolean),
+    )
+    return POSITION_GROUPS.filter((g) => present.has(g.value))
+  }, [members])
 
   function toggleField(key) {
     setExportFields((prev) =>
@@ -228,7 +255,7 @@ function DirectoryContent() {
         </div>
 
         {/* Filters */}
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <FilterSelect
             label="Attendance"
             value={sort}
@@ -257,6 +284,17 @@ function DirectoryContent() {
               ...roles.map((r) => ({ value: r.id, label: r.name })),
             ]}
           />
+          {positionOptions.length > 0 && (
+            <FilterSelect
+              label="Position"
+              value={positionFilter}
+              onChange={setPositionFilter}
+              options={[
+                { value: 'all', label: 'All positions' },
+                ...positionOptions,
+              ]}
+            />
+          )}
         </div>
 
         {loading ? (

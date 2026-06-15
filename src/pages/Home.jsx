@@ -4,6 +4,7 @@ import { Instagram } from '../components/BrandIcons.jsx'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import supabase from '../lib/supabaseClient.js'
+import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 
 // ── Embeds ──────────────────────────────────────────────────────────────────
 // SnapWidget Instagram widget ID. Once a widget is created (see the SNAPWIDGET
@@ -11,11 +12,15 @@ import supabase from '../lib/supabaseClient.js'
 // While blank, a styled fallback with setup instructions shows instead.
 const SNAPWIDGET_ID = ''
 
-// PHS SGA public Google Calendar (same embed as the original Django site).
-const CALENDAR_SRC =
+// Fallback Google Calendar embed (the original PHS SGA public calendar). Used
+// only until site_settings.calendar_url loads or if an admin clears it.
+const DEFAULT_CALENDAR_SRC =
   'https://calendar.google.com/calendar/embed?src=c_0660093bc692b20cf903cc9ebe8c8a7ab767b99fcd4a467cc5b55193b1926b40%40group.calendar.google.com&ctz=America%2FChicago&mode=AGENDA'
 
 export default function Home() {
+  const { settings } = useSiteSettings()
+  const calendarSrc = settings?.calendar_url?.trim() || DEFAULT_CALENDAR_SRC
+
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
@@ -141,7 +146,7 @@ export default function Home() {
               <div className="flex flex-1 flex-col p-5">
                 <iframe
                   title="PHS SGA School Calendar"
-                  src={CALENDAR_SRC}
+                  src={calendarSrc}
                   className="min-h-[450px] w-full flex-1 rounded-xl"
                   style={{ border: 0 }}
                   frameBorder="0"

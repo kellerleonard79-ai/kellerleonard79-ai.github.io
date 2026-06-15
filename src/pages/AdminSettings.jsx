@@ -7,6 +7,7 @@ import {
   Award,
   ClipboardList,
   ListChecks,
+  CalendarDays,
   Settings2,
   Loader2,
   Check,
@@ -74,6 +75,7 @@ const NAV_GROUPS = [
       { key: 'announcements', label: 'Announcements', icon: Megaphone, perm: 'edit_site' },
       { key: 'join', label: 'Join SGA', icon: ClipboardList, perm: 'edit_site' },
       { key: 'about', label: 'About Page', icon: FileText, perm: 'edit_site' },
+      { key: 'calendar', label: 'Calendar', icon: CalendarDays, perm: 'edit_site' },
       { key: 'contact', label: 'Contact Info', icon: MapPin, perm: 'edit_site' },
       { key: 'newsletter', label: 'Newsletter', icon: Mail, perm: 'edit_site' },
     ],
@@ -276,6 +278,7 @@ function AdminContent({ visible }) {
             {active === 'announcements' && <AnnouncementsSection />}
             {active === 'join' && <JoinSection />}
             {active === 'about' && <AboutSection />}
+            {active === 'calendar' && <CalendarSection />}
             {active === 'contact' && <ContactSection />}
             {active === 'newsletter' && <NewsletterSection />}
             {active === 'branding' && <BrandingTab />}
@@ -968,6 +971,84 @@ function AboutSection() {
         className={`${inputClass} resize-y`}
       />
       <div className="mt-3">
+        <SaveButton
+          onClick={save}
+          saving={saving}
+          saved={saved && !dirty}
+          disabled={!dirty}
+        />
+      </div>
+    </Card>
+  )
+}
+
+/* ═══════════════════════ Public Site — Calendar ═══════════════════════ */
+// The Google Calendar embed shown in the homepage "Upcoming Events" panel. The
+// admin pastes the calendar's embed URL (Google Calendar → Settings → Integrate
+// calendar → "Embed code", the src="…" value) so it can be repointed without a
+// deploy.
+function CalendarSection() {
+  const { settings, refresh } = useSiteSettings()
+  const [url, setUrl] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (settings) setUrl(settings.calendar_url ?? '')
+  }, [settings])
+
+  async function save() {
+    setSaving(true)
+    setSaved(false)
+    const { error } = await supabase
+      .from('site_settings')
+      .update({ calendar_url: url.trim() })
+      .eq('id', 1)
+    if (!error) {
+      await refresh()
+      setSaved(true)
+    }
+    setSaving(false)
+  }
+
+  const dirty = settings && url !== (settings.calendar_url ?? '')
+
+  return (
+    <Card
+      title="Homepage calendar"
+      desc="The Google Calendar embedded in the “Upcoming Events” panel on the homepage."
+    >
+      <div className="grid gap-5">
+        <Labeled label="Calendar embed URL">
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value)
+              setSaved(false)
+            }}
+            placeholder="https://calendar.google.com/calendar/embed?src=…"
+            className={inputClass}
+          />
+          <p className="mt-2 text-xs text-gray-500">
+            In Google Calendar: Settings → your calendar → “Integrate calendar” →
+            copy the <code>src="…"</code> URL from the Embed code.
+          </p>
+        </Labeled>
+        {url.trim() && (
+          <div className="overflow-hidden rounded-xl border border-gray-200">
+            <iframe
+              title="Calendar preview"
+              src={url.trim()}
+              className="h-72 w-full"
+              style={{ border: 0 }}
+              frameBorder="0"
+              scrolling="no"
+            />
+          </div>
+        )}
+      </div>
+      <div className="mt-4">
         <SaveButton
           onClick={save}
           saving={saving}
