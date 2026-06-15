@@ -147,9 +147,6 @@ function ArchivesContent() {
             <h1 className="font-display text-3xl font-bold text-maroon">
               Archives
             </h1>
-            <p className="mt-1 text-gray-500">
-              Documents, minutes and resources, organized by folder and tag.
-            </p>
           </div>
           <Link
             to="/dashboard"
