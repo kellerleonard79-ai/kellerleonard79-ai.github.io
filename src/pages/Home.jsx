@@ -25,7 +25,7 @@ export default function Home() {
         id="home"
         className="relative overflow-hidden bg-maroon text-white"
       >
-        <div className="relative mx-auto flex max-w-5xl flex-col items-center px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-28">
+        <div className="relative mx-auto flex max-w-5xl flex-col items-center px-4 py-8 text-center sm:px-6 lg:px-8 lg:py-10">
           {/* Masthead — full wordmark + crest lockup */}
           <img
             src="/masthead.png"
@@ -54,103 +54,102 @@ export default function Home() {
             <div className="mx-auto mt-4 h-1 w-20 rounded-full bg-maroon" />
           </div>
 
-          <div className="mt-12 grid items-start gap-8 lg:grid-cols-2">
-            {/* Left — newsletter signup + school calendar */}
+          <div className="mt-12 grid items-stretch gap-8 lg:grid-cols-2">
+            {/* Left — newsletter signup + Instagram feed */}
             <div className="flex flex-col gap-8">
               <NewsletterSignup />
 
-              {/* School calendar */}
+              {/* Instagram feed placeholder */}
               <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between gap-3 border-b border-gray-100 p-5">
                   <div className="flex items-center gap-3">
-                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon text-white">
-                      <CalendarDays className="h-6 w-6" />
+                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-tr from-[#feda75] via-[#d62976] to-[#962fbf] text-white">
+                      <Instagram className="h-6 w-6" />
                     </span>
-                    <h3 className="font-display text-lg font-bold text-gray-900">
-                      Upcoming Events
-                    </h3>
+                    <div>
+                      <h3 className="font-display text-lg font-bold text-gray-900">
+                        Follow Our Instagrams!
+                      </h3>
+                      <p className="text-sm text-gray-500">@pensacolahighsga</p>
+                    </div>
                   </div>
                   <a
-                    href="#calendar"
-                    className="rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+                    href="https://instagram.com/pensacolahighsga"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark"
                   >
-                    Full View
+                    Follow
                   </a>
                 </div>
                 <div className="p-5">
-                  <iframe
-                    title="PHS SGA School Calendar"
-                    src={CALENDAR_SRC}
-                    className="w-full rounded-xl"
-                    style={{ border: 0 }}
-                    height="450"
-                    frameBorder="0"
-                    scrolling="no"
-                  />
+                  {/*
+                    SNAPWIDGET — Instagram embed for @pensacolahighsga
+                    Setup (one-time, done at snapwidget.com — free, no Meta review):
+                      1. Create a free account at https://snapwidget.com.
+                      2. Create Widget → Instagram → connect/enter @pensacolahighsga.
+                      3. Choose a "Grid" layout, copy the widget ID from the embed
+                         code (the number in https://snapwidget.com/embed/NNNNNN).
+                      4. Paste that number into SNAPWIDGET_ID at the top of this file.
+                    The script tag in index.html makes the iframe auto-resize.
+                  */}
+                  {SNAPWIDGET_ID ? (
+                    <iframe
+                      title="PHS SGA Instagram"
+                      src={`https://snapwidget.com/embed/${SNAPWIDGET_ID}`}
+                      className="snapwidget-widget w-full"
+                      allowTransparency="true"
+                      frameBorder="0"
+                      scrolling="no"
+                      style={{ border: 'none', overflow: 'hidden', width: '100%', height: '320px' }}
+                    />
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 gap-2">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="aspect-square animate-pulse rounded-lg bg-gray-100"
+                          />
+                        ))}
+                      </div>
+                      <div className="mt-4 rounded-xl border-2 border-dashed border-gray-200 p-4 text-center text-sm text-gray-500">
+                        Instagram feed loads once a SnapWidget ID is set — see the
+                        setup note in <code>Home.jsx</code>.
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Right — Instagram feed placeholder */}
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            {/* Right — school calendar (height matches the left column) */}
+            <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
               <div className="flex items-center justify-between gap-3 border-b border-gray-100 p-5">
                 <div className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-tr from-[#feda75] via-[#d62976] to-[#962fbf] text-white">
-                    <Instagram className="h-6 w-6" />
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon text-white">
+                    <CalendarDays className="h-6 w-6" />
                   </span>
-                  <div>
-                    <h3 className="font-display text-lg font-bold text-gray-900">
-                      Follow Our Instagrams!
-                    </h3>
-                    <p className="text-sm text-gray-500">@pensacolahighsga</p>
-                  </div>
+                  <h3 className="font-display text-lg font-bold text-gray-900">
+                    Upcoming Events
+                  </h3>
                 </div>
                 <a
-                  href="https://instagram.com/pensacolahighsga"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark"
+                  href="#calendar"
+                  className="rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
                 >
-                  Follow
+                  Full View
                 </a>
               </div>
-              <div className="p-5">
-                {/*
-                  SNAPWIDGET — Instagram embed for @pensacolahighsga
-                  Setup (one-time, done at snapwidget.com — free, no Meta review):
-                    1. Create a free account at https://snapwidget.com.
-                    2. Create Widget → Instagram → connect/enter @pensacolahighsga.
-                    3. Choose a "Grid" layout, copy the widget ID from the embed
-                       code (the number in https://snapwidget.com/embed/NNNNNN).
-                    4. Paste that number into SNAPWIDGET_ID at the top of this file.
-                  The script tag in index.html makes the iframe auto-resize.
-                */}
-                {SNAPWIDGET_ID ? (
-                  <iframe
-                    title="PHS SGA Instagram"
-                    src={`https://snapwidget.com/embed/${SNAPWIDGET_ID}`}
-                    className="snapwidget-widget w-full"
-                    allowTransparency="true"
-                    frameBorder="0"
-                    scrolling="no"
-                    style={{ border: 'none', overflow: 'hidden', width: '100%', height: '320px' }}
-                  />
-                ) : (
-                  <>
-                    <div className="grid grid-cols-3 gap-2">
-                      {Array.from({ length: 6 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="aspect-square animate-pulse rounded-lg bg-gray-100"
-                        />
-                      ))}
-                    </div>
-                    <div className="mt-4 rounded-xl border-2 border-dashed border-gray-200 p-4 text-center text-sm text-gray-500">
-                      Instagram feed loads once a SnapWidget ID is set — see the
-                      setup note in <code>Home.jsx</code>.
-                    </div>
-                  </>
-                )}
+              <div className="flex flex-1 flex-col p-5">
+                <iframe
+                  title="PHS SGA School Calendar"
+                  src={CALENDAR_SRC}
+                  className="min-h-[450px] w-full flex-1 rounded-xl"
+                  style={{ border: 0 }}
+                  frameBorder="0"
+                  scrolling="no"
+                />
               </div>
             </div>
           </div>
