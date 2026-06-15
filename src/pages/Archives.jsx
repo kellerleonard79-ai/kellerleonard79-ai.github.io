@@ -12,7 +12,9 @@ import {
   Link as LinkIcon,
   Loader2,
   Lock,
+  Pencil,
   Plus,
+  Save,
   Search,
   Trash2,
   X,
@@ -204,6 +206,7 @@ function ArchivesContent() {
               <UploadPanel
                 folders={folders.allPaths}
                 roles={roles}
+                categories={allCategories}
                 onUploaded={load}
               />
             )}
@@ -228,6 +231,8 @@ function ArchivesContent() {
                     key={item.id}
                     item={item}
                     roles={roles}
+                    categories={allCategories}
+                    folderPaths={folders.allPaths}
                     canManage={canManage(item)}
                     canEditVisibility={profile?.role?.is_admin === true}
                     onChanged={load}
@@ -430,11 +435,20 @@ function tierLabel(roles, order) {
 }
 
 // ─────────────────────────── Item card ───────────────────────────
-function ArchiveCard({ item, roles, canManage, canEditVisibility, onChanged }) {
+function ArchiveCard({
+  item,
+  roles,
+  categories,
+  folderPaths,
+  canManage,
+  canEditVisibility,
+  onChanged,
+}) {
   const [opening, setOpening] = useState(false)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [savingVis, setSavingVis] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   async function openFile() {
     setOpening(true)
@@ -485,6 +499,23 @@ function ArchiveCard({ item, roles, canManage, canEditVisibility, onChanged }) {
       return
     }
     onChanged()
+  }
+
+  if (editing) {
+    return (
+      <li className="p-4 sm:px-5">
+        <EditForm
+          item={item}
+          categories={categories}
+          folderPaths={folderPaths}
+          onCancel={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false)
+            onChanged()
+          }}
+        />
+      </li>
+    )
   }
 
   return (
@@ -583,6 +614,18 @@ function ArchiveCard({ item, roles, canManage, canEditVisibility, onChanged }) {
 
         {canManage && (
           <button
+            onClick={() => {
+              setError('')
+              setEditing(true)
+            }}
+            title="Edit"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-gray-400 transition hover:bg-maroon/10 hover:text-maroon"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        )}
+        {canManage && (
+          <button
             onClick={remove}
             disabled={deleting}
             title="Delete"
@@ -604,8 +647,151 @@ function ArchiveCard({ item, roles, canManage, canEditVisibility, onChanged }) {
   )
 }
 
+// ─────────────────────────── Edit form ───────────────────────────
+// Inline editor for an existing item's metadata. The source (file / Drive
+// link) and visibility are managed elsewhere; this edits title, description,
+// the category (filter) and tags, plus the folder.
+function EditForm({ item, categories, folderPaths, onCancel, onSaved }) {
+  const [title, setTitle] = useState(item.title ?? '')
+  const [description, setDescription] = useState(item.description ?? '')
+  const [category, setCategory] = useState(item.category ?? '')
+  const [tagsInput, setTagsInput] = useState((item.tags ?? []).join(', '))
+  const [folderPath, setFolderPath] = useState(item.folder_path ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const inputClass =
+    'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+
+  async function submit(e) {
+    e.preventDefault()
+    setError('')
+    const t = title.trim()
+    if (!t) {
+      setError('Title is required.')
+      return
+    }
+    setSaving(true)
+    const tags = tagsInput
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    const { error: updError } = await supabase
+      .from('archive_items')
+      .update({
+        title: t,
+        description: description.trim(),
+        category: category.trim(),
+        tags,
+        folder_path: folderPath.trim().replace(/^\/+|\/+$/g, ''),
+      })
+      .eq('id', item.id)
+    setSaving(false)
+    if (updError) {
+      setError('Could not save changes. Please try again.')
+      return
+    }
+    onSaved()
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className="space-y-3 rounded-xl border border-maroon/20 bg-maroon/[0.03] p-4"
+    >
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Title"
+        className={inputClass}
+      />
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Description"
+        rows={2}
+        className={`${inputClass} resize-y`}
+      />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Filter (category)
+          </label>
+          <input
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="e.g. Design, HOCO, Elections"
+            list="archive-category-options"
+            className={inputClass}
+          />
+          <datalist id="archive-category-options">
+            {categories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+          <p className="mt-1 text-xs text-gray-400">
+            Pick an existing filter or type a new one to create it.
+          </p>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Tags
+          </label>
+          <input
+            value={tagsInput}
+            onChange={(e) => setTagsInput(e.target.value)}
+            placeholder="Tags (comma-separated)"
+            className={inputClass}
+          />
+        </div>
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Folder
+        </label>
+        <input
+          value={folderPath}
+          onChange={(e) => setFolderPath(e.target.value)}
+          placeholder="Folder path (e.g. 2025/Minutes)"
+          list="archive-edit-folder-options"
+          className={inputClass}
+        />
+        <datalist id="archive-edit-folder-options">
+          {folderPaths.map((f) => (
+            <option key={f} value={f} />
+          ))}
+        </datalist>
+      </div>
+
+      {error && <p className="text-xs text-red-600">{error}</p>}
+
+      <div className="flex items-center gap-2">
+        <button
+          type="submit"
+          disabled={saving || !title.trim()}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3.5 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
 // ─────────────────────────── Upload panel ───────────────────────────
-function UploadPanel({ folders, roles, onUploaded }) {
+function UploadPanel({ folders, roles, categories, onUploaded }) {
   const { profile } = useAuth()
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
@@ -766,12 +952,20 @@ function UploadPanel({ folders, roles, onUploaded }) {
           className={`${inputClass} resize-y`}
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <input
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="Category"
-            className={inputClass}
-          />
+          <div>
+            <input
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="Filter / category (e.g. Design, HOCO)"
+              list="archive-upload-category-options"
+              className={inputClass}
+            />
+            <datalist id="archive-upload-category-options">
+              {categories.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </div>
           <input
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
