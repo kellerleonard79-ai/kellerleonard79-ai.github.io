@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Menu, X, LogIn, LogOut, UserPlus, LayoutDashboard, UserCircle } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext.jsx'
+import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 
 // Links with a `to` are real routes (React Router); the rest are placeholder
 // on-page anchors for pages you'll build later.
@@ -13,6 +14,8 @@ const links = [
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const { session, isStaff, signOut } = useAuth()
+  const { settings } = useSiteSettings()
+  const signupEnabled = settings?.signup_enabled ?? false
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
@@ -72,12 +75,14 @@ export default function Navbar() {
             </button>
           ) : (
             <>
-              <Link
-                to="/join"
-                className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
-              >
-                <UserPlus className="h-4 w-4" /> Join SGA
-              </Link>
+              {signupEnabled && (
+                <Link
+                  to="/join"
+                  className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+                >
+                  <UserPlus className="h-4 w-4" /> Join SGA
+                </Link>
+              )}
               <Link
                 to="/login"
                 className="ml-1 inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
@@ -159,13 +164,15 @@ export default function Navbar() {
               </button>
             ) : (
               <>
-                <Link
-                  to="/join"
-                  onClick={() => setOpen(false)}
-                  className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-maroon px-4 py-2 text-base font-semibold text-maroon"
-                >
-                  <UserPlus className="h-4 w-4" /> Join SGA
-                </Link>
+                {signupEnabled && (
+                  <Link
+                    to="/join"
+                    onClick={() => setOpen(false)}
+                    className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-maroon px-4 py-2 text-base font-semibold text-maroon"
+                  >
+                    <UserPlus className="h-4 w-4" /> Join SGA
+                  </Link>
+                )}
                 <Link
                   to="/login"
                   onClick={() => setOpen(false)}
