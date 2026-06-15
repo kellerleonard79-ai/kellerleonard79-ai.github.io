@@ -27,11 +27,16 @@ function applyBranding(settings) {
   if (settings.bg_color) {
     root.style.setProperty('--color-bg', settings.bg_color)
   }
-  // Reflect the admin-configured school name in the browser tab title. Avoid
-  // doubling up "SGA" when the configured name already includes it.
+  // Keep the browser tab title compact: use an acronym of the admin-configured
+  // school name (e.g. "Pensacola High School" → "PHS") plus "SGA".
   if (settings.school_name) {
-    const name = settings.school_name.trim()
-    document.title = /sga/i.test(name) ? name : `${name} SGA`
+    const acronym = settings.school_name
+      .replace(/\bSGA\b/i, '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0].toUpperCase())
+      .join('')
+    document.title = acronym ? `${acronym} SGA` : 'SGA'
   }
 }
 
