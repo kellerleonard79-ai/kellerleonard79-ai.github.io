@@ -645,20 +645,31 @@ function ArchiveCard({
 }
 
 // ─────────────────────────── Edit form ───────────────────────────
-// Inline editor for an existing item's metadata. The source (file / Drive
-// link) and visibility are managed elsewhere; this edits title, description,
-// the category (filter) and tags, plus the folder.
+// Inline editor for an existing item's metadata and source. Edits title,
+// description, the category (filter), tags, folder, and the file / Drive link.
+// The one-source rule (exactly one of file / link) mirrors the upload panel.
 function EditForm({ item, categories, folderPaths, onCancel, onSaved }) {
+  const { profile } = useAuth()
   const [title, setTitle] = useState(item.title ?? '')
   const [description, setDescription] = useState(item.description ?? '')
   const [category, setCategory] = useState(item.category ?? '')
   const [tagsInput, setTagsInput] = useState((item.tags ?? []).join(', '))
   const [folderPath, setFolderPath] = useState(item.folder_path ?? '')
+  // Source: a link item starts with its link prefilled; a file item starts
+  // empty (its current file is described by the badge below).
+  const [driveLink, setDriveLink] = useState(item.has_file ? '' : (item.drive_link ?? ''))
+  const [file, setFile] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const fileRef = useRef(null)
 
   const inputClass =
     'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+
+  function clearFile() {
+    setFile(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -668,7 +679,45 @@ function EditForm({ item, categories, folderPaths, onCancel, onSaved }) {
       setError('Title is required.')
       return
     }
+    const link = driveLink.trim()
+    if (file && link) {
+      setError('Choose either a file or a Drive link, not both.')
+      return
+    }
+    // A new source isn't required — but the item must still end up with one.
+    if (!file && !link && !item.has_file) {
+      setError('Add a file or a Drive link.')
+      return
+    }
+
     setSaving(true)
+
+    // Resolve the source side of the update only when it actually changes.
+    const sourceUpdate = {}
+    if (file) {
+      // Replace with a freshly uploaded file. Old object (if any) is left in
+      // storage — its path isn't exposed to the client for cleanup.
+      const safeName = file.name.replace(/[^\w.\-]+/g, '_')
+      const filePath = `${profile.id}/${Date.now()}-${safeName}`
+      const { error: uploadError } = await supabase.storage
+        .from('archives')
+        .upload(filePath, file, { upsert: false })
+      if (uploadError) {
+        setSaving(false)
+        setError('File upload failed. Please try again.')
+        return
+      }
+      sourceUpdate.file_url = filePath
+      sourceUpdate.drive_link = null
+    } else if (link) {
+      // Either a brand-new link, an edited link, or a switch from a file.
+      if (item.has_file || link !== (item.drive_link ?? '')) {
+        sourceUpdate.drive_link = link
+        sourceUpdate.file_url = null
+      }
+    }
+    // else: keep the existing file untouched.
+
     const tags = tagsInput
       .split(',')
       .map((s) => s.trim())
@@ -681,6 +730,7 @@ function EditForm({ item, categories, folderPaths, onCancel, onSaved }) {
         category: category.trim(),
         tags,
         folder_path: folderPath.trim().replace(/^\/+|\/+$/g, ''),
+        ...sourceUpdate,
       })
       .eq('id', item.id)
     setSaving(false)
@@ -759,6 +809,52 @@ function EditForm({ item, categories, folderPaths, onCancel, onSaved }) {
           ))}
         </datalist>
       </div>
+
+      {/* Source: file OR Drive link — selecting one disables the other. */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <FileText className="h-3.5 w-3.5" /> File
+          </label>
+          {item.has_file && !file && !driveLink.trim() && (
+            <p className="mb-1 text-xs text-gray-500">
+              Current: uploaded file. Choose a file to replace it.
+            </p>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            disabled={Boolean(driveLink.trim())}
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-maroon/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-maroon hover:file:bg-maroon/20 disabled:opacity-50"
+          />
+          {file && (
+            <button
+              type="button"
+              onClick={clearFile}
+              className="mt-1 text-xs font-medium text-gray-400 hover:text-maroon"
+            >
+              Clear selected file
+            </button>
+          )}
+        </div>
+        <div>
+          <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <LinkIcon className="h-3.5 w-3.5" /> Drive link
+          </label>
+          <input
+            value={driveLink}
+            onChange={(e) => setDriveLink(e.target.value)}
+            disabled={Boolean(file)}
+            placeholder="https://drive.google.com/…"
+            className={`${inputClass} disabled:opacity-50`}
+          />
+        </div>
+      </div>
+      <p className="text-xs text-gray-400">
+        Use a file or a Drive link — not both. To switch from one to the other,
+        clear the field you don't want.
+      </p>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 
