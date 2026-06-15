@@ -13,7 +13,7 @@ const quickLinks = [
 
 export default function Footer() {
   return (
-    <footer id="contact" className="bg-maroon-dark text-white">
+    <footer id="contact" className="bg-maroon text-white">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
           {/* Brand */}

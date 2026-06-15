@@ -25,11 +25,6 @@ export default function Home() {
         id="home"
         className="relative overflow-hidden bg-maroon text-white"
       >
-        {/* Subtle depth: a darker corner wash + a faint diagonal sheen, all in
-            the maroon family — no gold. */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.10),transparent_45%)]" />
-
         <div className="relative mx-auto flex max-w-5xl flex-col items-center px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-28">
           {/* Masthead — full wordmark + crest lockup */}
           <img

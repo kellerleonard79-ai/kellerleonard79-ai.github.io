@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Menu, X, LogIn, LogOut, UserPlus, LayoutDashboard, UserCircle } from 'lucide-react'
-import Crest from './Crest.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 
 // Links with a `to` are real routes (React Router); the rest are placeholder
@@ -16,19 +15,15 @@ export default function Navbar() {
   const { session, isStaff, signOut } = useAuth()
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         {/* Brand */}
-        <Link to="/" className="flex items-center gap-3">
-          <Crest className="h-11 w-11 shrink-0 object-contain" />
-          <span className="flex flex-col leading-tight">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">
-              Pensacola High School
-            </span>
-            <span className="font-display text-lg font-semibold uppercase tracking-wide text-maroon">
-              Student Government
-            </span>
-          </span>
+        <Link to="/" className="flex items-center">
+          <img
+            src="/masthead.png"
+            alt="Pensacola High School Student Government Association"
+            className="h-11 w-auto shrink-0 object-contain"
+          />
         </Link>
 
         {/* Desktop nav */}
