@@ -4,15 +4,15 @@
    Defining colors here makes utilities like bg-maroon, text-maroon, etc.
    available throughout the app. */
 @theme {
-  --color-maroon: #7a1620;
-  --color-maroon-dark: #561016;
-  --color-maroon-light: #9b2330;
+  --color-maroon: #8e231c;
+  --color-maroon-dark: #8e231c;
+  --color-maroon-light: #8e231c;
 
   /* Legacy accent tokens are mapped onto the maroon family so any straggling
      `*-gold` utility degrades gracefully to the brand color instead of yellow.
      The UI no longer uses gold intentionally. */
-  --color-gold: #7a1620;
-  --color-gold-light: #9b2330;
+  --color-gold: #8e231c;
+  --color-gold-light: #8e231c;
 
   /* Oswald — a straight-lined, condensed sans used for all headings/display.
      Body copy uses a clean neutral sans for readability. */

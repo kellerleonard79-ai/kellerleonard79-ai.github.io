@@ -63,7 +63,7 @@ create table if not exists public.site_settings (
   school_name         text        not null default 'Pensacola High School Student Government Association',
   tagline             text        not null default 'Home of the Tigers',
   logo_url            text,
-  primary_color       text        not null default '#7a1620',
+  primary_color       text        not null default '#8e231c',
   accent_color        text        not null default '#c8a24a',
   bg_color            text        not null default '#ffffff',
   about_purpose_text  text        not null default 'The Pensacola High School Student Government Association represents every Tiger — building leadership, school spirit, and community.',

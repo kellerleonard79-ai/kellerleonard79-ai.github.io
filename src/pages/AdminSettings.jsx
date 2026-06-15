@@ -210,7 +210,7 @@ function BrandingTab() {
         school_name: settings.school_name ?? '',
         tagline: settings.tagline ?? '',
         logo_url: settings.logo_url ?? '',
-        primary_color: settings.primary_color ?? '#7a1620',
+        primary_color: settings.primary_color ?? '#8e231c',
         accent_color: settings.accent_color ?? '#c8a24a',
         bg_color: settings.bg_color ?? '#ffffff',
       })
