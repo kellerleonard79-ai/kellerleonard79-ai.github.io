@@ -34,7 +34,7 @@ const CARDS = [
     title: 'Edit Public Site',
     desc: 'Announcements and settings',
     icon: Globe,
-    to: '/dashboard/edit-site',
+    to: '/dashboard/admin/announcements',
     permission: 'edit_site',
   },
   {
@@ -47,7 +47,7 @@ const CARDS = [
     title: 'Security Clearance',
     desc: 'Approvals and member roles',
     icon: ShieldCheck,
-    to: '/dashboard/security',
+    to: '/dashboard/admin/members',
     permission: 'manage_roles',
   },
   {
@@ -78,7 +78,7 @@ const CARDS = [
     to: '/dashboard/committees',
   },
   {
-    title: 'Admin Settings',
+    title: 'Admin Panel',
     desc: 'Branding, tiers, forms and more',
     icon: Settings2,
     to: '/dashboard/admin',

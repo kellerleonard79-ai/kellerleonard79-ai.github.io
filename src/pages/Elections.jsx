@@ -177,7 +177,7 @@ function ElectionsContent() {
   )
 }
 
-// Shared card chrome (matches SecurityClearance / EditSite).
+// Shared card chrome (matches the Admin panel section cards).
 function Section({ icon: Icon, title, desc, action, children }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
