@@ -21,7 +21,7 @@ export default function Footer() {
               <img
                 src="/white-phs-sga-logo.png"
                 alt="PHS SGA logo"
-                className="h-28 w-auto object-contain"
+                className="h-16 w-auto object-contain"
               />
             </div>
             <p className="mt-4 text-sm leading-relaxed text-white/60">

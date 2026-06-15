@@ -22,7 +22,7 @@ export default function Navbar() {
           <img
             src="/maroon-phs-sga-logo.png"
             alt="Pensacola High School Student Government Association"
-            className="h-24 w-auto shrink-0 object-contain"
+            className="h-14 w-auto shrink-0 object-contain"
           />
         </Link>
 
