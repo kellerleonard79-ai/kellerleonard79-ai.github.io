@@ -42,15 +42,12 @@ export default function Home() {
       <Announcements />
 
       {/* ─────────────────── Stay Connected grid ─────────────────── */}
-      <section id="events" className="bg-gray-50 py-12 sm:py-16">
+      <section id="events" className="bg-gray-50 pt-4 pb-12 sm:pt-6 sm:pb-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="font-display text-3xl font-bold text-maroon sm:text-4xl">
               What's New
             </h2>
-            <p className="mt-3 text-gray-600">
-              Follow our latest posts and never miss a school event.
-            </p>
             <div className="mx-auto mt-4 h-1 w-20 rounded-full bg-maroon" />
           </div>
 
@@ -265,7 +262,7 @@ function Announcements() {
   if (items.length === 0) return null
 
   return (
-    <section id="announcements" className="bg-white py-12 sm:py-16">
+    <section id="announcements" className="bg-white pt-12 pb-4 sm:pt-16 sm:pb-6">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="font-display text-3xl font-bold text-maroon sm:text-4xl">
