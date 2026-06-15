@@ -1,5 +1,4 @@
 import { Mail, MapPin } from 'lucide-react'
-import { Instagram, Facebook, Youtube } from './BrandIcons.jsx'
 
 // A deliberately simple footer: brand + a couple of essentials, contact, and a
 // clean bottom bar. Newsletter signup lives on the homepage, so it isn't
@@ -23,18 +22,6 @@ export default function Footer() {
                 alt="PHS SGA logo"
                 className="h-16 w-auto object-contain"
               />
-            </div>
-            <div className="mt-5 flex gap-3">
-              {[Instagram, Facebook, Youtube].map((Icon, i) => (
-                <a
-                  key={i}
-                  href="#social"
-                  className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white hover:text-maroon"
-                  aria-label="Social media link"
-                >
-                  <Icon className="h-4 w-4" />
-                </a>
-              ))}
             </div>
           </div>
 
