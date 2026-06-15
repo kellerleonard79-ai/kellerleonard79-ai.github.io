@@ -51,6 +51,12 @@ export default function Join() {
       email: form.email,
       password: form.password,
       options: {
+        // Where the email-confirmation link sends them back to. Without this,
+        // Supabase falls back to the project's Site URL (localhost) and the
+        // link lands on a blank page. Must also be in the dashboard's redirect
+        // allow-list. We send confirmed users to login with a banner since the
+        // account still needs SCI approval before it can be used.
+        emailRedirectTo: `${window.location.origin}/login?confirmed=1`,
         // These land in raw_user_meta_data and are copied into `profiles`
         // by the handle_new_user() trigger on signup.
         data: {
@@ -124,9 +130,13 @@ export default function Join() {
                 Registration received!
               </h2>
               <p className="mt-2 text-gray-600">
-                Confirm your email address, then an SGA officer will review your
-                membership. You&apos;ll be able to log in once your account is
-                approved.
+                <span className="font-semibold text-maroon">
+                  Check your inbox and click the confirmation link
+                </span>{' '}
+                we just emailed you. After that, an SGA officer will review your
+                membership — you&apos;ll be able to log in once your account is
+                confirmed <em>and</em> approved. (Be sure to check your spam
+                folder.)
               </p>
               <Link
                 to="/"

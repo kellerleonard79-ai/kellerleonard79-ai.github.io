@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { LogIn, Loader2 } from 'lucide-react'
+import { CheckCircle2, LogIn, Loader2 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import Crest from '../components/Crest.jsx'
@@ -15,6 +15,15 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Arriving here from the email-confirmation link. Supabase's detectSessionInUrl
+  // auto-creates a session from the link, but a freshly confirmed account is
+  // still `pending` SCI approval, so we clear that stray session and tell them
+  // what to do next rather than letting them slip past the approval gate.
+  const justConfirmed = params.get('confirmed') === '1'
+  useEffect(() => {
+    if (justConfirmed) supabase.auth.signOut()
+  }, [justConfirmed])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -37,7 +46,13 @@ export default function Login() {
     )
     if (signInError) {
       setSubmitting(false)
-      setError(signInError.message)
+      // Supabase returns "Email not confirmed" when the link hasn't been clicked
+      // yet — translate it into something actionable.
+      setError(
+        /email not confirmed/i.test(signInError.message)
+          ? 'Please confirm your email first — click the link in the confirmation email we sent you (check your spam folder).'
+          : signInError.message,
+      )
       return
     }
 
@@ -75,6 +90,17 @@ export default function Login() {
             </h1>
             <p className="text-sm text-gray-500">Sign in to your SGA account.</p>
           </div>
+
+          {justConfirmed && !error && (
+            <div className="mb-5 flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                Email confirmed! Your account is now awaiting SCI approval. An
+                officer will review it shortly — you can sign in once it&apos;s
+                approved.
+              </span>
+            </div>
+          )}
 
           {error && (
             <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

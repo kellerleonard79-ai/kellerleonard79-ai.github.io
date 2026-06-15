@@ -19,6 +19,7 @@ import {
   Megaphone,
   FileText,
   Mail,
+  MapPin,
   UsersRound,
   UserPlus,
   UserCheck,
@@ -73,6 +74,7 @@ const NAV_GROUPS = [
       { key: 'announcements', label: 'Announcements', icon: Megaphone, perm: 'edit_site' },
       { key: 'join', label: 'Join SGA', icon: ClipboardList, perm: 'edit_site' },
       { key: 'about', label: 'About Page', icon: FileText, perm: 'edit_site' },
+      { key: 'contact', label: 'Contact Info', icon: MapPin, perm: 'edit_site' },
       { key: 'newsletter', label: 'Newsletter', icon: Mail, perm: 'edit_site' },
     ],
   },
@@ -274,6 +276,7 @@ function AdminContent({ visible }) {
             {active === 'announcements' && <AnnouncementsSection />}
             {active === 'join' && <JoinSection />}
             {active === 'about' && <AboutSection />}
+            {active === 'contact' && <ContactSection />}
             {active === 'newsletter' && <NewsletterSection />}
             {active === 'branding' && <BrandingTab />}
             {active === 'members' && <MembersSection />}
@@ -965,6 +968,88 @@ function AboutSection() {
         className={`${inputClass} resize-y`}
       />
       <div className="mt-3">
+        <SaveButton
+          onClick={save}
+          saving={saving}
+          saved={saved && !dirty}
+          disabled={!dirty}
+        />
+      </div>
+    </Card>
+  )
+}
+
+/* ═══════════════════════ Public Site — Contact Info ═══════════════════════ */
+// Email + mailing address shown in the site footer. Both live in site_settings
+// so they can be updated without a deploy.
+function ContactSection() {
+  const { settings, refresh } = useSiteSettings()
+  const [email, setEmail] = useState('')
+  const [address, setAddress] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (settings) {
+      setEmail(settings.contact_email ?? '')
+      setAddress(settings.contact_address ?? '')
+    }
+  }, [settings])
+
+  async function save() {
+    setSaving(true)
+    setSaved(false)
+    const { error } = await supabase
+      .from('site_settings')
+      .update({
+        contact_email: email.trim(),
+        contact_address: address.trim(),
+      })
+      .eq('id', 1)
+    if (!error) {
+      await refresh()
+      setSaved(true)
+    }
+    setSaving(false)
+  }
+
+  const dirty =
+    settings &&
+    (email !== (settings.contact_email ?? '') ||
+      address !== (settings.contact_address ?? ''))
+
+  return (
+    <Card
+      title="Contact details"
+      desc="The email and address shown in the site footer."
+    >
+      <div className="grid gap-5">
+        <Labeled label="Contact email">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              setSaved(false)
+            }}
+            placeholder="sga@pensacolahigh.edu"
+            className={inputClass}
+          />
+        </Labeled>
+        <Labeled label="Mailing address">
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => {
+              setAddress(e.target.value)
+              setSaved(false)
+            }}
+            placeholder="500 W Maxwell St, Pensacola, FL 32501"
+            className={inputClass}
+          />
+        </Labeled>
+      </div>
+      <div className="mt-4">
         <SaveButton
           onClick={save}
           saving={saving}
