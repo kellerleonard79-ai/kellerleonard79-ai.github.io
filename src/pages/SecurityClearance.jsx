@@ -4,9 +4,11 @@ import {
   ChevronLeft,
   ShieldCheck,
   UserCheck,
+  UserPlus,
   Loader2,
   Check,
   X,
+  CheckCircle2,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
@@ -93,6 +95,7 @@ function SecurityContent() {
           </div>
         ) : (
           <div className="mt-8 space-y-6">
+            <CreateAccountSection roles={roles} onChanged={load} />
             <PendingSection
               pending={pending}
               roles={roles}
@@ -126,6 +129,207 @@ function Section({ icon: Icon, title, desc, children }) {
       </div>
       <div className="p-5">{children}</div>
     </section>
+  )
+}
+
+// ───────────────────────── Create account ─────────────────────────
+const inputClass =
+  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+
+const EMPTY_ACCOUNT = {
+  full_name: '',
+  student_id: '',
+  email: '',
+  password: '',
+  grade_level: '',
+  shirt_size: '',
+  role_id: '',
+}
+
+// Lets an SCI create an already-approved account for someone (no self-signup
+// needed). Runs through the privileged create-user Edge Function, which gates on
+// is_admin(), creates the auth user with a confirmed email, and activates the
+// profile with the chosen role.
+function CreateAccountSection({ roles, onChanged }) {
+  const [form, setForm] = useState(EMPTY_ACCOUNT)
+  const [status, setStatus] = useState('idle') // idle | submitting | success
+  const [error, setError] = useState('')
+
+  // Default the role select to the configurable General Member tier.
+  const defaultRoleId = useMemo(() => {
+    const named = roles.find((r) => r.name === 'General Member')
+    if (named) return named.id
+    return roles.find((r) => !r.is_admin)?.id ?? ''
+  }, [roles])
+
+  const update = (field) => (e) =>
+    setForm((prev) => ({ ...prev, [field]: e.target.value }))
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    setStatus('submitting')
+
+    const { data, error: fnError } = await supabase.functions.invoke(
+      'create-user',
+      {
+        body: {
+          full_name: form.full_name.trim(),
+          student_id: form.student_id.trim(),
+          email: form.email.trim(),
+          password: form.password,
+          grade_level: form.grade_level,
+          shirt_size: form.shirt_size.trim(),
+          role_id: form.role_id || defaultRoleId || null,
+        },
+      },
+    )
+
+    // invoke() surfaces non-2xx as fnError; the function also returns { error }.
+    const message = fnError?.message || data?.error
+    if (message) {
+      setError(message)
+      setStatus('idle')
+      return
+    }
+
+    setForm(EMPTY_ACCOUNT)
+    setStatus('success')
+    onChanged()
+  }
+
+  return (
+    <Section
+      icon={UserPlus}
+      title="Create Member Account"
+      desc="Add an already-approved member directly — they can log in right away with the email and password you set."
+    >
+      {status === 'success' && (
+        <div className="mb-5 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          Account created. Share the login details with the new member.
+        </div>
+      )}
+      {error && (
+        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+        <AccountField label="Full Name">
+          <input
+            type="text"
+            required
+            value={form.full_name}
+            onChange={update('full_name')}
+            className={inputClass}
+            placeholder="Jordan Tiger"
+          />
+        </AccountField>
+
+        <AccountField label="Student ID">
+          <input
+            type="text"
+            value={form.student_id}
+            onChange={update('student_id')}
+            className={inputClass}
+            placeholder="1234567"
+          />
+        </AccountField>
+
+        <AccountField label="Email">
+          <input
+            type="email"
+            required
+            value={form.email}
+            onChange={update('email')}
+            className={inputClass}
+            placeholder="member@example.com"
+          />
+        </AccountField>
+
+        <AccountField label="Temporary Password">
+          <input
+            type="text"
+            required
+            minLength={6}
+            value={form.password}
+            onChange={update('password')}
+            className={inputClass}
+            placeholder="At least 6 characters"
+          />
+        </AccountField>
+
+        <AccountField label="Grade">
+          <select
+            value={form.grade_level}
+            onChange={update('grade_level')}
+            className={inputClass}
+          >
+            <option value="">— Optional —</option>
+            {['9', '10', '11', '12'].map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </select>
+        </AccountField>
+
+        <AccountField label="Shirt Size">
+          <input
+            type="text"
+            value={form.shirt_size}
+            onChange={update('shirt_size')}
+            className={inputClass}
+            placeholder="Optional"
+          />
+        </AccountField>
+
+        <AccountField label="Role">
+          <select
+            value={form.role_id || defaultRoleId}
+            onChange={update('role_id')}
+            className={inputClass}
+          >
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </AccountField>
+
+        <div className="flex items-end">
+          <button
+            type="submit"
+            disabled={status === 'submitting'}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-maroon px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {status === 'submitting' ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Creating…
+              </>
+            ) : (
+              <>
+                <UserPlus className="h-4 w-4" /> Create Account
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    </Section>
+  )
+}
+
+function AccountField({ label, children }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+        {label}
+      </span>
+      {children}
+    </label>
   )
 }
 
