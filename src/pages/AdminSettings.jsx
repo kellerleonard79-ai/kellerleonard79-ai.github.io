@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ChevronLeft,
-  Palette,
   ShieldCheck,
   Award,
   ClipboardList,
@@ -79,12 +78,6 @@ const NAV_GROUPS = [
       { key: 'calendar', label: 'Calendar', icon: CalendarDays, perm: 'edit_site' },
       { key: 'contact', label: 'Contact Info', icon: MapPin, perm: 'edit_site' },
       { key: 'newsletter', label: 'Newsletter', icon: Mail, perm: 'edit_site' },
-    ],
-  },
-  {
-    group: 'Appearance',
-    items: [
-      { key: 'branding', label: 'Branding', icon: Palette, perm: 'manage_roles' },
     ],
   },
   {
@@ -288,7 +281,6 @@ function AdminContent({ visible }) {
             {active === 'calendar' && <CalendarSection />}
             {active === 'contact' && <ContactSection />}
             {active === 'newsletter' && <NewsletterSection />}
-            {active === 'branding' && <BrandingTab />}
             {active === 'members' && <MembersSection />}
             {active === 'tiers' && <TiersTab />}
             {active === 'positions' && <PositionsTab />}
@@ -1432,250 +1424,6 @@ function NewsletterSection() {
       </div>
     </Card>
   )
-}
-
-/* ═══════════════════════ Appearance — Branding ═══════════════════════ */
-const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/
-
-function BrandingTab() {
-  const { settings, refresh } = useSiteSettings()
-  const [form, setForm] = useState(null)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState('')
-  const fileRef = useRef(null)
-
-  useEffect(() => {
-    if (settings && !form) {
-      setForm({
-        school_name: settings.school_name ?? '',
-        tagline: settings.tagline ?? '',
-        logo_url: settings.logo_url ?? '',
-        primary_color: settings.primary_color ?? '#8e231c',
-        accent_color: settings.accent_color ?? '#c8a24a',
-        bg_color: settings.bg_color ?? '#ffffff',
-      })
-    }
-  }, [settings, form])
-
-  const savedRef = useRef(settings)
-  savedRef.current = settings
-  useEffect(() => {
-    return () => {
-      const s = savedRef.current
-      if (!s) return
-      const root = document.documentElement
-      if (s.primary_color) {
-        root.style.setProperty('--color-primary', s.primary_color)
-        root.style.setProperty('--color-maroon', s.primary_color)
-      }
-      if (s.accent_color) {
-        root.style.setProperty('--color-accent', s.accent_color)
-      }
-      if (s.bg_color) root.style.setProperty('--color-bg', s.bg_color)
-    }
-  }, [])
-
-  function setColor(field, cssVars) {
-    return (value) => {
-      setForm((f) => ({ ...f, [field]: value }))
-      setSaved(false)
-      if (HEX_RE.test(value)) {
-        const root = document.documentElement
-        for (const v of cssVars) root.style.setProperty(v, value)
-      }
-    }
-  }
-
-  async function handleUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    setError('')
-    const ext = file.name.split('.').pop()
-    const path = `logo-${Date.now()}.${ext}`
-    const { error: upErr } = await supabase.storage
-      .from('branding')
-      .upload(path, file, { upsert: true })
-    if (upErr) {
-      setError('Logo upload failed. Please try again.')
-      setUploading(false)
-      return
-    }
-    const { data } = supabase.storage.from('branding').getPublicUrl(path)
-    setForm((f) => ({ ...f, logo_url: data.publicUrl }))
-    setSaved(false)
-    setUploading(false)
-    if (fileRef.current) fileRef.current.value = ''
-  }
-
-  async function save() {
-    setSaving(true)
-    setSaved(false)
-    setError('')
-    const { error: upErr } = await supabase
-      .from('site_settings')
-      .update({
-        school_name: form.school_name.trim(),
-        tagline: form.tagline.trim(),
-        logo_url: form.logo_url || null,
-        primary_color: form.primary_color,
-        accent_color: form.accent_color,
-        bg_color: form.bg_color,
-      })
-      .eq('id', 1)
-    if (upErr) {
-      setError('Could not save branding. Please try again.')
-    } else {
-      await refresh()
-      setSaved(true)
-    }
-    setSaving(false)
-  }
-
-  if (!form) {
-    return <Loading />
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card title="Identity" desc="Name and tagline shown across the site.">
-        <div className="grid gap-5">
-          <Labeled label="School name">
-            <input
-              value={form.school_name}
-              onChange={(e) => {
-                setForm((f) => ({ ...f, school_name: e.target.value }))
-                setSaved(false)
-              }}
-              className={inputClass}
-            />
-          </Labeled>
-          <Labeled label="Tagline">
-            <input
-              value={form.tagline}
-              onChange={(e) => {
-                setForm((f) => ({ ...f, tagline: e.target.value }))
-                setSaved(false)
-              }}
-              className={inputClass}
-            />
-          </Labeled>
-        </div>
-      </Card>
-
-      <Card title="Logo" desc="Replaces the PHS crest in the nav, hero, and footer.">
-        <div className="flex items-center gap-5">
-          <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-            {form.logo_url ? (
-              <img
-                src={form.logo_url}
-                alt="Logo preview"
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <img
-                src="/crest.png"
-                alt="Current crest"
-                className="h-full w-full object-contain"
-                onError={(e) => (e.currentTarget.style.display = 'none')}
-              />
-            )}
-          </div>
-          <div className="space-y-2">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              onChange={handleUpload}
-              className="hidden"
-              id="logo-upload"
-            />
-            <label
-              htmlFor="logo-upload"
-              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-gray-50"
-            >
-              {uploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              {form.logo_url ? 'Replace logo' : 'Upload logo'}
-            </label>
-            {form.logo_url && (
-              <button
-                onClick={() => {
-                  setForm((f) => ({ ...f, logo_url: '' }))
-                  setSaved(false)
-                }}
-                className="ml-2 text-sm font-medium text-gray-400 hover:text-red-600"
-              >
-                Remove
-              </button>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      <Card title="Colors" desc="Changes preview live across the whole site as you type.">
-        <div className="grid gap-5 sm:grid-cols-3">
-          <ColorField
-            label="Primary"
-            value={form.primary_color}
-            onChange={setColor('primary_color', ['--color-primary', '--color-maroon'])}
-          />
-          <ColorField
-            label="Accent"
-            value={form.accent_color}
-            onChange={setColor('accent_color', ['--color-accent'])}
-          />
-          <ColorField
-            label="Background"
-            value={form.bg_color}
-            onChange={setColor('bg_color', ['--color-bg'])}
-          />
-        </div>
-        <p className="mt-3 text-xs text-gray-400">
-          Tip: live preview reverts if you leave without saving.
-        </p>
-      </Card>
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <SaveButton onClick={save} saving={saving} saved={saved} />
-    </div>
-  )
-}
-
-function ColorField({ label, value, onChange }) {
-  const valid = HEX_RE.test(value)
-  return (
-    <Labeled label={label}>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          value={valid ? expandHex(value) : '#000000'}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-10 w-10 shrink-0 cursor-pointer rounded-lg border border-gray-300 bg-white p-1"
-        />
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="#000000"
-          className={`${inputClass} font-mono ${
-            valid ? '' : 'border-red-300 focus:border-red-400 focus:ring-red-200'
-          }`}
-        />
-      </div>
-    </Labeled>
-  )
-}
-
-function expandHex(hex) {
-  if (/^#[0-9a-fA-F]{3}$/.test(hex)) {
-    return '#' + hex.slice(1).split('').map((c) => c + c).join('')
-  }
-  return hex
 }
 
 /* ═══════════════════════ People — Members & Roles ═══════════════════════ */
