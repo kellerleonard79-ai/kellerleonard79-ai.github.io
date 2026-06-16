@@ -56,13 +56,22 @@ export default function Login() {
       return
     }
 
-    // Block members whose membership is still awaiting SCI approval.
+    // Block members whose membership is still awaiting SCI approval — with one
+    // exception: a pending applicant who is running for a position may sign in
+    // to manage their candidacy (pick/change their position before the filing
+    // deadline). They land on the candidacy page; the rest of the dashboard
+    // stays gated until they're approved.
     const { data: prof } = await supabase
       .from('profiles')
-      .select('status')
+      .select('status, is_candidate_application')
       .eq('id', data.user.id)
       .maybeSingle()
     if (prof?.status === 'pending') {
+      if (prof?.is_candidate_application) {
+        setSubmitting(false)
+        navigate('/dashboard/candidacy', { replace: true })
+        return
+      }
       await supabase.auth.signOut()
       setSubmitting(false)
       setError(

@@ -28,6 +28,7 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  Vote,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
@@ -99,6 +100,12 @@ const NAV_GROUPS = [
     items: [
       { key: 'sections', label: 'Agenda Sections', icon: ListChecks, perm: 'manage_roles' },
       { key: 'meetings', label: 'Meeting Defaults', icon: Settings2, perm: 'manage_roles' },
+    ],
+  },
+  {
+    group: 'Elections',
+    items: [
+      { key: 'candidacy', label: 'Candidacy', icon: Vote, perm: 'manage_elections' },
     ],
   },
 ]
@@ -287,6 +294,7 @@ function AdminContent({ visible }) {
             {active === 'positions' && <PositionsTab />}
             {active === 'sections' && <SectionTypesTab />}
             {active === 'meetings' && <MeetingDefaultsSection />}
+            {active === 'candidacy' && <CandidacySettingsSection />}
           </div>
         </div>
       </div>
@@ -2758,6 +2766,62 @@ function SectionTypeRow({ type, usedCount, isDragging, onDragStart, onDrop, onCh
         <Trash2 className="h-4 w-4" />
       </button>
     </div>
+  )
+}
+
+/* ═══════════════════════ Elections — Candidacy ═══════════════════════ */
+function CandidacySettingsSection() {
+  const { settings, refresh } = useSiteSettings()
+  const [limit, setLimit] = useState('3')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (settings)
+      setLimit(String(settings.candidate_position_change_limit ?? 3))
+  }, [settings])
+
+  async function save() {
+    setSaving(true)
+    setSaved(false)
+    const { error } = await supabase
+      .from('site_settings')
+      .update({
+        candidate_position_change_limit: Math.max(0, Number(limit) || 0),
+      })
+      .eq('id', 1)
+    if (!error) {
+      await refresh()
+      setSaved(true)
+    }
+    setSaving(false)
+  }
+
+  return (
+    <Card
+      title="Position changes allowed"
+      desc="How many times a candidate may change which position they're running for after applying. The filing deadline (set per election cycle) is the final cutoff."
+    >
+      <Labeled label="Changes per candidate">
+        <input
+          type="number"
+          min={0}
+          value={limit}
+          onChange={(e) => {
+            setLimit(e.target.value)
+            setSaved(false)
+          }}
+          className={`${inputClass} w-40`}
+        />
+      </Labeled>
+      <p className="mt-2 text-xs text-gray-400">
+        Their first position choice is free; this limits how many times they can
+        switch afterward.
+      </p>
+      <div className="mt-4">
+        <SaveButton onClick={save} saving={saving} saved={saved} />
+      </div>
+    </Card>
   )
 }
 

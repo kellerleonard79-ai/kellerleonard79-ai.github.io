@@ -13,6 +13,7 @@ const EMPTY = {
   email: '',
   password: '',
   is_candidate_application: false,
+  candidate_position_id: '',
 }
 
 export default function Join() {
@@ -26,12 +27,23 @@ export default function Join() {
   // position" candidate option. election_cycles isn't readable by anon, so we
   // ask a public SECURITY DEFINER function for just the boolean.
   const [candidacyOpen, setCandidacyOpen] = useState(false)
+  // Positions a candidate can run for (those flagged show_in_elections). Loaded
+  // for the position picker that appears once "I'm running" is checked.
+  const [positions, setPositions] = useState([])
 
   useEffect(() => {
     let active = true
     supabase.rpc('candidate_applications_open').then(({ data }) => {
       if (active) setCandidacyOpen(data === true)
     })
+    supabase
+      .from('elected_positions')
+      .select('id, title, "group", "order"')
+      .eq('show_in_elections', true)
+      .order('order', { ascending: true })
+      .then(({ data }) => {
+        if (active) setPositions(data ?? [])
+      })
     return () => {
       active = false
     }
@@ -80,6 +92,12 @@ export default function Join() {
           shirt_size: extra.shirt_size ?? '',
           // Only honored while a cycle is open; the option is hidden otherwise.
           is_candidate_application: candidacyOpen && form.is_candidate_application,
+          // The position they're running for — used to seed their candidacy.
+          // Ignored unless they're actually applying as a candidate.
+          candidate_position_id:
+            candidacyOpen && form.is_candidate_application
+              ? form.candidate_position_id
+              : '',
           custom_fields: JSON.stringify(customFields),
         },
       },
@@ -260,29 +278,65 @@ export default function Join() {
                 {/* The candidate option only appears while an election cycle
                     is open. Outside a cycle everyone joins as a general member. */}
                 {candidacyOpen && (
-                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                    <input
-                      type="checkbox"
-                      checked={form.is_candidate_application}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          is_candidate_application: e.target.checked,
-                        }))
-                      }
-                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
-                    />
-                    <span className="text-sm text-maroon">
-                      <span className="font-semibold text-maroon">
-                        I&apos;m running for a position
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <label className="flex cursor-pointer items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={form.is_candidate_application}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            is_candidate_application: e.target.checked,
+                          }))
+                        }
+                        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
+                      />
+                      <span className="text-sm text-maroon">
+                        <span className="font-semibold text-maroon">
+                          I&apos;m running for a position
+                        </span>
+                        <span className="mt-0.5 block text-gray-500">
+                          Check this if you&apos;re applying as a candidate, not
+                          just a general member. An officer will follow up about
+                          your candidacy.
+                        </span>
                       </span>
-                      <span className="mt-0.5 block text-gray-500">
-                        Check this if you&apos;re applying as a candidate, not
-                        just a general member. An officer will follow up about
-                        your candidacy.
-                      </span>
-                    </span>
-                  </label>
+                    </label>
+
+                    {form.is_candidate_application && (
+                      <label htmlFor="candidate_position" className="mt-4 block">
+                        <span className="mb-1.5 block text-sm font-semibold text-maroon">
+                          Position you&apos;re running for
+                        </span>
+                        <select
+                          id="candidate_position"
+                          required
+                          value={form.candidate_position_id}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              candidate_position_id: e.target.value,
+                            }))
+                          }
+                          className={inputClass}
+                        >
+                          <option value="" disabled>
+                            Select a position…
+                          </option>
+                          {positions.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.title}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="mt-1.5 block text-xs text-gray-500">
+                          You can change which position you&apos;re running for
+                          later, up to a set number of times, until the filing
+                          deadline.
+                        </span>
+                      </label>
+                    )}
+                  </div>
                 )}
               </div>
 

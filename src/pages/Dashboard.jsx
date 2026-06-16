@@ -77,6 +77,12 @@ function DashboardHub() {
   const { profile, signOut, hasPermission } = useAuth()
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Tiger'
 
+  // Pending applicants who got in to manage a candidacy don't get the full hub —
+  // just a notice and (if they're running) a link to their candidacy page.
+  if (profile?.status === 'pending') {
+    return <PendingHub profile={profile} firstName={firstName} signOut={signOut} />
+  }
+
   // A card shows when: it has no gate; the viewer holds its `permission`; or the
   // viewer holds any of its `anyPermission` list. Otherwise it's hidden.
   const cards = CARDS.filter((card) => {
@@ -84,6 +90,16 @@ function DashboardHub() {
     if (card.anyPermission) return card.anyPermission.some(hasPermission)
     return true
   })
+
+  // Members who are running for a position get a self-service candidacy card.
+  if (profile?.is_candidate_application) {
+    cards.unshift({
+      title: 'My Candidacy',
+      desc: 'Choose or change the position you’re running for',
+      icon: Vote,
+      to: '/dashboard/candidacy',
+    })
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
@@ -119,6 +135,57 @@ function DashboardHub() {
         </div>
       </div>
 
+      <Footer />
+    </div>
+  )
+}
+
+function PendingHub({ profile, firstName, signOut }) {
+  return (
+    <div className="flex min-h-screen flex-col bg-gray-50">
+      <Navbar />
+      <div className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="font-display text-3xl font-bold text-maroon">
+              Welcome, {profile?.full_name ?? firstName}
+            </h1>
+            <p className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                Pending approval
+              </span>
+              {profile?.student_id && <span>ID {profile.student_id}</span>}
+            </p>
+          </div>
+          <button
+            onClick={signOut}
+            className="text-sm font-medium text-gray-500 transition hover:text-maroon"
+          >
+            Sign out
+          </button>
+        </header>
+
+        <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <p className="text-gray-600">
+            Your membership is awaiting officer approval. Once an SGA officer
+            approves your account, your full dashboard will unlock here.
+          </p>
+          {profile?.is_candidate_application && (
+            <>
+              <p className="mt-3 text-gray-600">
+                In the meantime, you can choose or update the position
+                you&apos;re running for.
+              </p>
+              <Link
+                to="/dashboard/candidacy"
+                className="mt-5 inline-flex items-center gap-2 rounded-lg bg-maroon px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-maroon-dark"
+              >
+                <Vote className="h-4 w-4" /> Manage my candidacy
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
       <Footer />
     </div>
   )

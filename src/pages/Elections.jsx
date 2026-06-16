@@ -143,6 +143,7 @@ function ElectionsContent() {
             {/* The Join SGA applications queue sits above the cycles, always. */}
             <ApplicationsQueue
               applications={applications}
+              candidates={candidates}
               cycles={cycles}
               positions={positions}
               roles={roles}
@@ -223,6 +224,7 @@ function StatusBadge({ status }) {
 // ───────────────────────── Join SGA applications queue ─────────────────────────
 function ApplicationsQueue({
   applications,
+  candidates,
   cycles,
   positions,
   roles,
@@ -247,6 +249,7 @@ function ApplicationsQueue({
             <ApplicationRow
               key={a.id}
               application={a}
+              candidacy={candidates.find((c) => c.member_id === a.id) ?? null}
               cycles={cycles}
               positions={positions}
               roles={roles}
@@ -277,6 +280,7 @@ function clearanceForRole(role) {
 
 function ApplicationRow({
   application: a,
+  candidacy,
   cycles,
   positions,
   roles,
@@ -285,8 +289,9 @@ function ApplicationRow({
 }) {
   const [busy, setBusy] = useState(false)
   const [showCandidate, setShowCandidate] = useState(false)
-  const [positionId, setPositionId] = useState('')
-  const [cycleId, setCycleId] = useState('')
+  // Pre-fill with the position/cycle the applicant chose at signup, if any.
+  const [positionId, setPositionId] = useState(candidacy?.position_id ?? '')
+  const [cycleId, setCycleId] = useState(candidacy?.cycle_id ?? '')
 
   const electablePositions = positions.filter((p) => p.show_in_elections)
   const memberRole = defaultMemberRole(roles)
@@ -307,7 +312,11 @@ function ApplicationRow({
     onChanged()
   }
 
-  // Approve and create a candidate row for the chosen position/cycle.
+  // Approve and ensure a candidate row exists for the chosen position/cycle.
+  // The applicant may already have created one by picking a position at signup;
+  // we keep is_candidate_application true so they can keep changing it (up to
+  // the limit) until the filing deadline, and upsert so re-picking the same
+  // position doesn't trip the (cycle, member, position) unique constraint.
   async function approveCandidate() {
     if (!positionId) return
     setBusy(true)
@@ -315,17 +324,20 @@ function ApplicationRow({
       .from('profiles')
       .update({
         status: 'active',
-        is_candidate_application: false,
+        is_candidate_application: true,
         role_id: memberRole?.id ?? a.role_id,
         clearance_level: clearanceForRole(memberRole),
       })
       .eq('id', a.id)
-    await supabase.from('election_candidates').insert({
-      member_id: a.id,
-      position_id: positionId,
-      cycle_id: cycleId || null,
-      status: 'pending',
-    })
+    await supabase.from('election_candidates').upsert(
+      {
+        member_id: a.id,
+        position_id: positionId,
+        cycle_id: cycleId || null,
+        status: 'pending',
+      },
+      { onConflict: 'cycle_id,member_id,position_id', ignoreDuplicates: true },
+    )
     setBusy(false)
     onChanged()
   }
@@ -363,6 +375,11 @@ function ApplicationRow({
           <p className="mt-0.5 truncate text-sm text-gray-500">
             {a.student_id ? `ID ${a.student_id}` : 'No student ID'}
           </p>
+          {candidacy?.position?.title && (
+            <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-maroon/10 px-2 py-0.5 text-xs font-semibold text-maroon">
+              <Vote className="h-3 w-3" /> Running for {candidacy.position.title}
+            </p>
+          )}
         </div>
         {canManage && (
           <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -547,6 +564,9 @@ function CycleForm({ cycle, onCancel, onSaved }) {
   const [name, setName] = useState(cycle?.name ?? '')
   const [openDate, setOpenDate] = useState(toLocalInput(cycle?.open_date))
   const [closeDate, setCloseDate] = useState(toLocalInput(cycle?.close_date))
+  const [filingDeadline, setFilingDeadline] = useState(
+    toLocalInput(cycle?.filing_deadline),
+  )
   const [interview, setInterview] = useState(
     cycle ? Math.round((cycle.interview_weight ?? 0.5) * 100) : 50,
   ) // percent
@@ -562,6 +582,9 @@ function CycleForm({ cycle, onCancel, onSaved }) {
       name: name.trim(),
       open_date: openDate ? new Date(openDate).toISOString() : null,
       close_date: closeDate ? new Date(closeDate).toISOString() : null,
+      filing_deadline: filingDeadline
+        ? new Date(filingDeadline).toISOString()
+        : null,
       interview_weight: interview / 100,
       election_weight: (100 - interview) / 100,
     }
@@ -629,6 +652,22 @@ function CycleForm({ cycle, onCancel, onSaved }) {
           />
         </label>
       </div>
+
+      <label className="mt-3 block">
+        <span className="mb-1 block text-xs font-semibold text-gray-600">
+          Filing deadline (optional)
+        </span>
+        <input
+          type="datetime-local"
+          value={filingDeadline}
+          onChange={(e) => setFilingDeadline(e.target.value)}
+          className={inputClass}
+        />
+        <span className="mt-1 block text-[11px] text-gray-400">
+          After this, candidates can no longer apply or change their position.
+          Leave blank to allow changes for as long as the cycle is open.
+        </span>
+      </label>
 
       <div className="mt-4">
         <div className="flex items-center justify-between text-xs font-semibold text-gray-600">
