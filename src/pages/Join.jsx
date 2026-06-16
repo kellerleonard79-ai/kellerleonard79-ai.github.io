@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  Construction,
   FileText,
   Loader2,
   UserPlus,
@@ -372,7 +371,10 @@ function ChoiceCard({ icon: Icon, title, desc, onClick }) {
   )
 }
 
-// Placeholder for the elected-position application — the real form is built next.
+// The elected-position path is a multi-step checklist that lives behind login
+// (it tracks uploads, agreements and interview bookings). So here we explain the
+// two-step flow: create an account first, then complete the checklist. New
+// applicants create their account below; returning ones sign in.
 function CandidateSkeleton({ onBack }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
@@ -384,14 +386,30 @@ function CandidateSkeleton({ onBack }) {
         <ArrowLeft className="h-4 w-4" /> Choose a different application
       </button>
 
-      <Construction className="mx-auto h-14 w-14 text-maroon/70" />
+      <Vote className="mx-auto h-14 w-14 text-maroon/70" />
       <h2 className="mt-4 font-display text-2xl font-bold text-maroon">
-        Elected Position Application
+        Run for an Elected Position
       </h2>
       <p className="mx-auto mt-2 max-w-sm text-gray-600">
-        This application is coming soon. The form for running for an elected
-        position is still being built — check back shortly.
+        Running for office is a guided checklist — choose your position, agree to
+        the rules, upload endorsements and book an interview. First create your
+        member account, then you&apos;ll be taken to your application dashboard.
       </p>
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <Link
+          to="/login"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-maroon px-5 py-2.5 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+        >
+          I already have an account
+        </Link>
+        <Link
+          to="/dashboard/application"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-maroon px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-maroon-dark"
+        >
+          <ArrowRight className="h-4 w-4" /> Go to my application
+        </Link>
+      </div>
     </div>
   )
 }

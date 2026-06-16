@@ -9,6 +9,7 @@ import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 const links = [
   { label: 'Home', to: '/' },
   { label: 'About', to: '/about' },
+  { label: 'Elections', to: '/elections' },
 ]
 
 export default function Navbar() {

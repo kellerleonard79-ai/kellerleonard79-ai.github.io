@@ -9,7 +9,7 @@ import supabase from '../lib/supabaseClient.js'
 export default function Login() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const redirect = params.get('redirect') || '/'
+  const redirect = params.get('redirect') || '/dashboard'
 
   const [studentId, setStudentId] = useState('')
   const [password, setPassword] = useState('')

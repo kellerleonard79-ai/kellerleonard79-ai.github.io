@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Mail, MapPin, Send, Check, Loader2, AtSign } from 'lucide-react'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 import supabase from '../lib/supabaseClient.js'
@@ -15,10 +16,10 @@ const defaultSocials = [
 ]
 
 const quickLinks = [
-  { label: 'Home', href: '/#/' },
-  { label: 'About Us', href: '/#/about' },
-  { label: 'Join SGA', href: '/#/join' },
-  { label: 'Officer Login', href: '/#/login' },
+  { label: 'Home', to: '/' },
+  { label: 'About Us', to: '/about' },
+  { label: 'Join SGA', to: '/join', requiresSignup: true },
+  { label: 'Officer Login', to: '/login' },
 ]
 
 export default function Footer() {
@@ -63,13 +64,15 @@ export default function Footer() {
             Explore
           </h2>
           <ul className="flex flex-col gap-1 text-xs text-white/75">
-            {quickLinks.map((l) => (
-              <li key={l.label}>
-                <a href={l.href} className="transition hover:text-white">
-                  {l.label}
-                </a>
-              </li>
-            ))}
+            {quickLinks
+              .filter((l) => !l.requiresSignup || settings?.signup_enabled)
+              .map((l) => (
+                <li key={l.label}>
+                  <Link to={l.to} className="transition hover:text-white">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
           </ul>
         </nav>
 

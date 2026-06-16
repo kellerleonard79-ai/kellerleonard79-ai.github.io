@@ -11,6 +11,8 @@ import SessionView from './pages/SessionView.jsx'
 import Checkin from './pages/Checkin.jsx'
 import Profile from './pages/Profile.jsx'
 import Candidacy from './pages/Candidacy.jsx'
+import ApplicationDashboard from './pages/ApplicationDashboard.jsx'
+import ElectionsPublic from './pages/ElectionsPublic.jsx'
 import MemberDirectory from './pages/MemberDirectory.jsx'
 import Archives from './pages/Archives.jsx'
 import Elections from './pages/Elections.jsx'
@@ -26,11 +28,13 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/about" element={<About />} />
+      <Route path="/elections" element={<ElectionsPublic />} />
       <Route path="/join" element={<Join />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dashboard/profile" element={<Profile />} />
       <Route path="/dashboard/candidacy" element={<Candidacy />} />
+      <Route path="/dashboard/application" element={<ApplicationDashboard />} />
       <Route
         path="/dashboard/edit-site"
         element={<Navigate to="/dashboard/admin/announcements" replace />}

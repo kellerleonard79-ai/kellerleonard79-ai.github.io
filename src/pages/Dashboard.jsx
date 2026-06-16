@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import {
   Users,
   CalendarCheck,
+  ClipboardList,
   Vote,
   Wallet,
   Archive,
@@ -91,14 +92,23 @@ function DashboardHub() {
     return true
   })
 
-  // Members who are running for a position get a self-service candidacy card.
+  // Members who are running for a position get a self-service candidacy card,
+  // plus the full application checklist (position, rules, endorsements, interview).
   if (profile?.is_candidate_application) {
-    cards.unshift({
-      title: 'My Candidacy',
-      desc: 'Choose or change the position you’re running for',
-      icon: Vote,
-      to: '/dashboard/candidacy',
-    })
+    cards.unshift(
+      {
+        title: 'My Application',
+        desc: 'Complete your election application checklist',
+        icon: ClipboardList,
+        to: '/dashboard/application',
+      },
+      {
+        title: 'My Candidacy',
+        desc: 'Choose or change the position you’re running for',
+        icon: Vote,
+        to: '/dashboard/candidacy',
+      },
+    )
   }
 
   return (
