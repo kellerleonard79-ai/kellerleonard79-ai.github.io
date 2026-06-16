@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, FileText, Loader2, UserPlus } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Construction,
+  FileText,
+  Loader2,
+  UserPlus,
+  Vote,
+} from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import Crest from '../components/Crest.jsx'
@@ -12,8 +21,6 @@ const EMPTY = {
   student_id: '',
   email: '',
   password: '',
-  is_candidate_application: false,
-  candidate_position_id: '',
 }
 
 export default function Join() {
@@ -23,27 +30,20 @@ export default function Join() {
   const [extra, setExtra] = useState({})
   const [status, setStatus] = useState('idle') // idle | submitting | success
   const [error, setError] = useState('')
-  // Whether an election cycle is currently open — gates the "I'm running for a
-  // position" candidate option. election_cycles isn't readable by anon, so we
-  // ask a public SECURITY DEFINER function for just the boolean.
-  const [candidacyOpen, setCandidacyOpen] = useState(false)
-  // Positions a candidate can run for (those flagged show_in_elections). Loaded
-  // for the position picker that appears once "I'm running" is checked.
-  const [positions, setPositions] = useState([])
+  // Whether an election cycle is currently open. When it is, the applicant first
+  // chooses between running for a position and joining as a general member.
+  // election_cycles isn't readable by anon, so we ask a public SECURITY DEFINER
+  // function for just the boolean. null = still checking.
+  const [candidacyOpen, setCandidacyOpen] = useState(null)
+  // Which path the applicant picked while a cycle is open: '' (still choosing),
+  // 'member', or 'candidate'. Ignored when no cycle is open (always 'member').
+  const [mode, setMode] = useState('')
 
   useEffect(() => {
     let active = true
     supabase.rpc('candidate_applications_open').then(({ data }) => {
       if (active) setCandidacyOpen(data === true)
     })
-    supabase
-      .from('elected_positions')
-      .select('id, title, "group", "order"')
-      .eq('show_in_elections', true)
-      .order('order', { ascending: true })
-      .then(({ data }) => {
-        if (active) setPositions(data ?? [])
-      })
     return () => {
       active = false
     }
@@ -90,14 +90,9 @@ export default function Join() {
           student_id: form.student_id.trim(),
           grade_level: extra.grade ?? '',
           shirt_size: extra.shirt_size ?? '',
-          // Only honored while a cycle is open; the option is hidden otherwise.
-          is_candidate_application: candidacyOpen && form.is_candidate_application,
-          // The position they're running for — used to seed their candidacy.
-          // Ignored unless they're actually applying as a candidate.
-          candidate_position_id:
-            candidacyOpen && form.is_candidate_application
-              ? form.candidate_position_id
-              : '',
+          // This form is the general-member path. The elected-position
+          // application is a separate flow (built next).
+          is_candidate_application: false,
           custom_fields: JSON.stringify(customFields),
         },
       },
@@ -119,9 +114,10 @@ export default function Join() {
     setExtra({})
   }
 
-  // Signup is gated by site_settings.signup_enabled. While settings load, show
-  // a spinner; if signup is explicitly disabled, redirect home.
-  if (settingsLoading) {
+  // Signup is gated by site_settings.signup_enabled. While settings (or the
+  // cycle check) load, show a spinner; if signup is explicitly disabled,
+  // redirect home.
+  if (settingsLoading || candidacyOpen === null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
         <Loader2 className="h-8 w-8 animate-spin text-maroon" />
@@ -132,62 +128,25 @@ export default function Join() {
     return <Navigate to="/" replace />
   }
 
+  // With a cycle open the applicant picks a path first; otherwise everyone takes
+  // the general-member form directly.
+  const choosing = candidacyOpen && mode === ''
+  const showCandidate = candidacyOpen && mode === 'candidate'
+
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <Navbar />
 
-      <section className="relative overflow-hidden bg-maroon py-14 text-white sm:py-20">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.10),transparent_45%)]" />
-        <div className="relative mx-auto max-w-2xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
-            Home of the Tigers
-          </span>
-          <h1 className="mt-5 font-display text-4xl font-semibold uppercase tracking-wide sm:text-5xl">
-            Join SGA
-          </h1>
-          <p className="mx-auto mt-4 max-w-md text-white/75">
-            Become a member of Pensacola High School Student Government. Fill out
-            the form below to create your account.
-          </p>
-          {settings?.constitution_url && (
-            <a
-              href={settings.constitution_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20"
-            >
-              <FileText className="h-4 w-4" /> Read the SGA Constitution
-            </a>
-          )}
-        </div>
-        <div className="absolute bottom-0 h-1 w-full bg-white/15" />
-      </section>
+      <JoinHero settings={settings} />
 
       <section className="bg-gray-50 py-12 sm:py-16">
         <div className="mx-auto max-w-xl px-4 sm:px-6">
           {status === 'success' ? (
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-              <CheckCircle2 className="mx-auto h-14 w-14 text-green-600" />
-              <h2 className="mt-4 font-display text-2xl font-bold text-maroon">
-                Registration received!
-              </h2>
-              <p className="mt-2 text-gray-600">
-                <span className="font-semibold text-maroon">
-                  Check your inbox and click the confirmation link
-                </span>{' '}
-                we just emailed you. After that, an SGA officer will review your
-                membership — you&apos;ll be able to log in once your account is
-                confirmed <em>and</em> approved. (Be sure to check your spam
-                folder.)
-              </p>
-              <Link
-                to="/"
-                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-maroon px-6 py-3 font-semibold text-white transition hover:bg-maroon-dark"
-              >
-                <ArrowLeft className="h-5 w-5" /> Back to Home
-              </Link>
-            </div>
+            <SuccessCard />
+          ) : choosing ? (
+            <ChoiceScreen onChoose={setMode} />
+          ) : showCandidate ? (
+            <CandidateSkeleton onBack={() => setMode('')} />
           ) : (
             <form
               onSubmit={handleSubmit}
@@ -199,11 +158,20 @@ export default function Join() {
                   <h2 className="font-display text-xl font-bold text-maroon">
                     Member Registration
                   </h2>
-                  <p className="text-sm text-gray-500">
-                    All fields are required.
-                  </p>
+                  <p className="text-sm text-gray-500">All fields are required.</p>
                 </div>
               </div>
+
+              {/* When a cycle is open, let them step back to the path chooser. */}
+              {candidacyOpen && (
+                <button
+                  type="button"
+                  onClick={() => setMode('')}
+                  className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-maroon"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Choose a different application
+                </button>
+              )}
 
               {error && (
                 <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -274,70 +242,6 @@ export default function Join() {
                     placeholder="At least 6 characters"
                   />
                 </Field>
-
-                {/* The candidate option only appears while an election cycle
-                    is open. Outside a cycle everyone joins as a general member. */}
-                {candidacyOpen && (
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                    <label className="flex cursor-pointer items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={form.is_candidate_application}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            is_candidate_application: e.target.checked,
-                          }))
-                        }
-                        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
-                      />
-                      <span className="text-sm text-maroon">
-                        <span className="font-semibold text-maroon">
-                          I&apos;m running for a position
-                        </span>
-                        <span className="mt-0.5 block text-gray-500">
-                          Check this if you&apos;re applying as a candidate, not
-                          just a general member. An officer will follow up about
-                          your candidacy.
-                        </span>
-                      </span>
-                    </label>
-
-                    {form.is_candidate_application && (
-                      <label htmlFor="candidate_position" className="mt-4 block">
-                        <span className="mb-1.5 block text-sm font-semibold text-maroon">
-                          Position you&apos;re running for
-                        </span>
-                        <select
-                          id="candidate_position"
-                          required
-                          value={form.candidate_position_id}
-                          onChange={(e) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              candidate_position_id: e.target.value,
-                            }))
-                          }
-                          className={inputClass}
-                        >
-                          <option value="" disabled>
-                            Select a position…
-                          </option>
-                          {positions.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.title}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="mt-1.5 block text-xs text-gray-500">
-                          You can change which position you&apos;re running for
-                          later, up to a set number of times, until the filing
-                          deadline.
-                        </span>
-                      </label>
-                    )}
-                  </div>
-                )}
               </div>
 
               <button
@@ -347,8 +251,7 @@ export default function Join() {
               >
                 {status === 'submitting' ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" /> Creating
-                    account…
+                    <Loader2 className="h-5 w-5 animate-spin" /> Creating account…
                   </>
                 ) : (
                   <>
@@ -374,6 +277,149 @@ export default function Join() {
 
 const inputClass =
   'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
+
+function JoinHero({ settings }) {
+  return (
+    <section className="relative overflow-hidden bg-maroon py-14 text-white sm:py-20">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light opacity-90" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.10),transparent_45%)]" />
+      <div className="relative mx-auto max-w-2xl px-4 text-center sm:px-6">
+        <span className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
+          Home of the Tigers
+        </span>
+        <h1 className="mt-5 font-display text-4xl font-semibold uppercase tracking-wide sm:text-5xl">
+          Join SGA
+        </h1>
+        <p className="mx-auto mt-4 max-w-md text-white/75">
+          Become a member of Pensacola High School Student Government. Fill out
+          the form below to create your account.
+        </p>
+        {settings?.constitution_url && (
+          <a
+            href={settings.constitution_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20"
+          >
+            <FileText className="h-4 w-4" /> Read the SGA Constitution
+          </a>
+        )}
+      </div>
+      <div className="absolute bottom-0 h-1 w-full bg-white/15" />
+    </section>
+  )
+}
+
+// Shown only while an election cycle is open: the applicant first picks whether
+// they're running for office or joining as a general member.
+function ChoiceScreen({ onChoose }) {
+  return (
+    <div>
+      <div className="mb-6 text-center">
+        <span className="inline-flex items-center gap-2 rounded-full bg-maroon/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-maroon">
+          <Vote className="h-3.5 w-3.5" /> Elections are open
+        </span>
+        <h2 className="mt-3 font-display text-2xl font-bold text-maroon">
+          How would you like to apply?
+        </h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Choose the application that fits you.
+        </p>
+      </div>
+
+      <div className="grid gap-4">
+        <ChoiceCard
+          icon={Vote}
+          title="Apply for an Elected Position"
+          desc="Run for office this election cycle."
+          onClick={() => onChoose('candidate')}
+        />
+        <ChoiceCard
+          icon={UserPlus}
+          title="Apply as a General Member"
+          desc="Join SGA without running for a position."
+          onClick={() => onChoose('member')}
+        />
+      </div>
+
+      <p className="mt-6 text-center text-sm text-gray-500">
+        <Link to="/" className="font-medium text-maroon hover:underline">
+          ← Back to Home
+        </Link>
+      </p>
+    </div>
+  )
+}
+
+function ChoiceCard({ icon: Icon, title, desc, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-maroon/30 hover:shadow-md"
+    >
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-maroon/8 text-maroon transition-colors group-hover:bg-maroon group-hover:text-white">
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-base font-bold text-maroon">
+          {title}
+        </span>
+        <span className="block text-sm text-gray-500">{desc}</span>
+      </span>
+      <ArrowRight className="h-5 w-5 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-maroon" />
+    </button>
+  )
+}
+
+// Placeholder for the elected-position application — the real form is built next.
+function CandidateSkeleton({ onBack }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-maroon"
+      >
+        <ArrowLeft className="h-4 w-4" /> Choose a different application
+      </button>
+
+      <Construction className="mx-auto h-14 w-14 text-maroon/70" />
+      <h2 className="mt-4 font-display text-2xl font-bold text-maroon">
+        Elected Position Application
+      </h2>
+      <p className="mx-auto mt-2 max-w-sm text-gray-600">
+        This application is coming soon. The form for running for an elected
+        position is still being built — check back shortly.
+      </p>
+    </div>
+  )
+}
+
+function SuccessCard() {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+      <CheckCircle2 className="mx-auto h-14 w-14 text-green-600" />
+      <h2 className="mt-4 font-display text-2xl font-bold text-maroon">
+        Registration received!
+      </h2>
+      <p className="mt-2 text-gray-600">
+        <span className="font-semibold text-maroon">
+          Check your inbox and click the confirmation link
+        </span>{' '}
+        we just emailed you. After that, an SGA officer will review your
+        membership — you&apos;ll be able to log in once your account is confirmed{' '}
+        <em>and</em> approved. (Be sure to check your spam folder.)
+      </p>
+      <Link
+        to="/"
+        className="mt-6 inline-flex items-center gap-2 rounded-lg bg-maroon px-6 py-3 font-semibold text-white transition hover:bg-maroon-dark"
+      >
+        <ArrowLeft className="h-5 w-5" /> Back to Home
+      </Link>
+    </div>
+  )
+}
 
 // Renders a single schema-driven field (Grade, Shirt Size, or any admin-added
 // custom field). Checkbox fields render inline; text/select use the Field shell.
