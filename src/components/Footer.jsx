@@ -18,7 +18,7 @@ export default function Footer() {
     settings?.contact_address || '500 W Maxwell St, Pensacola, FL 32501'
 
   return (
-    <footer id="contact" className="bg-maroon text-white">
+    <footer id="contact" className="mt-auto bg-maroon text-white">
       {/* Main row */}
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-8 sm:px-8 md:flex-row md:items-center md:justify-between">
         {/* Brand + contact */}

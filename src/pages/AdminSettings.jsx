@@ -119,7 +119,7 @@ export default function AdminSettings() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="flex min-h-screen flex-col bg-gray-50">
         <Navbar />
         <div className="flex justify-center py-24">
           <Loader2 className="h-8 w-8 animate-spin text-maroon" />
@@ -132,7 +132,7 @@ export default function AdminSettings() {
 
   if (visible.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="flex min-h-screen flex-col bg-gray-50">
         <Navbar />
         <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
           <Lock className="h-10 w-10 text-maroon" />
@@ -179,7 +179,7 @@ function AdminContent({ visible }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <Navbar />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">

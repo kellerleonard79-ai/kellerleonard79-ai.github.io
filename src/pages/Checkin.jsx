@@ -68,7 +68,7 @@ export default function Checkin() {
   }, [loading, session, profile, meetingId])
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <Navbar />
       <section className="flex items-center justify-center px-4 py-20">
         <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">

@@ -90,7 +90,7 @@ export default function About() {
   const purpose = settings?.about_purpose_text
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="flex min-h-screen flex-col bg-white">
       <Navbar />
 
       {/* Purpose */}

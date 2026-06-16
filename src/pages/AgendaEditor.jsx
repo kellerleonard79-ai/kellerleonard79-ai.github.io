@@ -1013,7 +1013,7 @@ function Detail({ label, value }) {
 
 function Shell({ children }) {
   return (
-    <div className="min-h-screen bg-gray-50 print:bg-white">
+    <div className="flex min-h-screen flex-col bg-gray-50 print:bg-white">
       <div className="print:hidden">
         <Navbar />
       </div>

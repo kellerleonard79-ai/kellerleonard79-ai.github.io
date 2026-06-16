@@ -201,7 +201,7 @@ function DirectoryContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       <Navbar />
 
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">

@@ -22,7 +22,7 @@ export default function Home() {
   const calendarSrc = settings?.calendar_url?.trim() || DEFAULT_CALENDAR_SRC
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="flex min-h-screen flex-col bg-white">
       <Navbar />
 
       {/* ───────────────────────── Hero ───────────────────────── */}

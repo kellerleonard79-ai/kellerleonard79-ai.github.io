@@ -100,7 +100,7 @@ export default function Join() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="flex min-h-screen flex-col bg-white">
       <Navbar />
 
       <section className="relative overflow-hidden bg-maroon py-14 text-white sm:py-20">

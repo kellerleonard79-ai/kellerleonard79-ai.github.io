@@ -76,7 +76,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="flex min-h-screen flex-col bg-white">
       <Navbar />
       <section className="flex items-center justify-center bg-gray-50 px-4 py-16 sm:py-24">
         <form
