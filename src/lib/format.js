@@ -36,9 +36,21 @@ export function gradeLabel(n) {
 // the {date} token with a human-readable date. Falls back to a sensible default
 // when no format is set.
 export function meetingTitleFromFormat(format, dateISO) {
-  const tpl = format?.trim() || 'SGA Meeting – {date}'
+  let tpl = format?.trim() || 'SGA Meeting – {date}'
   const dateLabel = dateISO ? formatDate(dateISO) : ''
-  return tpl.replace(/\{date\}/g, dateLabel).trim()
+
+  // If the format has no {date} token, append the date so it always combines.
+  if (!/\{date\}/.test(tpl)) tpl = `${tpl} – {date}`
+
+  let out = tpl.replace(/\{date\}/g, dateLabel)
+
+  // Collapse any run of adjacent dash separators (e.g. a stray "– —") into one.
+  out = out.replace(/[–—-](?:\s*[–—-])+/g, '–')
+
+  // When no date is chosen yet, drop the dangling trailing separator.
+  if (!dateLabel) out = out.replace(/\s*[–—-]\s*$/, '')
+
+  return out.trim()
 }
 
 export function checkinUrl(meetingId) {
