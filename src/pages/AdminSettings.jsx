@@ -1067,6 +1067,7 @@ function ContactSection() {
   const { settings, refresh } = useSiteSettings()
   const [email, setEmail] = useState('')
   const [address, setAddress] = useState('')
+  const [socials, setSocials] = useState([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -1074,17 +1075,46 @@ function ContactSection() {
     if (settings) {
       setEmail(settings.contact_email ?? '')
       setAddress(settings.contact_address ?? '')
+      setSocials(
+        Array.isArray(settings.footer_socials)
+          ? settings.footer_socials.map((s) => ({
+              label: s.label ?? '',
+              href: s.href ?? '',
+            }))
+          : [],
+      )
     }
   }, [settings])
+
+  function updateSocial(i, field, value) {
+    setSocials((prev) =>
+      prev.map((s, idx) => (idx === i ? { ...s, [field]: value } : s)),
+    )
+    setSaved(false)
+  }
+
+  function addSocial() {
+    setSocials((prev) => [...prev, { label: '', href: 'https://instagram.com/' }])
+    setSaved(false)
+  }
+
+  function removeSocial(i) {
+    setSocials((prev) => prev.filter((_, idx) => idx !== i))
+    setSaved(false)
+  }
 
   async function save() {
     setSaving(true)
     setSaved(false)
+    const cleanedSocials = socials
+      .map((s) => ({ label: s.label.trim(), href: s.href.trim() }))
+      .filter((s) => s.label || s.href)
     const { error } = await supabase
       .from('site_settings')
       .update({
         contact_email: email.trim(),
         contact_address: address.trim(),
+        footer_socials: cleanedSocials,
       })
       .eq('id', 1)
     if (!error) {
@@ -1097,12 +1127,21 @@ function ContactSection() {
   const dirty =
     settings &&
     (email !== (settings.contact_email ?? '') ||
-      address !== (settings.contact_address ?? ''))
+      address !== (settings.contact_address ?? '') ||
+      JSON.stringify(socials) !==
+        JSON.stringify(
+          Array.isArray(settings.footer_socials)
+            ? settings.footer_socials.map((s) => ({
+                label: s.label ?? '',
+                href: s.href ?? '',
+              }))
+            : [],
+        ))
 
   return (
     <Card
       title="Contact details"
-      desc="The email and address shown in the site footer."
+      desc="The email, address, and social links shown in the site footer."
     >
       <div className="grid gap-5">
         <Labeled label="Contact email">
@@ -1128,6 +1167,46 @@ function ContactSection() {
             placeholder="500 W Maxwell St, Pensacola, FL 32501"
             className={inputClass}
           />
+        </Labeled>
+        <Labeled label="Footer social links">
+          <div className="grid gap-2.5">
+            {socials.length === 0 && (
+              <p className="text-sm text-gray-400">No social links yet.</p>
+            )}
+            {socials.map((s, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={s.label}
+                  onChange={(e) => updateSocial(i, 'label', e.target.value)}
+                  placeholder="Class of '27"
+                  className={`${inputClass} sm:w-40 sm:flex-none`}
+                />
+                <input
+                  type="url"
+                  value={s.href}
+                  onChange={(e) => updateSocial(i, 'href', e.target.value)}
+                  placeholder="https://instagram.com/handle"
+                  className={`${inputClass} flex-1`}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeSocial(i)}
+                  aria-label="Remove link"
+                  className="shrink-0 rounded-lg border border-gray-200 p-2 text-gray-400 transition hover:border-red-300 hover:text-red-500"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addSocial}
+              className="inline-flex w-fit items-center gap-2 rounded-lg border border-maroon px-3 py-1.5 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+            >
+              <Plus className="h-4 w-4" /> Add link
+            </button>
+          </div>
         </Labeled>
       </div>
       <div className="mt-4">
