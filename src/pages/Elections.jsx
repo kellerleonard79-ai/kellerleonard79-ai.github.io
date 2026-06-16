@@ -14,6 +14,8 @@ import {
   Lock,
   Unlock,
   Users,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
@@ -476,9 +478,9 @@ function CyclesList({ cycles, candidates, canManage, onOpen, onChanged }) {
       }
     >
       {creating && (
-        <CreateCycleForm
+        <CycleForm
           onCancel={() => setCreating(false)}
-          onCreated={() => {
+          onSaved={() => {
             setCreating(false)
             onChanged()
           }}
@@ -529,12 +531,25 @@ function CyclesList({ cycles, candidates, canManage, onOpen, onChanged }) {
   )
 }
 
-function CreateCycleForm({ onCancel, onCreated }) {
+// Convert a stored ISO timestamp to the `datetime-local` input format,
+// adjusting for the local timezone so the displayed value matches.
+function toLocalInput(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const tzOffset = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16)
+}
+
+// Create or edit an election cycle. Pass `cycle` to edit an existing one.
+function CycleForm({ cycle, onCancel, onSaved }) {
   const { profile } = useAuth()
-  const [name, setName] = useState('')
-  const [openDate, setOpenDate] = useState('')
-  const [closeDate, setCloseDate] = useState('')
-  const [interview, setInterview] = useState(50) // percent
+  const isEdit = Boolean(cycle)
+  const [name, setName] = useState(cycle?.name ?? '')
+  const [openDate, setOpenDate] = useState(toLocalInput(cycle?.open_date))
+  const [closeDate, setCloseDate] = useState(toLocalInput(cycle?.close_date))
+  const [interview, setInterview] = useState(
+    cycle ? Math.round((cycle.interview_weight ?? 0.5) * 100) : 50,
+  ) // percent
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -543,20 +558,27 @@ function CreateCycleForm({ onCancel, onCreated }) {
     if (!name.trim()) return
     setBusy(true)
     setError('')
-    const { error } = await supabase.from('election_cycles').insert({
+    const payload = {
       name: name.trim(),
       open_date: openDate ? new Date(openDate).toISOString() : null,
       close_date: closeDate ? new Date(closeDate).toISOString() : null,
       interview_weight: interview / 100,
       election_weight: (100 - interview) / 100,
-      created_by: profile?.id ?? null,
-    })
+    }
+    const { error } = isEdit
+      ? await supabase
+          .from('election_cycles')
+          .update(payload)
+          .eq('id', cycle.id)
+      : await supabase
+          .from('election_cycles')
+          .insert({ ...payload, created_by: profile?.id ?? null })
     setBusy(false)
     if (error) {
       setError(error.message)
       return
     }
-    onCreated()
+    onSaved()
   }
 
   return (
@@ -642,10 +664,12 @@ function CreateCycleForm({ onCancel, onCreated }) {
         >
           {busy ? (
             <Loader2 className="h-4 w-4 animate-spin" />
+          ) : isEdit ? (
+            <Check className="h-4 w-4" />
           ) : (
             <Plus className="h-4 w-4" />
           )}
-          Create cycle
+          {isEdit ? 'Save changes' : 'Create cycle'}
         </button>
       </div>
     </form>
@@ -663,6 +687,8 @@ function CycleDetail({
   onChanged,
 }) {
   const [togglingOpen, setTogglingOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const pending = candidates.filter((c) => c.status === 'pending')
   const active = candidates.filter((c) => ACTIVE_STATUSES.includes(c.status))
@@ -701,6 +727,36 @@ function CycleDetail({
     onChanged()
   }
 
+  async function deleteCycle() {
+    if (
+      !window.confirm(
+        `Delete the "${cycle.name}" cycle? Its ${
+          candidates.length
+        } candidate record${
+          candidates.length === 1 ? '' : 's'
+        } will also be removed. This cannot be undone.`,
+      )
+    )
+      return
+    setDeleting(true)
+    // Remove candidate rows first in case no cascade is configured.
+    await supabase
+      .from('election_candidates')
+      .delete()
+      .eq('cycle_id', cycle.id)
+    const { error } = await supabase
+      .from('election_cycles')
+      .delete()
+      .eq('id', cycle.id)
+    setDeleting(false)
+    if (error) {
+      window.alert(`Delete failed: ${error.message}`)
+      return
+    }
+    onBack()
+    onChanged()
+  }
+
   return (
     <Section
       icon={Vote}
@@ -717,6 +773,42 @@ function CycleDetail({
         </button>
       }
     >
+      {canManage && (
+        <div className="mb-6">
+          {editing ? (
+            <CycleForm
+              cycle={cycle}
+              onCancel={() => setEditing(false)}
+              onSaved={() => {
+                setEditing(false)
+                onChanged()
+              }}
+            />
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setEditing(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-maroon/30 px-3 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+              >
+                <Pencil className="h-4 w-4" /> Edit cycle
+              </button>
+              <button
+                onClick={deleteCycle}
+                disabled={deleting}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+              >
+                {deleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Delete cycle
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Header strip: open/closed + dates */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
         <div className="text-sm text-gray-600">
