@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ChevronLeft,
@@ -70,8 +70,6 @@ function EditorContent() {
   const [loading, setLoading] = useState(true)
   const [publicView, setPublicView] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const agendaPrintRef = useRef(null)
-  const attendancePrintRef = useRef(null)
 
   const loadSectionTypes = useCallback(async () => {
     const { data } = await supabase
@@ -193,50 +191,240 @@ function EditorContent() {
     loadItems()
   }
 
-  // Render a hidden off-screen element to a canvas, then lay it across as many
-  // PDF pages as its height requires. The printable elements use plain inline
-  // styles (hex colors only) so html2canvas never meets Tailwind's oklch()
-  // color functions, which it cannot parse.
+  // Build the PDF directly from agenda data with jsPDF's text API. We avoid
+  // html2canvas (DOM rasterization) because it cannot parse Tailwind v4's
+  // oklch() color values and throws — which previously made the button appear
+  // to do nothing. Drawing text directly also yields a smaller PDF with
+  // selectable text and no off-screen DOM.
   async function exportPdf() {
     setExporting(true)
     try {
-      // Load the heavy PDF libraries on demand so they stay out of the initial
-      // app bundle — they're only needed the moment someone exports.
-      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-        import('jspdf'),
-        import('html2canvas'),
-      ])
+      // Load jsPDF on demand so it stays out of the initial app bundle.
+      const { default: jsPDF } = await import('jspdf')
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pageW = pdf.internal.pageSize.getWidth()
       const pageH = pdf.internal.pageSize.getHeight()
+      const margin = 15
+      const contentW = pageW - margin * 2
+      let y = margin
 
-      const addElement = async (el, isFirst) => {
-        if (!el) return
-        const canvas = await html2canvas(el, {
-          scale: 2,
-          backgroundColor: '#ffffff',
-        })
-        const imgData = canvas.toDataURL('image/png')
-        const imgW = pageW
-        const imgH = (canvas.height * imgW) / canvas.width
-        let heightLeft = imgH
-        let position = 0
-        if (!isFirst) pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH)
-        heightLeft -= pageH
-        while (heightLeft > 0) {
-          position -= pageH
+      const MAROON = [142, 35, 28]
+      const DARK = [17, 24, 39]
+      const SLATE = [55, 65, 81]
+      const GRAY = [107, 114, 128]
+      const FAINT = [156, 163, 175]
+
+      const ensureSpace = (h) => {
+        if (y + h > pageH - margin) {
           pdf.addPage()
-          pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH)
-          heightLeft -= pageH
+          y = margin
         }
       }
 
-      await addElement(agendaPrintRef.current, true)
-      await addElement(attendancePrintRef.current, false)
+      // Write (optionally wrapped) text, advancing y. Returns nothing.
+      const writeText = (
+        text,
+        { size = 11, style = 'normal', color = DARK, indent = 0, gap = 1.2 } = {},
+      ) => {
+        pdf.setFont('helvetica', style)
+        pdf.setFontSize(size)
+        pdf.setTextColor(color[0], color[1], color[2])
+        const lh = size * 0.3528 * 1.25
+        const lines = pdf.splitTextToSize(String(text ?? ''), contentW - indent)
+        for (const line of lines) {
+          ensureSpace(lh)
+          pdf.text(line, margin + indent, y)
+          y += lh
+        }
+        y += gap
+      }
+
+      const pageHeader = (title, subtitle) => {
+        if (settings?.school_name) {
+          pdf.setFont('helvetica', 'bold')
+          pdf.setFontSize(9)
+          pdf.setTextColor(MAROON[0], MAROON[1], MAROON[2])
+          pdf.text(settings.school_name.toUpperCase(), margin, y)
+          y += 5
+        }
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(18)
+        pdf.setTextColor(DARK[0], DARK[1], DARK[2])
+        pdf.text(title, margin, y)
+        y += 7
+        if (subtitle) {
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(11)
+          pdf.setTextColor(GRAY[0], GRAY[1], GRAY[2])
+          pdf.text(subtitle, margin, y)
+          y += 5
+        }
+        pdf.setDrawColor(MAROON[0], MAROON[1], MAROON[2])
+        pdf.setLineWidth(0.7)
+        pdf.line(margin, y, pageW - margin, y)
+        y += 8
+      }
+
+      const sectionTitle = (name) => {
+        ensureSpace(12)
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(13)
+        pdf.setTextColor(MAROON[0], MAROON[1], MAROON[2])
+        pdf.text(name, margin, y)
+        y += 2
+        pdf.setDrawColor(229, 231, 235)
+        pdf.setLineWidth(0.3)
+        pdf.line(margin, y, pageW - margin, y)
+        y += 6
+      }
+
+      // ---- Agenda page ----
+      pageHeader('Meeting Agenda', `${meeting.title} — ${formatDate(meeting.date)}`)
+
+      const openingType = typeByName['Opening']
+      const adjournmentType = typeByName['Adjournment']
+      const middleTypes = sectionTypes.filter(
+        (t) => t.name !== 'Opening' && t.name !== 'Adjournment',
+      )
+      const orderedTypes = [
+        ...(openingType ? [openingType] : []),
+        ...middleTypes,
+        ...(adjournmentType ? [adjournmentType] : []),
+      ]
+
+      for (const t of orderedTypes) {
+        const items = bySectionTypeId[t.id] ?? []
+        const isOpening = openingType && t.id === openingType.id
+        const isAdjournment = adjournmentType && t.id === adjournmentType.id
+        sectionTitle(t.name)
+
+        if (isOpening) {
+          writeText(`Presiding officer: ${meeting.presiding_officer || '—'}`, {
+            size: 10,
+            color: SLATE,
+            gap: 0.5,
+          })
+          writeText(
+            `Called to order: ${
+              meeting.called_to_order
+                ? new Date(meeting.called_to_order).toLocaleString()
+                : '—'
+            }`,
+            { size: 10, color: SLATE, gap: 0.5 },
+          )
+          writeText(`Quorum confirmed: ${meeting.quorum_confirmed ? 'Yes' : 'No'}`, {
+            size: 10,
+            color: SLATE,
+            gap: 0.5,
+          })
+          writeText(`Agenda approved: ${meeting.agenda_approved ? 'Yes' : 'No'}`, {
+            size: 10,
+            color: SLATE,
+          })
+        }
+
+        if (items.length === 0 && !isOpening && !isAdjournment) {
+          writeText('No items.', { size: 10, color: FAINT })
+        } else {
+          items.forEach((item, idx) => {
+            const status =
+              item.status && item.status !== 'No status' ? `  [${item.status}]` : ''
+            writeText(`${idx + 1}. ${item.content ?? ''}${status}`, {
+              size: 11,
+              style: 'bold',
+              gap: 0.5,
+            })
+            for (const sub of childrenOf(item.id)) {
+              writeText(`• ${sub.content ?? ''}`, {
+                size: 10,
+                color: SLATE,
+                indent: 6,
+                gap: 0.3,
+              })
+            }
+            if (item.secretary_notes) {
+              writeText(item.secretary_notes, {
+                size: 9,
+                style: 'italic',
+                color: GRAY,
+                indent: 6,
+              })
+            }
+          })
+        }
+
+        if (isAdjournment) {
+          writeText(
+            `Next meeting: ${
+              meeting.next_meeting_date ? formatDate(meeting.next_meeting_date) : '—'
+            }`,
+            { size: 10, color: SLATE, gap: 0.5 },
+          )
+          writeText(
+            `Adjourned at: ${
+              meeting.adjourned_at
+                ? new Date(meeting.adjourned_at).toLocaleString()
+                : '—'
+            }`,
+            { size: 10, color: SLATE },
+          )
+        }
+        y += 4
+      }
+
+      // ---- Attendance page ----
+      pdf.addPage()
+      y = margin
+      pageHeader('Attendance', `${meeting.title} — ${formatDate(meeting.date)}`)
+
+      if (attendance.length === 0) {
+        writeText('No attendance recorded for this meeting.', {
+          size: 10,
+          color: FAINT,
+        })
+      } else {
+        const cols = [margin, margin + 90, margin + 130]
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(10)
+        pdf.setTextColor(MAROON[0], MAROON[1], MAROON[2])
+        pdf.text('Member', cols[0], y)
+        pdf.text('Status', cols[1], y)
+        pdf.text('Checked in', cols[2], y)
+        y += 2
+        pdf.setDrawColor(MAROON[0], MAROON[1], MAROON[2])
+        pdf.setLineWidth(0.5)
+        pdf.line(margin, y, pageW - margin, y)
+        y += 5
+
+        for (const a of attendance) {
+          ensureSpace(7)
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(10)
+          pdf.setTextColor(SLATE[0], SLATE[1], SLATE[2])
+          pdf.text(String(a.profiles?.full_name ?? 'Member'), cols[0], y)
+          pdf.text(
+            String(a.status ?? '').replace(/^\w/, (c) => c.toUpperCase()),
+            cols[1],
+            y,
+          )
+          pdf.text(a.checked_in_at ? formatTime(a.checked_in_at) : '—', cols[2], y)
+          y += 4
+          pdf.setDrawColor(229, 231, 235)
+          pdf.setLineWidth(0.2)
+          pdf.line(margin, y, pageW - margin, y)
+          y += 4
+        }
+      }
+      writeText(`Total recorded: ${attendance.length}`, {
+        size: 9,
+        color: GRAY,
+      })
 
       const safe = (meeting.title || 'agenda').replace(/[^\w-]+/g, '-')
       pdf.save(`${safe}-agenda.pdf`)
+    } catch (err) {
+      console.error('Agenda PDF export failed:', err)
+      alert('Sorry — the PDF export failed. Please try again.')
     } finally {
       setExporting(false)
     }
@@ -277,14 +465,6 @@ function EditorContent() {
   const middleTypes = sectionTypes.filter(
     (t) => t.name !== 'Opening' && t.name !== 'Adjournment',
   )
-
-  // Section order for the printable agenda: Opening first, then everything
-  // else in default_order, Adjournment last — mirroring the on-screen layout.
-  const printTypes = [
-    ...(openingType ? [openingType] : []),
-    ...middleTypes,
-    ...(adjournmentType ? [adjournmentType] : []),
-  ]
 
   return (
     <Shell>
@@ -364,212 +544,7 @@ function EditorContent() {
           />
         )}
       </div>
-
-      {/* Off-screen clean renders captured by html2canvas for the PDF export. */}
-      <PrintableAgenda
-        innerRef={agendaPrintRef}
-        meeting={meeting}
-        schoolName={settings?.school_name}
-        types={printTypes}
-        openingId={openingType?.id}
-        adjournmentId={adjournmentType?.id}
-        bySectionTypeId={bySectionTypeId}
-        childrenOf={childrenOf}
-      />
-      <PrintableAttendance
-        innerRef={attendancePrintRef}
-        meeting={meeting}
-        schoolName={settings?.school_name}
-        attendance={attendance}
-      />
     </Shell>
-  )
-}
-
-/* --------------------- Printable (PDF) renders ---------------------------- */
-// Hidden, fixed-width (A4-ish at 96dpi), inline-styled views captured by
-// html2canvas. Inline hex colors only — never Tailwind classes — so the
-// capture doesn't choke on oklch() color functions.
-const PRINT_WRAP = {
-  position: 'absolute',
-  left: '-10000px',
-  top: 0,
-  width: '760px',
-  padding: '40px',
-  background: '#ffffff',
-  color: '#111827',
-  fontFamily: 'Georgia, "Times New Roman", serif',
-}
-
-function PrintHeader({ schoolName, title, subtitle }) {
-  return (
-    <div style={{ borderBottom: '3px solid #8e231c', paddingBottom: '12px', marginBottom: '20px' }}>
-      {schoolName && (
-        <div style={{ fontSize: '13px', letterSpacing: '1px', textTransform: 'uppercase', color: '#8e231c', fontWeight: 700 }}>
-          {schoolName}
-        </div>
-      )}
-      <div style={{ fontSize: '24px', fontWeight: 700, marginTop: '4px' }}>{title}</div>
-      {subtitle && <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '2px' }}>{subtitle}</div>}
-    </div>
-  )
-}
-
-function PrintableAgenda({
-  innerRef,
-  meeting,
-  schoolName,
-  types,
-  openingId,
-  adjournmentId,
-  bySectionTypeId,
-  childrenOf,
-}) {
-  return (
-    <div ref={innerRef} style={PRINT_WRAP}>
-      <PrintHeader
-        schoolName={schoolName}
-        title="Meeting Agenda"
-        subtitle={`${meeting.title} — ${formatDate(meeting.date)}`}
-      />
-
-      {types.map((t) => {
-        const items = bySectionTypeId[t.id] ?? []
-        const isOpening = t.id === openingId
-        const isAdjournment = t.id === adjournmentId
-        return (
-          <div key={t.id} style={{ marginBottom: '22px' }}>
-            <div
-              style={{
-                fontSize: '16px',
-                fontWeight: 700,
-                color: '#8e231c',
-                borderBottom: '1px solid #e5e7eb',
-                paddingBottom: '4px',
-                marginBottom: '8px',
-              }}
-            >
-              {t.name}
-            </div>
-
-            {isOpening && (
-              <div style={{ fontSize: '13px', color: '#374151', marginBottom: '8px' }}>
-                <div>Presiding officer: {meeting.presiding_officer || '—'}</div>
-                <div>
-                  Called to order:{' '}
-                  {meeting.called_to_order
-                    ? new Date(meeting.called_to_order).toLocaleString()
-                    : '—'}
-                </div>
-                <div>Quorum confirmed: {meeting.quorum_confirmed ? 'Yes' : 'No'}</div>
-                <div>Agenda approved: {meeting.agenda_approved ? 'Yes' : 'No'}</div>
-              </div>
-            )}
-
-            {items.length === 0 && !isOpening && !isAdjournment ? (
-              <div style={{ fontSize: '13px', color: '#9ca3af' }}>No items.</div>
-            ) : (
-              <ol style={{ margin: 0, paddingLeft: '20px' }}>
-                {items.map((item) => {
-                  const subs = childrenOf(item.id)
-                  return (
-                    <li key={item.id} style={{ fontSize: '14px', marginBottom: '6px' }}>
-                      <span style={{ fontWeight: 600 }}>{item.content}</span>
-                      {item.status && item.status !== 'No status' && (
-                        <span style={{ color: '#6b7280', fontSize: '12px' }}>
-                          {' '}
-                          [{item.status}]
-                        </span>
-                      )}
-                      {subs.length > 0 && (
-                        <ul style={{ margin: '2px 0 0', paddingLeft: '18px' }}>
-                          {subs.map((s) => (
-                            <li key={s.id} style={{ fontSize: '13px', color: '#374151' }}>
-                              {s.content}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {item.secretary_notes && (
-                        <div style={{ fontSize: '12px', fontStyle: 'italic', color: '#6b7280', marginTop: '2px' }}>
-                          {item.secretary_notes}
-                        </div>
-                      )}
-                    </li>
-                  )
-                })}
-              </ol>
-            )}
-
-            {isAdjournment && (
-              <div style={{ fontSize: '13px', color: '#374151', marginTop: '8px' }}>
-                <div>
-                  Next meeting:{' '}
-                  {meeting.next_meeting_date ? formatDate(meeting.next_meeting_date) : '—'}
-                </div>
-                <div>
-                  Adjourned at:{' '}
-                  {meeting.adjourned_at
-                    ? new Date(meeting.adjourned_at).toLocaleString()
-                    : '—'}
-                </div>
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function PrintableAttendance({ innerRef, meeting, schoolName, attendance }) {
-  const cell = {
-    padding: '6px 8px',
-    borderBottom: '1px solid #e5e7eb',
-    fontSize: '13px',
-    textAlign: 'left',
-  }
-  return (
-    <div ref={innerRef} style={PRINT_WRAP}>
-      <PrintHeader
-        schoolName={schoolName}
-        title="Attendance"
-        subtitle={`${meeting.title} — ${formatDate(meeting.date)}`}
-      />
-      {attendance.length === 0 ? (
-        <div style={{ fontSize: '13px', color: '#9ca3af' }}>
-          No attendance recorded for this meeting.
-        </div>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ ...cell, fontWeight: 700, color: '#8e231c', borderBottom: '2px solid #8e231c' }}>
-                Member
-              </th>
-              <th style={{ ...cell, fontWeight: 700, color: '#8e231c', borderBottom: '2px solid #8e231c' }}>
-                Status
-              </th>
-              <th style={{ ...cell, fontWeight: 700, color: '#8e231c', borderBottom: '2px solid #8e231c' }}>
-                Checked in
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {attendance.map((a, i) => (
-              <tr key={i}>
-                <td style={cell}>{a.profiles?.full_name ?? 'Member'}</td>
-                <td style={{ ...cell, textTransform: 'capitalize' }}>{a.status}</td>
-                <td style={cell}>{a.checked_in_at ? formatTime(a.checked_in_at) : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '14px' }}>
-        Total recorded: {attendance.length}
-      </div>
-    </div>
   )
 }
 
