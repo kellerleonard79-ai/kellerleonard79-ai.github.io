@@ -30,13 +30,13 @@ export default function Footer() {
   return (
     <footer id="contact" className="mt-auto bg-maroon text-white">
       {/* Main grid */}
-      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-6 gap-y-8 px-6 py-10 sm:px-8 lg:grid-cols-12">
+      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-6 gap-y-5 px-6 py-7 sm:px-8 lg:grid-cols-12">
         {/* Brand + contact */}
-        <div className="col-span-2 flex flex-col gap-3 lg:col-span-4">
+        <div className="col-span-2 flex flex-col gap-2 lg:col-span-4">
           <img
             src="/white-phs-sga-logo.png"
             alt="Pensacola High School Student Government Association"
-            className="h-12 w-auto object-contain"
+            className="h-11 w-auto self-start object-contain"
           />
           <p className="max-w-xs text-sm leading-relaxed text-white/60">
             Representing the students of Pensacola High School — leadership,
@@ -59,7 +59,7 @@ export default function Footer() {
 
         {/* Quick links */}
         <nav className="lg:col-span-2">
-          <h2 className="mb-3 font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
+          <h2 className="mb-2 font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
             Explore
           </h2>
           <ul className="flex flex-col gap-2 text-sm text-white/75">
@@ -75,7 +75,7 @@ export default function Footer() {
 
         {/* Social */}
         <div className="lg:col-span-2">
-          <h2 className="mb-3 font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
+          <h2 className="mb-2 font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
             Follow Us
           </h2>
           <ul className="flex flex-col gap-2 text-sm text-white/75">
@@ -97,10 +97,10 @@ export default function Footer() {
 
         {/* Newsletter */}
         <div className="col-span-2 lg:col-span-4">
-          <h2 className="mb-3 font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
+          <h2 className="mb-2 font-display text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
             Stay in the Loop
           </h2>
-          <p className="mb-3 text-sm text-white/60">
+          <p className="mb-2 text-sm text-white/60">
             Get notified about meetings, events, and announcements.
           </p>
           <FooterNewsletter />
@@ -109,7 +109,7 @@ export default function Footer() {
 
       {/* Bottom bar */}
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-6 py-4 text-center text-xs text-white/60 sm:px-8 md:flex-row md:justify-between md:text-left">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-6 py-3 text-center text-xs text-white/60 sm:px-8 md:flex-row md:justify-between md:text-left">
           <p>
             © {new Date().getFullYear()} Pensacola High School Student
             Government Association. All rights reserved.
