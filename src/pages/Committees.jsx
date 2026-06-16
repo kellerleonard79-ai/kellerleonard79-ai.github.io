@@ -71,6 +71,19 @@ function CommitteesContent() {
     return map
   }, [members])
 
+  // Keep a committee selected whenever possible — default to the first one,
+  // and recover gracefully if the selected committee is deleted.
+  useEffect(() => {
+    if (loading) return
+    if (committees.length === 0) {
+      if (selectedId !== null) setSelectedId(null)
+      return
+    }
+    if (!committees.some((c) => c.id === selectedId)) {
+      setSelectedId(committees[0].id)
+    }
+  }, [committees, loading, selectedId])
+
   const selected = committees.find((c) => c.id === selectedId) ?? null
 
   if (loading) {
@@ -83,22 +96,6 @@ function CommitteesContent() {
     )
   }
 
-  // ── Detail view ──
-  if (selected) {
-    return (
-      <Shell>
-        <CommitteeDetail
-          committee={selected}
-          members={membersByCommittee[selected.id] ?? []}
-          canManage={canManage}
-          onBack={() => setSelectedId(null)}
-          onChanged={load}
-        />
-      </Shell>
-    )
-  }
-
-  // ── List view ──
   return (
     <Shell>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -118,75 +115,115 @@ function CommitteesContent() {
         </Link>
       </div>
 
-      {canManage && (
-        <div className="mt-6">
-          {creating ? (
-            <NewCommitteeForm
-              onCreated={(id) => {
-                setCreating(false)
-                load().then(() => setSelectedId(id))
-              }}
-              onCancel={() => setCreating(false)}
+      <div className="mt-8 grid gap-6 lg:grid-cols-[20rem_1fr]">
+        {/* ── Left column: committee list ── */}
+        <aside className="lg:sticky lg:top-6 lg:self-start">
+          {canManage && (
+            <div className="mb-4">
+              {creating ? (
+                <NewCommitteeForm
+                  onCreated={(id) => {
+                    setCreating(false)
+                    load().then(() => setSelectedId(id))
+                  }}
+                  onCancel={() => setCreating(false)}
+                />
+              ) : (
+                <button
+                  onClick={() => setCreating(true)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-maroon px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-maroon-dark"
+                >
+                  <Plus className="h-4 w-4" /> New Committee
+                </button>
+              )}
+            </div>
+          )}
+
+          {committees.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-12 text-center">
+              <UsersRound className="mx-auto h-8 w-8 text-gray-300" />
+              <p className="mt-3 text-sm text-gray-400">No committees yet.</p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {committees.map((c) => {
+                const list = membersByCommittee[c.id] ?? []
+                const chair = list.find((m) => m.is_chair)
+                const active = c.id === selectedId
+                return (
+                  <li key={c.id}>
+                    <button
+                      onClick={() => setSelectedId(c.id)}
+                      className={`group flex w-full items-start gap-3 rounded-xl border p-3.5 text-left transition ${
+                        active
+                          ? 'border-maroon/40 bg-maroon/5 shadow-sm'
+                          : 'border-gray-200 bg-white hover:border-maroon/30 hover:shadow-sm'
+                      }`}
+                    >
+                      <span
+                        className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg transition-colors ${
+                          active
+                            ? 'bg-maroon text-white'
+                            : 'bg-maroon/8 text-maroon group-hover:bg-maroon group-hover:text-white'
+                        }`}
+                      >
+                        <UsersRound className="h-4.5 w-4.5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-display font-bold text-maroon">
+                          {c.name}
+                        </span>
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-400">
+                          <span className="inline-flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {list.length}
+                          </span>
+                          {chair && (
+                            <span className="inline-flex items-center gap-1 truncate text-maroon">
+                              <Crown className="h-3 w-3 shrink-0 text-maroon" />
+                              <span className="truncate">
+                                {chair.member?.full_name ?? 'Chair'}
+                              </span>
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                      <ChevronRight
+                        className={`mt-0.5 h-4 w-4 shrink-0 transition-all ${
+                          active
+                            ? 'text-maroon'
+                            : 'text-gray-300 group-hover:translate-x-0.5 group-hover:text-maroon'
+                        }`}
+                      />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </aside>
+
+        {/* ── Right column: selected committee + submitted reports ── */}
+        <div className="min-w-0">
+          {selected ? (
+            <CommitteeDetail
+              committee={selected}
+              members={membersByCommittee[selected.id] ?? []}
+              canManage={canManage}
+              onChanged={load}
             />
           ) : (
-            <button
-              onClick={() => setCreating(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-maroon-dark"
-            >
-              <Plus className="h-4 w-4" /> New Committee
-            </button>
+            <div className="grid place-items-center rounded-2xl border border-dashed border-gray-300 bg-white py-24 text-center">
+              <div>
+                <UsersRound className="mx-auto h-8 w-8 text-gray-300" />
+                <p className="mt-3 text-sm text-gray-400">
+                  Select a committee to view its members and reports.
+                </p>
+              </div>
+            </div>
           )}
         </div>
-      )}
-
-      {committees.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center">
-          <UsersRound className="mx-auto h-8 w-8 text-gray-300" />
-          <p className="mt-3 text-sm text-gray-400">No committees yet.</p>
-        </div>
-      ) : (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {committees.map((c) => {
-            const list = membersByCommittee[c.id] ?? []
-            const chair = list.find((m) => m.is_chair)
-            return (
-              <li key={c.id}>
-                <button
-                  onClick={() => setSelectedId(c.id)}
-                  className="group flex h-full w-full flex-col rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-maroon/30 hover:shadow-md"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon/8 text-maroon transition-colors group-hover:bg-maroon group-hover:text-white">
-                      <UsersRound className="h-5 w-5" />
-                    </span>
-                    <ChevronRight className="h-5 w-5 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-maroon" />
-                  </div>
-                  <h2 className="mt-4 font-display text-lg font-bold text-maroon">
-                    {c.name}
-                  </h2>
-                  {c.description && (
-                    <p className="mt-0.5 line-clamp-2 text-sm text-gray-500">
-                      {c.description}
-                    </p>
-                  )}
-                  <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
-                    <span className="inline-flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5" />
-                      {list.length} {list.length === 1 ? 'member' : 'members'}
-                    </span>
-                    {chair && (
-                      <span className="inline-flex items-center gap-1 text-maroon">
-                        <Crown className="h-3.5 w-3.5 text-maroon" />
-                        {chair.member?.full_name ?? 'Chair'}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+      </div>
     </Shell>
   )
 }
@@ -281,24 +318,16 @@ function NewCommitteeForm({ onCreated, onCancel }) {
 }
 
 // ─────────────────────────── Detail ───────────────────────────
-function CommitteeDetail({ committee, members, canManage, onBack, onChanged }) {
+function CommitteeDetail({ committee, members, canManage, onChanged }) {
   return (
     <div>
-      <button
-        onClick={onBack}
-        className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-maroon"
-      >
-        <ChevronLeft className="h-4 w-4" /> All committees
-      </button>
-
       <CommitteeHeader
         committee={committee}
         canManage={canManage}
         onChanged={onChanged}
-        onDeleted={onBack}
       />
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <MembersSection
           committee={committee}
           members={members}
@@ -311,7 +340,7 @@ function CommitteeDetail({ committee, members, canManage, onBack, onChanged }) {
   )
 }
 
-function CommitteeHeader({ committee, canManage, onChanged, onDeleted }) {
+function CommitteeHeader({ committee, canManage, onChanged }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(committee.name)
   const [description, setDescription] = useState(committee.description)
@@ -357,7 +386,6 @@ function CommitteeHeader({ committee, canManage, onChanged, onDeleted }) {
       return
     }
     onChanged()
-    onDeleted()
   }
 
   if (editing) {
