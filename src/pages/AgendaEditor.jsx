@@ -8,12 +8,21 @@ import {
   FileDown,
   Eye,
   Pencil,
+  Paperclip,
+  Link2,
+  Upload,
+  FileText,
+  Archive,
+  ExternalLink,
+  Lock,
+  X,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import RequireStaff from '../components/RequireStaff.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
+import { useAuth } from '../lib/AuthContext.jsx'
 import { formatDate, formatTime } from '../lib/format.js'
 
 const STATUS_OPTIONS = [
@@ -63,13 +72,35 @@ export default function AgendaEditor() {
 function EditorContent() {
   const { id } = useParams()
   const { settings } = useSiteSettings()
+  const { profile, hasPermission } = useAuth()
   const [meeting, setMeeting] = useState(null)
   const [items, setItems] = useState([])
   const [sectionTypes, setSectionTypes] = useState([]) // ordered array
   const [attendance, setAttendance] = useState([])
+  const [attachments, setAttachments] = useState({}) // item_id -> attachment[]
+  const [roles, setRoles] = useState([]) // for the attachment visibility selector
   const [loading, setLoading] = useState(true)
   const [publicView, setPublicView] = useState(false)
   const [exporting, setExporting] = useState(false)
+
+  // Only members with `edit_agendas` may add / edit / remove attachments.
+  const canManageAttachments = hasPermission('edit_agendas')
+  const isAdmin = profile?.role?.is_admin === true
+  const myOrder = profile?.role?.order ?? 0
+
+  // Visibility tiers an editor may assign: their own tier and below (admins may
+  // assign any). Mirrors the Archives upload rule.
+  const roleOptions = useMemo(() => {
+    const filtered = roles.filter((r) => isAdmin || r.order <= myOrder)
+    return filtered.length ? filtered : roles
+  }, [roles, isAdmin, myOrder])
+
+  // order -> tier name, for labelling an attachment's minimum viewing tier.
+  const roleNameByOrder = useMemo(() => {
+    const m = {}
+    for (const r of roles) m[r.order] = r.name
+    return m
+  }, [roles])
 
   const loadSectionTypes = useCallback(async () => {
     const { data } = await supabase
@@ -99,6 +130,39 @@ function EditorContent() {
     setLoading(false)
   }, [id])
 
+  // Attachments for every item in this meeting, grouped by item_id. The archive
+  // join intentionally selects only non-sensitive columns (never the raw
+  // file_url) — archive files open through the signing Edge Function.
+  const loadAttachments = useCallback(async () => {
+    const { data: its } = await supabase
+      .from('agenda_items')
+      .select('id')
+      .eq('meeting_id', id)
+    const ids = (its ?? []).map((i) => i.id)
+    if (!ids.length) {
+      setAttachments({})
+      return
+    }
+    const { data } = await supabase
+      .from('agenda_item_attachments')
+      .select(
+        'id, item_id, kind, archive_item_id, link_url, file_url, label, visibility_min_role_order, position, archive:archive_items(id, title, has_file, drive_link)',
+      )
+      .in('item_id', ids)
+      .order('position', { ascending: true })
+    const map = {}
+    for (const a of data ?? []) (map[a.item_id] ??= []).push(a)
+    setAttachments(map)
+  }, [id])
+
+  const loadRoles = useCallback(async () => {
+    const { data } = await supabase
+      .from('roles')
+      .select('name, order')
+      .order('order', { ascending: true })
+    setRoles(data ?? [])
+  }, [])
+
   // Attendance for the meeting's session — used to append an attendance roster
   // page to the exported agenda PDF.
   const loadAttendance = useCallback(async () => {
@@ -115,7 +179,16 @@ function EditorContent() {
     loadItems()
     loadSectionTypes()
     loadAttendance()
-  }, [loadMeeting, loadItems, loadSectionTypes, loadAttendance])
+    loadAttachments()
+    loadRoles()
+  }, [
+    loadMeeting,
+    loadItems,
+    loadSectionTypes,
+    loadAttendance,
+    loadAttachments,
+    loadRoles,
+  ])
 
   // name -> type, for resolving legacy items lacking a section_type_id.
   const typeByName = useMemo(() => {
@@ -178,6 +251,40 @@ function EditorContent() {
   async function deleteItem(itemId) {
     await supabase.from('agenda_items').delete().eq('id', itemId)
     loadItems()
+    loadAttachments()
+  }
+
+  // Insert one attachment row (kind + its single source field already set by the
+  // caller). File uploads happen in the UI before this is called.
+  async function addAttachment(itemId, payload) {
+    const list = attachments[itemId] ?? []
+    await supabase.from('agenda_item_attachments').insert({
+      item_id: itemId,
+      position: list.length,
+      visibility_min_role_order: 0, // visible to all by default; restrict per chip
+      created_by: profile?.id ?? null,
+      ...payload,
+    })
+    loadAttachments()
+  }
+
+  // Raise/lower the minimum tier that can see an attachment.
+  async function updateAttachmentVisibility(att, order) {
+    await supabase
+      .from('agenda_item_attachments')
+      .update({ visibility_min_role_order: order })
+      .eq('id', att.id)
+    loadAttachments()
+  }
+
+  async function deleteAttachment(att) {
+    // Remove the backing object first for uploaded files (best-effort), then the
+    // row. Archive references and links own no storage object.
+    if (att.kind === 'file' && att.file_url) {
+      await supabase.storage.from('agenda-files').remove([att.file_url])
+    }
+    await supabase.from('agenda_item_attachments').delete().eq('id', att.id)
+    loadAttachments()
   }
 
   // Persist a new top-level ordering for a section: write each item's index as
@@ -350,6 +457,20 @@ function EditorContent() {
                 indent: 6,
               })
             }
+            for (const att of attachments[item.id] ?? []) {
+              const url =
+                att.kind === 'link'
+                  ? att.link_url
+                  : att.kind === 'archive'
+                    ? att.archive?.drive_link ?? ''
+                    : ''
+              writeText(`📎 ${attachmentLabel(att)}${url ? ` — ${url}` : ''}`, {
+                size: 9,
+                color: GRAY,
+                indent: 6,
+                gap: 0.3,
+              })
+            }
           })
         }
 
@@ -455,6 +576,14 @@ function EditorContent() {
     reorderItems,
     childrenOf,
     publicView,
+    meetingId: id,
+    attachments,
+    addAttachment,
+    deleteAttachment,
+    updateAttachmentVisibility,
+    canManageAttachments,
+    roleOptions,
+    roleNameByOrder,
   }
 
   const openingType = typeByName['Opening']
@@ -813,6 +942,7 @@ function AgendaItem({ item, sectionType, ctx, isDragging, onDragStart, onDrop })
             {item.secretary_notes}
           </p>
         )}
+        <AttachmentArea item={item} ctx={ctx} />
       </div>
     )
   }
@@ -890,6 +1020,8 @@ function AgendaItem({ item, sectionType, ctx, isDragging, onDragStart, onDrop })
             placeholder="Secretary notes…"
             className="mt-1 w-full border-b border-dashed border-gray-200 bg-transparent p-0 text-xs italic text-gray-500 outline-none focus:border-maroon/40"
           />
+
+          <AttachmentArea item={item} ctx={ctx} />
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -914,6 +1046,417 @@ function AgendaItem({ item, sectionType, ctx, isDragging, onDragStart, onDrop })
           >
             Delete
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* --------------------------- Attachments ---------------------------------- */
+function attachmentLabel(att) {
+  if (att.kind === 'archive')
+    return att.archive?.title || att.label || 'Archived item'
+  return att.label || att.link_url || 'Attachment'
+}
+
+function AttachmentIcon({ kind, className }) {
+  if (kind === 'archive') return <Archive className={className} />
+  if (kind === 'link') return <Link2 className={className} />
+  return <FileText className={className} />
+}
+
+// Attachments strip rendered under each agenda item. Adding, removing, and
+// changing per-attachment visibility require `edit_agendas` (ctx.canManageAttachments);
+// everyone else who can see the agenda gets read-only chips for the attachments
+// their tier permits (the row list itself is already RLS-filtered).
+function AttachmentArea({ item, ctx }) {
+  const list = ctx.attachments?.[item.id] ?? []
+  const canManage = !ctx.publicView && ctx.canManageAttachments
+  if (!list.length && !canManage) return null
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      {list.map((att) => (
+        <AttachmentChip key={att.id} att={att} ctx={ctx} canManage={canManage} />
+      ))}
+      {canManage && <AddAttachment item={item} ctx={ctx} />}
+    </div>
+  )
+}
+
+function AttachmentChip({ att, ctx, canManage }) {
+  const [opening, setOpening] = useState(false)
+
+  // Open via a synchronously-opened tab so the eventual signed-URL navigation
+  // isn't treated as a popup.
+  async function openViaFunction(fn, body) {
+    setOpening(true)
+    const tab = window.open('', '_blank')
+    const { data, error } = await supabase.functions.invoke(fn, { body })
+    setOpening(false)
+    if (error || !data?.url) {
+      if (tab) tab.close()
+      alert('Could not open this file.')
+      return
+    }
+    if (tab) tab.location = data.url
+    else window.open(data.url, '_blank')
+  }
+
+  async function open() {
+    if (att.kind === 'link') {
+      window.open(att.link_url, '_blank', 'noopener')
+      return
+    }
+    if (att.kind === 'file') {
+      await openViaFunction('agenda-file-url', { attachment_id: att.id })
+      return
+    }
+    // archive: stored files go through the archive signing Edge Function
+    // (preserving the archive's own tier-gating); link-based items open directly.
+    if (att.archive?.has_file) {
+      await openViaFunction('archive-file-url', { item_id: att.archive_item_id })
+    } else if (att.archive?.drive_link) {
+      window.open(att.archive.drive_link, '_blank', 'noopener')
+    } else {
+      alert('This archived item is no longer available to you.')
+    }
+  }
+
+  const restricted = att.visibility_min_role_order > 0
+  const tierName = ctx.roleNameByOrder?.[att.visibility_min_role_order]
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 py-1 pl-2.5 pr-1.5 text-xs text-maroon">
+      <button
+        type="button"
+        onClick={open}
+        disabled={opening}
+        className="inline-flex max-w-[16rem] items-center gap-1.5 hover:underline disabled:opacity-60"
+      >
+        {opening ? (
+          <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+        ) : (
+          <AttachmentIcon kind={att.kind} className="h-3 w-3 shrink-0" />
+        )}
+        <span className="truncate">{attachmentLabel(att)}</span>
+        <ExternalLink className="h-3 w-3 shrink-0 text-gray-400" />
+      </button>
+
+      {canManage ? (
+        <span
+          className="inline-flex items-center gap-0.5 border-l border-gray-200 pl-1.5 text-gray-400"
+          title="Minimum tier that can view this attachment"
+        >
+          <Lock className="h-3 w-3 shrink-0" />
+          <select
+            value={att.visibility_min_role_order}
+            onChange={(e) =>
+              ctx.updateAttachmentVisibility(att, Number(e.target.value))
+            }
+            className="max-w-[7rem] cursor-pointer truncate border-0 bg-transparent py-0 pl-0.5 pr-1 text-xs text-gray-500 outline-none focus:ring-0"
+          >
+            {ctx.roleOptions.map((r) => (
+              <option key={r.order} value={r.order}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </span>
+      ) : (
+        restricted && (
+          <span
+            className="inline-flex items-center text-gray-400"
+            title={tierName ? `Visible to ${tierName} and up` : 'Restricted'}
+          >
+            <Lock className="h-3 w-3 shrink-0" />
+          </span>
+        )
+      )}
+
+      {canManage && (
+        <button
+          type="button"
+          onClick={() => ctx.deleteAttachment(att)}
+          aria-label="Remove attachment"
+          className="grid h-4 w-4 place-items-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </span>
+  )
+}
+
+function AttachMenuButton({ icon: Icon, label, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-maroon hover:bg-gray-50"
+    >
+      <Icon className="h-3.5 w-3.5 text-gray-400" /> {label}
+    </button>
+  )
+}
+
+function AddAttachment({ item, ctx }) {
+  const [open, setOpen] = useState(false)
+  const [mode, setMode] = useState(null) // 'link' | 'file' | 'archive'
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkLabel, setLinkLabel] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+
+  function reset() {
+    setMode(null)
+    setOpen(false)
+    setLinkUrl('')
+    setLinkLabel('')
+    setError('')
+  }
+
+  async function addLink(e) {
+    e.preventDefault()
+    const url = linkUrl.trim()
+    if (!url) return
+    const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`
+    await ctx.addAttachment(item.id, {
+      kind: 'link',
+      link_url: normalized,
+      label: linkLabel.trim() || normalized,
+    })
+    reset()
+  }
+
+  async function uploadFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setError('')
+    const safeName = file.name.replace(/[^\w.-]+/g, '_')
+    const path = `${ctx.meetingId}/${item.id}/${Date.now()}-${safeName}`
+    const { error: upErr } = await supabase.storage
+      .from('agenda-files')
+      .upload(path, file, { upsert: false })
+    if (upErr) {
+      setUploading(false)
+      setError('Upload failed. Please try again.')
+      return
+    }
+    await ctx.addAttachment(item.id, {
+      kind: 'file',
+      file_url: path,
+      label: file.name,
+    })
+    setUploading(false)
+    reset()
+  }
+
+  async function pickArchive(archiveItem) {
+    await ctx.addAttachment(item.id, {
+      kind: 'archive',
+      archive_item_id: archiveItem.id,
+      label: archiveItem.title,
+    })
+    reset()
+  }
+
+  if (mode === 'archive') {
+    return <ArchivePicker onPick={pickArchive} onClose={reset} />
+  }
+
+  if (mode === 'link') {
+    return (
+      <form onSubmit={addLink} className="flex w-full flex-wrap items-center gap-2">
+        <input
+          autoFocus
+          value={linkUrl}
+          onChange={(e) => setLinkUrl(e.target.value)}
+          placeholder="https://…"
+          className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-maroon outline-none focus:border-maroon/40"
+        />
+        <input
+          value={linkLabel}
+          onChange={(e) => setLinkLabel(e.target.value)}
+          placeholder="Label (optional)"
+          className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs text-maroon outline-none focus:border-maroon/40"
+        />
+        <button
+          type="submit"
+          className="rounded-lg bg-maroon px-2.5 py-1 text-xs font-semibold text-white hover:bg-maroon-dark"
+        >
+          Add
+        </button>
+        <button
+          type="button"
+          onClick={reset}
+          className="text-xs text-gray-400 hover:text-gray-600"
+        >
+          Cancel
+        </button>
+      </form>
+    )
+  }
+
+  if (mode === 'file') {
+    return (
+      <div className="flex items-center gap-2">
+        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-maroon hover:bg-gray-50">
+          {uploading ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Upload className="h-3 w-3" />
+          )}
+          {uploading ? 'Uploading…' : 'Choose file'}
+          <input
+            type="file"
+            className="hidden"
+            disabled={uploading}
+            onChange={uploadFile}
+          />
+        </label>
+        {error && <span className="text-xs text-red-500">{error}</span>}
+        <button
+          type="button"
+          onClick={reset}
+          className="text-xs text-gray-400 hover:text-gray-600"
+        >
+          Cancel
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-500 transition hover:border-maroon/40 hover:text-maroon"
+      >
+        <Paperclip className="h-3 w-3" /> Attach
+      </button>
+      {open && (
+        <div className="absolute z-10 mt-1 w-44 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          <AttachMenuButton
+            icon={Archive}
+            label="From Archives"
+            onClick={() => {
+              setOpen(false)
+              setMode('archive')
+            }}
+          />
+          <AttachMenuButton
+            icon={Link2}
+            label="Paste a link"
+            onClick={() => {
+              setOpen(false)
+              setMode('link')
+            }}
+          />
+          <AttachMenuButton
+            icon={Upload}
+            label="Upload a file"
+            onClick={() => {
+              setOpen(false)
+              setMode('file')
+            }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Modal that lists archive items the viewer is permitted to see (RLS-scoped) so
+// an existing report/document can be referenced from an agenda item.
+function ArchivePicker({ onPick, onClose }) {
+  const [items, setItems] = useState(null)
+  const [q, setQ] = useState('')
+
+  useEffect(() => {
+    supabase
+      .from('archive_items')
+      .select('id, title, category, folder_path, has_file, drive_link')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setItems(data ?? []))
+  }, [])
+
+  const filtered = (items ?? []).filter((it) => {
+    const s = q.trim().toLowerCase()
+    if (!s) return true
+    return `${it.title} ${it.category ?? ''} ${it.folder_path ?? ''}`
+      .toLowerCase()
+      .includes(s)
+  })
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+          <h3 className="font-display font-bold text-maroon">
+            Attach from Archives
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="p-3">
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search archives…"
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-maroon outline-none focus:border-maroon focus:ring-2 focus:ring-maroon/20"
+          />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+          {items === null ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-maroon" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-400">
+              No archive items found.
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {filtered.map((it) => (
+                <li key={it.id}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(it)}
+                    className="flex w-full items-center gap-2 px-1 py-2 text-left hover:bg-gray-50"
+                  >
+                    {it.has_file ? (
+                      <FileText className="h-4 w-4 shrink-0 text-gray-400" />
+                    ) : (
+                      <Link2 className="h-4 w-4 shrink-0 text-gray-400" />
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-maroon">
+                        {it.title}
+                      </span>
+                      {(it.category || it.folder_path) && (
+                        <span className="block truncate text-xs text-gray-400">
+                          {[it.category, it.folder_path]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
+                      )}
+                    </span>
+                    <Plus className="h-4 w-4 shrink-0 text-gray-300" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

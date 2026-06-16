@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Loader2, UserPlus } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, FileText, Loader2, UserPlus } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import Crest from '../components/Crest.jsx'
@@ -22,6 +22,20 @@ export default function Join() {
   const [extra, setExtra] = useState({})
   const [status, setStatus] = useState('idle') // idle | submitting | success
   const [error, setError] = useState('')
+  // Whether an election cycle is currently open — gates the "I'm running for a
+  // position" candidate option. election_cycles isn't readable by anon, so we
+  // ask a public SECURITY DEFINER function for just the boolean.
+  const [candidacyOpen, setCandidacyOpen] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    supabase.rpc('candidate_applications_open').then(({ data }) => {
+      if (active) setCandidacyOpen(data === true)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
 
   // The dynamic part of the form is driven entirely by join_form_schema; fields
   // toggled off (enabled === false) are skipped.
@@ -64,7 +78,8 @@ export default function Join() {
           student_id: form.student_id.trim(),
           grade_level: extra.grade ?? '',
           shirt_size: extra.shirt_size ?? '',
-          is_candidate_application: form.is_candidate_application,
+          // Only honored while a cycle is open; the option is hidden otherwise.
+          is_candidate_application: candidacyOpen && form.is_candidate_application,
           custom_fields: JSON.stringify(customFields),
         },
       },
@@ -117,6 +132,16 @@ export default function Join() {
             Become a member of Pensacola High School Student Government. Fill out
             the form below to create your account.
           </p>
+          {settings?.constitution_url && (
+            <a
+              href={settings.constitution_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20"
+            >
+              <FileText className="h-4 w-4" /> Read the SGA Constitution
+            </a>
+          )}
         </div>
         <div className="absolute bottom-0 h-1 w-full bg-white/15" />
       </section>
@@ -232,29 +257,33 @@ export default function Join() {
                   />
                 </Field>
 
-                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                  <input
-                    type="checkbox"
-                    checked={form.is_candidate_application}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        is_candidate_application: e.target.checked,
-                      }))
-                    }
-                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
-                  />
-                  <span className="text-sm text-maroon">
-                    <span className="font-semibold text-maroon">
-                      I&apos;m running for a position
+                {/* The candidate option only appears while an election cycle
+                    is open. Outside a cycle everyone joins as a general member. */}
+                {candidacyOpen && (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <input
+                      type="checkbox"
+                      checked={form.is_candidate_application}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          is_candidate_application: e.target.checked,
+                        }))
+                      }
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
+                    />
+                    <span className="text-sm text-maroon">
+                      <span className="font-semibold text-maroon">
+                        I&apos;m running for a position
+                      </span>
+                      <span className="mt-0.5 block text-gray-500">
+                        Check this if you&apos;re applying as a candidate, not
+                        just a general member. An officer will follow up about
+                        your candidacy.
+                      </span>
                     </span>
-                    <span className="mt-0.5 block text-gray-500">
-                      Check this if you&apos;re applying as a candidate, not just
-                      a general member. An officer will follow up about your
-                      candidacy.
-                    </span>
-                  </span>
-                </label>
+                  </label>
+                )}
               </div>
 
               <button

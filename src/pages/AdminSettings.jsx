@@ -554,8 +554,142 @@ function JoinSection() {
   return (
     <div className="space-y-6">
       <SignupToggleCard />
+      <ConstitutionCard />
       <JoinFormBuilder />
     </div>
+  )
+}
+
+// Lets an editor set the SGA constitution applicants can read before joining —
+// either by pasting a link or uploading a file. Both resolve to a single public
+// URL stored on site_settings.constitution_url.
+function ConstitutionCard() {
+  const { settings, refresh } = useSiteSettings()
+  const [url, setUrl] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+  const fileRef = useRef(null)
+
+  // Seed the input once settings load; the saved value lives in `settings`.
+  useEffect(() => {
+    if (settings) setUrl(settings.constitution_url ?? '')
+  }, [settings])
+
+  const current = settings?.constitution_url ?? ''
+  const dirty = url.trim() !== current
+
+  async function handleUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setError('')
+    const ext = file.name.split('.').pop()
+    const path = `constitution-${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('documents')
+      .upload(path, file, { upsert: true })
+    if (upErr) {
+      setError('Upload failed. Please try again.')
+      setUploading(false)
+      return
+    }
+    const { data } = supabase.storage.from('documents').getPublicUrl(path)
+    setUrl(data.publicUrl)
+    setSaved(false)
+    setUploading(false)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  async function save() {
+    setSaving(true)
+    setSaved(false)
+    setError('')
+    const { error: upErr } = await supabase
+      .from('site_settings')
+      .update({ constitution_url: url.trim() || null })
+      .eq('id', 1)
+    if (upErr) {
+      setError('Could not save. Please try again.')
+    } else {
+      await refresh()
+      setSaved(true)
+    }
+    setSaving(false)
+  }
+
+  return (
+    <Card
+      title="SGA Constitution"
+      desc="Shown to applicants on the Join SGA page. Paste a link or upload a file (e.g. a PDF)."
+    >
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      <div className="grid gap-4">
+        <Labeled label="Link or uploaded file URL">
+          <input
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value)
+              setSaved(false)
+            }}
+            placeholder="https://…"
+            className={inputClass}
+          />
+        </Labeled>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.doc,.docx,application/pdf"
+            onChange={handleUpload}
+            className="hidden"
+            id="constitution-upload"
+          />
+          <label
+            htmlFor="constitution-upload"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-gray-50"
+          >
+            {uploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            Upload file
+          </label>
+          {current && (
+            <a
+              href={current}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-gray-50"
+            >
+              <FileText className="h-4 w-4" /> Preview current
+            </a>
+          )}
+          <div className="ml-auto flex items-center gap-3">
+            {saved && !dirty && (
+              <span className="inline-flex items-center gap-1 text-sm font-medium text-green-600">
+                <Check className="h-4 w-4" /> Saved
+              </span>
+            )}
+            <button
+              onClick={save}
+              disabled={saving || uploading || !dirty}
+              className="inline-flex items-center gap-2 rounded-lg bg-maroon px-5 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </Card>
   )
 }
 

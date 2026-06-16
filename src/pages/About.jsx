@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2, Crown, UsersRound } from 'lucide-react'
+import { Loader2, Crown, UsersRound, FileText } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import supabase from '../lib/supabaseClient.js'
@@ -107,6 +107,18 @@ export default function About() {
           <p className="mt-6 whitespace-pre-line text-center text-lg leading-relaxed text-white/85">
             {purpose || 'Our purpose statement is coming soon.'}
           </p>
+          {settings?.constitution_url && (
+            <div className="mt-8 text-center">
+              <a
+                href={settings.constitution_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20"
+              >
+                <FileText className="h-4 w-4" /> Read the SGA Constitution
+              </a>
+            </div>
+          )}
         </div>
       </section>
 
