@@ -16,6 +16,7 @@ import {
   Users,
   Pencil,
   Trash2,
+  ClipboardList,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
@@ -56,6 +57,7 @@ function ElectionsContent() {
   const [candidates, setCandidates] = useState([])
   const [applications, setApplications] = useState([])
   const [positions, setPositions] = useState([])
+  const [appPositions, setAppPositions] = useState([])
   const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedCycleId, setSelectedCycleId] = useState(null)
@@ -66,6 +68,7 @@ function ElectionsContent() {
       { data: cand },
       { data: apps },
       { data: pos },
+      { data: appPos },
       { data: rls },
     ] = await Promise.all([
       supabase
@@ -89,6 +92,7 @@ function ElectionsContent() {
         .select('id, title, "group", "order", show_in_elections')
         .order('group', { ascending: true })
         .order('order', { ascending: true }),
+      supabase.from('positions').select('*').order('title'),
       supabase
         .from('roles')
         .select('id, name, permissions, is_admin, order')
@@ -98,6 +102,7 @@ function ElectionsContent() {
     setCandidates(cand ?? [])
     setApplications(apps ?? [])
     setPositions(pos ?? [])
+    setAppPositions(appPos ?? [])
     setRoles(rls ?? [])
     setLoading(false)
   }, [])
@@ -150,6 +155,13 @@ function ElectionsContent() {
               canManage={canManage}
               onChanged={load}
             />
+
+            {canManage && (
+              <ApplicationPositions
+                positions={appPositions}
+                onChanged={load}
+              />
+            )}
 
             {selectedCycle ? (
               <CycleDetail
@@ -1248,6 +1260,251 @@ function CandidateRow({
         />
       </label>
     </li>
+  )
+}
+
+// ─────────────────── Application positions (the `positions` table) ───────────────────
+// These are what candidates pick from in the "Apply for an Elected Position"
+// flow (ApplicationDashboard). Distinct from `elected_positions` (managed in
+// Admin Settings); this rich version carries a markdown blurb + a requirements
+// checklist shown on each position card.
+
+// Requirements are stored as a text[] but edited as one-per-line in a textarea.
+const reqToText = (req) => (req ?? []).join('\n')
+const textToReq = (text) =>
+  text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+
+function ApplicationPositions({ positions, onChanged }) {
+  const [adding, setAdding] = useState(false)
+
+  return (
+    <Section
+      icon={ClipboardList}
+      title="Application Positions"
+      desc="What candidates choose from when applying for an elected position."
+      action={
+        !adding ? (
+          <button
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-3 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark"
+          >
+            <Plus className="h-4 w-4" /> New position
+          </button>
+        ) : null
+      }
+    >
+      {adding && (
+        <AppPositionForm
+          onCancel={() => setAdding(false)}
+          onSaved={() => {
+            setAdding(false)
+            onChanged()
+          }}
+        />
+      )}
+
+      {positions.length === 0 ? (
+        <p className="py-4 text-center text-sm text-gray-400">
+          No application positions yet. Add one so candidates can apply.
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {positions.map((p) => (
+            <AppPositionRow key={p.id} position={p} onChanged={onChanged} />
+          ))}
+        </ul>
+      )}
+    </Section>
+  )
+}
+
+function AppPositionRow({ position, onChanged }) {
+  const [editing, setEditing] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  async function remove() {
+    if (
+      !window.confirm(
+        `Delete "${position.title}"? Existing applications keep their data but lose this position.`,
+      )
+    )
+      return
+    setBusy(true)
+    const { error } = await supabase
+      .from('positions')
+      .delete()
+      .eq('id', position.id)
+    setBusy(false)
+    if (error) {
+      window.alert(error.message)
+      return
+    }
+    onChanged()
+  }
+
+  if (editing) {
+    return (
+      <li>
+        <AppPositionForm
+          position={position}
+          onCancel={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false)
+            onChanged()
+          }}
+        />
+      </li>
+    )
+  }
+
+  return (
+    <li className="flex items-start gap-3 rounded-xl border border-gray-200 p-4">
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold text-maroon">{position.title}</p>
+        {position.description && (
+          <p className="mt-0.5 line-clamp-2 text-sm text-gray-500">
+            {position.description}
+          </p>
+        )}
+        {position.requirements?.length > 0 && (
+          <p className="mt-1 text-xs text-gray-400">
+            {position.requirements.length} requirement
+            {position.requirements.length === 1 ? '' : 's'}
+          </p>
+        )}
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          onClick={() => setEditing(true)}
+          className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
+          title="Edit"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          onClick={remove}
+          disabled={busy}
+          className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+          title="Delete"
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+        </button>
+      </div>
+    </li>
+  )
+}
+
+// Create or edit a row in the `positions` table. Pass `position` to edit.
+function AppPositionForm({ position, onCancel, onSaved }) {
+  const isEdit = Boolean(position)
+  const [title, setTitle] = useState(position?.title ?? '')
+  const [description, setDescription] = useState(position?.description ?? '')
+  const [requirements, setRequirements] = useState(
+    reqToText(position?.requirements),
+  )
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!title.trim()) return
+    setBusy(true)
+    setError('')
+    const payload = {
+      title: title.trim(),
+      description: description.trim() || null,
+      requirements: textToReq(requirements),
+    }
+    const { error } = isEdit
+      ? await supabase.from('positions').update(payload).eq('id', position.id)
+      : await supabase.from('positions').insert(payload)
+    setBusy(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    onSaved()
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className="mb-5 rounded-xl border border-maroon/20 bg-maroon/[0.03] p-4"
+    >
+      {error && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      <label className="block">
+        <span className="mb-1 block text-xs font-semibold text-gray-600">
+          Position title
+        </span>
+        <input
+          type="text"
+          required
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Executive President"
+          className={inputClass}
+        />
+      </label>
+
+      <label className="mt-3 block">
+        <span className="mb-1 block text-xs font-semibold text-gray-600">
+          Description (Markdown, optional)
+        </span>
+        <textarea
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="What the role involves, expectations, etc."
+          className={`${inputClass} resize-y`}
+        />
+      </label>
+
+      <label className="mt-3 block">
+        <span className="mb-1 block text-xs font-semibold text-gray-600">
+          Requirements (one per line, optional)
+        </span>
+        <textarea
+          rows={3}
+          value={requirements}
+          onChange={(e) => setRequirements(e.target.value)}
+          placeholder={'2.5 GPA\nTeacher recommendation\nAttend the candidate meeting'}
+          className={`${inputClass} resize-y`}
+        />
+      </label>
+
+      <div className="mt-4 flex items-center gap-2">
+        <button
+          type="submit"
+          disabled={busy || !title.trim()}
+          className="inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:opacity-60"
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Check className="h-4 w-4" />
+          )}
+          {isEdit ? 'Save' : 'Add position'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition hover:text-maroon"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   )
 }
 
