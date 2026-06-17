@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, Search, ArrowRight, Loader2, Circle, CircleCheck, Download, X } from 'lucide-react'
+import { ChevronLeft, ChevronDown, Search, ArrowRight, Loader2, Circle, CircleCheck, Download, X, ShieldCheck } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import RequirePermission from '../components/RequirePermission.jsx'
+import MemberPermissions from '../components/MemberPermissions.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { gradeLabel, todayISO } from '../lib/format.js'
@@ -88,6 +89,11 @@ export default function MemberDirectory() {
 function DirectoryContent() {
   const { hasPermission } = useAuth()
   const canEditDues = hasPermission('edit_directory')
+  // Editing per-member permission overrides is a manage_roles operation (the
+  // same gate as changing a member's role); the RLS guard reverts the write
+  // otherwise, so don't surface the control without it.
+  const canManagePerms = hasPermission('manage_roles')
+  const [openPermsId, setOpenPermsId] = useState(null)
 
   const [members, setMembers] = useState([])
   const [roles, setRoles] = useState([])
@@ -113,7 +119,7 @@ function DirectoryContent() {
         supabase
           .from('profiles')
           .select(
-            'id, full_name, student_id, grade_level, position, role_id, dues_paid, status, email, shirt_size, role:roles(name), elected_position:elected_positions(group)',
+            'id, full_name, student_id, grade_level, position, role_id, dues_paid, status, email, shirt_size, permission_overrides, role:roles(name, is_admin, permissions), elected_position:elected_positions(group)',
           )
           .order('full_name', { ascending: true }),
         supabase.from('roles').select('id, name').order('order', { ascending: true }),
@@ -149,6 +155,14 @@ function DirectoryContent() {
         ),
       )
     }
+  }
+
+  function onSavedPerms(memberId, overrides) {
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === memberId ? { ...m, permission_overrides: overrides } : m,
+      ),
+    )
   }
 
   const filtered = useMemo(() => {
@@ -312,53 +326,95 @@ function DirectoryContent() {
           <ul className="mt-4 space-y-3">
             {filtered.map((m) => {
               const absences = unexcused[m.id] ?? 0
+              // Overrides only matter for non-admin members (admins always pass).
+              const overrideCount = m.role?.is_admin
+                ? 0
+                : Object.keys(m.permission_overrides ?? {}).length
+              const permsOpen = openPermsId === m.id
               return (
                 <li
                   key={m.id}
-                  className="group flex items-center gap-4 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm transition hover:border-maroon/30 hover:shadow-md"
+                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:border-maroon/30 hover:shadow-md"
                 >
-                  {/* Dues toggle (or static indicator without edit_directory) */}
-                  <DuesDot
-                    paid={m.dues_paid}
-                    canEdit={canEditDues}
-                    onToggle={() => toggleDues(m)}
-                  />
+                  <div className="group flex items-center gap-4 px-5 py-4">
+                    {/* Dues toggle (or static indicator without edit_directory) */}
+                    <DuesDot
+                      paid={m.dues_paid}
+                      canEdit={canEditDues}
+                      onToggle={() => toggleDues(m)}
+                    />
 
-                  <Link
-                    to={`/dashboard/members/${m.id}`}
-                    className="flex min-w-0 flex-1 items-center justify-between gap-4"
-                  >
-                    <div className="flex min-w-0 items-center gap-4">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-maroon/10 font-display text-sm font-bold text-maroon">
-                        {initials(m.full_name)}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-maroon">
-                          {m.full_name ?? 'Member'}
-                        </p>
-                        <p className="mt-0.5 truncate text-sm text-gray-500">
-                          {[
-                            m.position || m.role?.name,
-                            gradeLabel(m.grade_level),
-                            m.student_id && `ID ${m.student_id}`,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      {absences > 0 && (
-                        <span
-                          title={`${absences} unexcused absence${absences === 1 ? '' : 's'}`}
-                          className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700"
-                        >
-                          {absences} abs
+                    <Link
+                      to={`/dashboard/members/${m.id}`}
+                      className="flex min-w-0 flex-1 items-center justify-between gap-4"
+                    >
+                      <div className="flex min-w-0 items-center gap-4">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-maroon/10 font-display text-sm font-bold text-maroon">
+                          {initials(m.full_name)}
                         </span>
-                      )}
-                      <ArrowRight className="h-5 w-5 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-maroon" />
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-maroon">
+                            {m.full_name ?? 'Member'}
+                          </p>
+                          <p className="mt-0.5 truncate text-sm text-gray-500">
+                            {[
+                              m.position || m.role?.name,
+                              gradeLabel(m.grade_level),
+                              m.student_id && `ID ${m.student_id}`,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        {absences > 0 && (
+                          <span
+                            title={`${absences} unexcused absence${absences === 1 ? '' : 's'}`}
+                            className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700"
+                          >
+                            {absences} abs
+                          </span>
+                        )}
+                        <ArrowRight className="h-5 w-5 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-maroon" />
+                      </div>
+                    </Link>
+
+                    {/* Custom-permissions dropdown (manage_roles only) */}
+                    {canManagePerms && !m.role?.is_admin && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenPermsId(permsOpen ? null : m.id)
+                        }
+                        title="Custom permissions"
+                        className={`relative inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${
+                          permsOpen
+                            ? 'border-maroon/40 bg-maroon/5 text-maroon'
+                            : 'border-gray-300 text-gray-500 hover:border-maroon/40 hover:text-maroon'
+                        }`}
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        {overrideCount > 0 && (
+                          <span className="text-[11px]">{overrideCount}</span>
+                        )}
+                        <ChevronDown
+                          className={`h-3.5 w-3.5 transition ${
+                            permsOpen ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
+                    )}
+                  </div>
+
+                  {canManagePerms && permsOpen && !m.role?.is_admin && (
+                    <div className="border-t border-gray-100 px-5 py-4">
+                      <MemberPermissions
+                        member={m}
+                        onSaved={(ov) => onSavedPerms(m.id, ov)}
+                      />
                     </div>
-                  </Link>
+                  )}
                 </li>
               )
             })}

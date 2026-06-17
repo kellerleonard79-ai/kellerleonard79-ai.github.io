@@ -59,12 +59,18 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  // Permission check driven by the role's permissions jsonb. The admin tier
-  // (is_admin) implicitly passes every check; a missing role denies everything.
+  // Permission check driven by the role's permissions jsonb, with optional
+  // per-member overrides (profiles.permission_overrides) layered on top. The
+  // admin tier (is_admin) implicitly passes every check and cannot be revoked
+  // by an override; otherwise an override key wins over the role default. A
+  // missing role denies everything. Mirrors the SQL has_permission().
   const role = profile?.role ?? null
   function hasPermission(key) {
     if (!role) return false
     if (role.is_admin) return true
+    const overrides = profile?.permission_overrides
+    if (overrides && Object.prototype.hasOwnProperty.call(overrides, key))
+      return overrides[key] === true
     return role.permissions?.[key] === true
   }
 
