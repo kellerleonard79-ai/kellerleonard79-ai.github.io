@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { CheckCircle2, LogIn, Loader2 } from 'lucide-react'
+import { CheckCircle2, KeyRound, LogIn, Loader2 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import Crest from '../components/Crest.jsx'
@@ -15,6 +15,46 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // 'signin' | 'reset' — the reset view reuses the student-number field to find
+  // the account, then emails a password-reset link to the address on file.
+  const [mode, setMode] = useState('signin')
+  const [resetSent, setResetSent] = useState(false)
+
+  function switchMode(next) {
+    setMode(next)
+    setError('')
+    setResetSent(false)
+  }
+
+  async function handleReset(e) {
+    e.preventDefault()
+    setError('')
+    setSubmitting(true)
+
+    // Login is by student number, but Supabase only knows emails — resolve the
+    // email on file first, then send the reset link there.
+    const { data: email, error: lookupError } = await supabase.rpc(
+      'email_for_student_id',
+      { p_student_id: studentId.trim() },
+    )
+    if (lookupError || !email) {
+      setSubmitting(false)
+      setError('No account found for that student number.')
+      return
+    }
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      email,
+      { redirectTo: `${window.location.origin}/reset-password` },
+    )
+    setSubmitting(false)
+    if (resetError) {
+      setError(resetError.message)
+      return
+    }
+    setResetSent(true)
+  }
 
   // Arriving here from the email-confirmation link. Supabase's detectSessionInUrl
   // auto-creates a session from the link, but a freshly confirmed account is
@@ -89,15 +129,19 @@ export default function Login() {
       <Navbar />
       <section className="flex items-center justify-center bg-gray-50 px-4 py-16 sm:py-24">
         <form
-          onSubmit={handleSubmit}
+          onSubmit={mode === 'reset' ? handleReset : handleSubmit}
           className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm"
         >
           <div className="mb-6 flex flex-col items-center text-center">
             <Crest className="h-14 w-14 object-contain" />
             <h1 className="mt-3 font-display text-2xl font-bold text-maroon">
-              Member Login
+              {mode === 'reset' ? 'Reset Password' : 'Member Login'}
             </h1>
-            <p className="text-sm text-gray-500">Sign in to your SGA account.</p>
+            <p className="text-sm text-gray-500">
+              {mode === 'reset'
+                ? 'Enter your student number to get a reset link.'
+                : 'Sign in to your SGA account.'}
+            </p>
           </div>
 
           {justConfirmed && !error && (
@@ -114,6 +158,17 @@ export default function Login() {
           {error && (
             <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
+            </div>
+          )}
+
+          {mode === 'reset' && resetSent && (
+            <div className="mb-5 flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                If an account exists for that student number, we&apos;ve sent a
+                password reset link to the email on file. Check your inbox (and
+                spam folder).
+              </span>
             </div>
           )}
 
@@ -134,21 +189,23 @@ export default function Login() {
             />
           </label>
 
-          <label htmlFor="password" className="mt-4 block">
-            <span className="mb-1.5 block text-sm font-semibold text-maroon">
-              Password
-            </span>
-            <input
-              id="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputClass}
-              placeholder="••••••••"
-            />
-          </label>
+          {mode === 'signin' && (
+            <label htmlFor="password" className="mt-4 block">
+              <span className="mb-1.5 block text-sm font-semibold text-maroon">
+                Password
+              </span>
+              <input
+                id="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClass}
+                placeholder="••••••••"
+              />
+            </label>
+          )}
 
           <button
             type="submit"
@@ -157,7 +214,12 @@ export default function Login() {
           >
             {submitting ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin" /> Signing in…
+                <Loader2 className="h-5 w-5 animate-spin" />{' '}
+                {mode === 'reset' ? 'Sending…' : 'Signing in…'}
+              </>
+            ) : mode === 'reset' ? (
+              <>
+                <KeyRound className="h-5 w-5" /> Send Reset Link
               </>
             ) : (
               <>
@@ -166,12 +228,35 @@ export default function Login() {
             )}
           </button>
 
-          <p className="mt-5 text-center text-sm text-gray-500">
-            New here?{' '}
-            <Link to="/join" className="font-semibold text-maroon hover:underline">
-              Join SGA
-            </Link>
-          </p>
+          {mode === 'signin' ? (
+            <>
+              <p className="mt-5 text-center text-sm text-gray-500">
+                <button
+                  type="button"
+                  onClick={() => switchMode('reset')}
+                  className="font-semibold text-maroon hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </p>
+              <p className="mt-2 text-center text-sm text-gray-500">
+                New here?{' '}
+                <Link to="/join" className="font-semibold text-maroon hover:underline">
+                  Join SGA
+                </Link>
+              </p>
+            </>
+          ) : (
+            <p className="mt-5 text-center text-sm text-gray-500">
+              <button
+                type="button"
+                onClick={() => switchMode('signin')}
+                className="font-semibold text-maroon hover:underline"
+              >
+                Back to sign in
+              </button>
+            </p>
+          )}
         </form>
       </section>
       <Footer />

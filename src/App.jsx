@@ -3,6 +3,7 @@ import Home from './pages/Home.jsx'
 import About from './pages/About.jsx'
 import Join from './pages/Join.jsx'
 import Login from './pages/Login.jsx'
+import ResetPassword from './pages/ResetPassword.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Meetings from './pages/Meetings.jsx'
 import MeetingDetail from './pages/MeetingDetail.jsx'
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/elections" element={<ElectionsPublic />} />
       <Route path="/join" element={<Join />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dashboard/profile" element={<Profile />} />
       <Route path="/dashboard/candidacy" element={<Candidacy />} />
