@@ -18,6 +18,7 @@ class ErrorBoundaryInner extends Component {
   componentDidCatch(error, info) {
     // Surface the real error in the console for debugging; the UI stays friendly.
     console.error('Unhandled render error:', error, info)
+    this.setState({ info })
   }
 
   componentDidUpdate(prevProps) {
@@ -40,6 +41,17 @@ class ErrorBoundaryInner extends Component {
             This page hit an unexpected error. You can reload, or head back to the
             dashboard.
           </p>
+          {this.state.error && (
+            <details className="mt-4 max-w-xl text-left">
+              <summary className="cursor-pointer text-sm font-semibold text-maroon">
+                Technical details
+              </summary>
+              <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-white p-3 text-xs text-gray-700">
+                {String(this.state.error?.stack || this.state.error)}
+                {this.state.info?.componentStack || ''}
+              </pre>
+            </details>
+          )}
           <div className="mt-6 flex items-center gap-3">
             <button
               onClick={() => window.location.reload()}
