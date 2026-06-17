@@ -591,27 +591,35 @@ function ConstitutionCard() {
       .from('documents')
       .upload(path, file, { upsert: true })
     if (upErr) {
-      setError('Upload failed. Please try again.')
+      // Surface the real cause — e.g. "Bucket not found" (constitution migration
+      // not applied) or an RLS denial — instead of a generic message.
+      setError(`Upload failed: ${upErr.message}`)
       setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
       return
     }
     const { data } = supabase.storage.from('documents').getPublicUrl(path)
     setUrl(data.publicUrl)
-    setSaved(false)
     setUploading(false)
     if (fileRef.current) fileRef.current.value = ''
+    // Persist immediately: an admin who uploads a file expects it to take
+    // effect, not to also have to click Save afterward.
+    await save(data.publicUrl)
   }
 
-  async function save() {
+  // `override` lets handleUpload save the freshly uploaded URL without waiting on
+  // a state update; manual Save calls fall back to the input value.
+  async function save(override) {
+    const value = (override ?? url).trim() || null
     setSaving(true)
     setSaved(false)
     setError('')
     const { error: upErr } = await supabase
       .from('site_settings')
-      .update({ constitution_url: url.trim() || null })
+      .update({ constitution_url: value })
       .eq('id', 1)
     if (upErr) {
-      setError('Could not save. Please try again.')
+      setError(`Could not save: ${upErr.message}`)
     } else {
       await refresh()
       setSaved(true)
@@ -679,7 +687,7 @@ function ConstitutionCard() {
               </span>
             )}
             <button
-              onClick={save}
+              onClick={() => save()}
               disabled={saving || uploading || !dirty}
               className="inline-flex items-center gap-2 rounded-lg bg-maroon px-5 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
             >

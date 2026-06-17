@@ -24,17 +24,22 @@ insert into storage.buckets (id, name, public)
 values ('documents', 'documents', true)
 on conflict (id) do nothing;
 
+-- Idempotent: drop-then-create so this migration can be re-applied cleanly if a
+-- prior partial run already created the bucket but not all policies.
+drop policy if exists "Site editors can upload documents" on storage.objects;
 create policy "Site editors can upload documents"
   on storage.objects for insert
   to authenticated
   with check (bucket_id = 'documents' and public.has_permission('edit_site'));
 
+drop policy if exists "Site editors can update documents" on storage.objects;
 create policy "Site editors can update documents"
   on storage.objects for update
   to authenticated
   using (bucket_id = 'documents' and public.has_permission('edit_site'))
   with check (bucket_id = 'documents' and public.has_permission('edit_site'));
 
+drop policy if exists "Site editors can delete documents" on storage.objects;
 create policy "Site editors can delete documents"
   on storage.objects for delete
   to authenticated
