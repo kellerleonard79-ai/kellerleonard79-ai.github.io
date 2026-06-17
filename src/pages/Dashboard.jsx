@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Users,
@@ -14,6 +15,7 @@ import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import RequireAuth from '../components/RequireAuth.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
+import supabase from '../lib/supabaseClient.js'
 
 const CARDS = [
   {
@@ -78,6 +80,20 @@ function DashboardHub() {
   const { profile, signOut, hasPermission } = useAuth()
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Tiger'
 
+  // Existing members aren't flagged as candidates, so they'd otherwise have no
+  // visible path to declare candidacy when a cycle opens. Check whether filing
+  // is open so we can surface a "Run for a Position" card to everyone.
+  const [cycleOpen, setCycleOpen] = useState(false)
+  useEffect(() => {
+    let active = true
+    supabase.rpc('my_candidacy').then(({ data }) => {
+      if (active) setCycleOpen(Boolean(data?.cycle_open))
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
   // Pending applicants who got in to manage a candidacy don't get the full hub —
   // just a notice and (if they're running) a link to their candidacy page.
   if (profile?.status === 'pending') {
@@ -109,6 +125,15 @@ function DashboardHub() {
         to: '/dashboard/candidacy',
       },
     )
+  } else if (cycleOpen) {
+    // Already-approved members who haven't declared yet: give them a clear way
+    // in to run for a position while filing is open.
+    cards.unshift({
+      title: 'Run for a Position',
+      desc: 'Filing is open — declare your candidacy',
+      icon: Vote,
+      to: '/dashboard/candidacy',
+    })
   }
 
   return (

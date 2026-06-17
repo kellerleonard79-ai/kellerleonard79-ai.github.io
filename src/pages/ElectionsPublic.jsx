@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, BadgeCheck, Loader2, UserRound, Vote } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
-import supabase from '../lib/supabaseClient.js'
+import { supabasePublic } from '../lib/supabaseClient.js'
 
 // Public-facing roster of everyone who has applied. Reads through the
 // get_public_candidates() SECURITY DEFINER feed so no private application data
@@ -13,7 +13,7 @@ export default function ElectionsPublic() {
 
   useEffect(() => {
     let active = true
-    supabase.rpc('get_public_candidates').then(({ data }) => {
+    supabasePublic.rpc('get_public_candidates').then(({ data }) => {
       if (!active) return
       setCandidates(data ?? [])
       setLoading(false)

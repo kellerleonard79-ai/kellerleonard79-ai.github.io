@@ -3,7 +3,7 @@ import { CalendarDays, Megaphone, Bell, Send, Check, Loader2 } from 'lucide-reac
 import { Instagram } from '../components/BrandIcons.jsx'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
-import supabase from '../lib/supabaseClient.js'
+import { supabasePublic } from '../lib/supabaseClient.js'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 
 // ── Embeds ──────────────────────────────────────────────────────────────────
@@ -178,7 +178,7 @@ function NewsletterSignup() {
     if (!trimmed) return
     setSubmitting(true)
     setError('')
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabasePublic
       .from('newsletter_emails')
       .insert({ email: trimmed })
     setSubmitting(false)
@@ -256,7 +256,7 @@ function Announcements() {
   const [items, setItems] = useState([])
 
   useEffect(() => {
-    supabase
+    supabasePublic
       .from('announcements')
       .select('id, title, body, created_at')
       .eq('is_published', true)

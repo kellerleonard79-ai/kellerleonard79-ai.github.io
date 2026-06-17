@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Mail, MapPin, Send, Check, Loader2, AtSign } from 'lucide-react'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
-import supabase from '../lib/supabaseClient.js'
+import { supabasePublic } from '../lib/supabaseClient.js'
 
 // Compact maroon footer organized into four tight columns: brand + contact,
 // quick navigation, class Instagram accounts, and an inline newsletter signup.
@@ -133,7 +133,7 @@ function FooterNewsletter() {
     if (!trimmed) return
     setSubmitting(true)
     setError('')
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabasePublic
       .from('newsletter_emails')
       .insert({ email: trimmed })
     setSubmitting(false)

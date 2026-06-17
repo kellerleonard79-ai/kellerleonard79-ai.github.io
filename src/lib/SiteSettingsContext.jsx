@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import supabase from './supabaseClient.js'
+import { supabasePublic } from './supabaseClient.js'
 
 const SiteSettingsContext = createContext({
   settings: null,
@@ -48,7 +48,7 @@ export function SiteSettingsProvider({ children }) {
   // Re-read the single settings row and re-apply branding. Used after an admin
   // saves changes from the Edit Site / Admin tools so the whole app reflects them.
   async function refresh() {
-    const { data } = await supabase
+    const { data } = await supabasePublic
       .from('site_settings')
       .select('*')
       .eq('id', 1)
@@ -60,7 +60,7 @@ export function SiteSettingsProvider({ children }) {
 
   useEffect(() => {
     let active = true
-    supabase
+    supabasePublic
       .from('site_settings')
       .select('*')
       .eq('id', 1)

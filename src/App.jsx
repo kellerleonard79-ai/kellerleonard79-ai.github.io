@@ -19,13 +19,18 @@ import Elections from './pages/Elections.jsx'
 import Bookkeeping from './pages/Bookkeeping.jsx'
 import Committees from './pages/Committees.jsx'
 import AdminSettings from './pages/AdminSettings.jsx'
+import ClockWarning from './components/ClockWarning.jsx'
 
 // The standalone Edit Site and Security Clearance pages were folded into the
 // unified Admin panel; their old routes now redirect to the matching section.
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      {/* Sits outside the routed pages so it still surfaces when a skewed
+          device clock has broken auth and the pages themselves render empty. */}
+      <ClockWarning />
+      <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/about" element={<About />} />
       <Route path="/elections" element={<ElectionsPublic />} />
@@ -56,6 +61,7 @@ export default function App() {
       <Route path="/dashboard/meetings/:id/agenda" element={<AgendaEditor />} />
       <Route path="/dashboard/meetings/:id/session" element={<SessionView />} />
       <Route path="/checkin/:meetingId" element={<Checkin />} />
-    </Routes>
+      </Routes>
+    </>
   )
 }

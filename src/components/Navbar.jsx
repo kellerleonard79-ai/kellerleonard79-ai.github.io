@@ -14,7 +14,7 @@ const links = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
-  const { session, isStaff, signOut } = useAuth()
+  const { session, signOut } = useAuth()
   const { settings } = useSiteSettings()
   const signupEnabled = settings?.signup_enabled ?? false
 
@@ -49,7 +49,7 @@ export default function Navbar() {
             )
           })}
 
-          {isStaff && (
+          {session && (
             <Link
               to="/dashboard"
               className="ml-2 inline-flex items-center gap-2 rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
@@ -133,7 +133,7 @@ export default function Navbar() {
               )
             })}
 
-            {isStaff && (
+            {session && (
               <Link
                 to="/dashboard"
                 onClick={() => setOpen(false)}

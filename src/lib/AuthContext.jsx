@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import supabase from './supabaseClient.js'
+import { measureClockSkew } from './clockCheck.js'
 
 const AuthContext = createContext({
   session: null,
@@ -29,6 +30,10 @@ export function AuthProvider({ children }) {
     let active = true
 
     async function init() {
+      // Measure device-vs-server clock skew before the first session read so the
+      // storage wrapper can compensate token expiry from the very first load,
+      // not after a wrong-clock device has already decided it's logged out.
+      await measureClockSkew()
       const {
         data: { session },
       } = await supabase.auth.getSession()

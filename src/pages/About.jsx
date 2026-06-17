@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Loader2, Crown, UsersRound, FileText } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
-import supabase from '../lib/supabaseClient.js'
+import { supabasePublic } from '../lib/supabaseClient.js'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 
 // Class-officer groups, in display order. Exec is handled separately above.
@@ -25,11 +25,11 @@ export default function About() {
     // an elected position. public_committees: one row per committee membership
     // (committees with no members still appear, with null member columns).
     Promise.all([
-      supabase
+      supabasePublic
         .from('public_officers')
         .select('*')
         .order('position_order', { ascending: true }),
-      supabase
+      supabasePublic
         .from('public_committees')
         .select('*')
         .order('committee_name', { ascending: true }),
