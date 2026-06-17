@@ -50,7 +50,8 @@ Requires `.env` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see `.env
 - Tailwind v4 is configured via the Vite plugin and `@theme` in `src/index.css` — there is **no `tailwind.config.js`**. Fonts: League Spartan (display, uppercased headings) + Inter (body).
 
 ### Supabase access patterns
-- `src/lib/supabaseClient.js` exports a single shared client. Most data access is direct `supabase.from(...)` calls from page components, gated by RLS server-side.
+- `src/lib/supabaseClient.js` exports **two** clients: the default `supabase` (persists session, auto-refreshes) and a named `supabasePublic` (session-less, no auto-refresh, separate `storageKey`). Use `supabasePublic` for public/anonymous reads (homepage, about, public elections, site settings/branding) so public content keeps loading even if a logged-in session is wedged. Most data access is direct `supabase.from(...)` calls from page components, gated by RLS server-side.
+- **Clock-skew compensation is built into the auth layer.** A wrong device clock breaks Supabase auth (auth-js compares the JWT's server-set expiry against `Date.now()`). `src/lib/clockCheck.js` measures device-vs-server skew via a `server_now()` RPC; `supabaseClient.js` wraps localStorage to re-express token expiry in the device's clock frame; `ClockWarning.jsx` banners the user. `AuthContext` awaits the skew measurement before reading the session. Don't "simplify" this away — it's load-bearing for users with misconfigured clocks/time zones.
 - **RLS is the real security boundary.** Migrations enable Row Level Security and rely on a `public.is_admin()` SECURITY DEFINER helper (avoids the recursive-policy trap of a profiles policy querying profiles). Frontend `hasPermission` gating is for UX; never assume it protects data.
 - **Edge Functions** (`supabase/functions/`, Deno) handle privileged operations that must bypass RLS with the service-role key, always after re-verifying the caller via `is_admin()` RPC:
   - `create-user` / `delete-user` — admin-driven account lifecycle.
@@ -64,5 +65,6 @@ Public: `Home`, `About`, `Join` (signup gated by `site_settings.signup_enabled`)
 ## Conventions
 - Roles, elected positions, and agenda section types are **data, not enums** — they live in DB tables and are admin-editable. Don't hardcode role names, position titles, or section types.
 - PDF export (agenda/attendance) is client-side via `jspdf` + `html2canvas`.
-- QR codes via `qrcode.react`; icons via `lucide-react`.
+- QR codes via `qrcode.react` (`CheckinQR.jsx`); icons via `lucide-react` (custom ones in `BrandIcons.jsx`). User-authored rich text renders through `Markdown.jsx`.
+- The big pages are large single files (e.g. `AdminSettings.jsx` ~2700 lines, `AgendaEditor.jsx` ~1560, `Elections.jsx` ~1500). Each owns its own data fetching, state, and sub-components inline rather than splitting into many files — follow the existing file's structure when editing rather than refactoring it apart.
 - Comments in this codebase explain *why* (non-obvious constraints like the GitHub Pages routing trick, RLS recursion avoidance, legacy-column syncing) — match that style; explain rationale, not mechanics.
