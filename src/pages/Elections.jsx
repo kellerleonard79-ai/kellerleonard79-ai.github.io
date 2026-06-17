@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  GripVertical,
   Vote,
   UserPlus,
   Loader2,
@@ -95,7 +97,11 @@ function ElectionsContent() {
         .select('id, title, "group", "order", show_in_elections')
         .order('group', { ascending: true })
         .order('order', { ascending: true }),
-      supabase.from('positions').select('*').order('title'),
+      supabase
+        .from('positions')
+        .select('*')
+        .order('order', { ascending: true })
+        .order('title', { ascending: true }),
       supabase
         .from('roles')
         .select('id, name, permissions, is_admin, order')
@@ -197,23 +203,55 @@ function ElectionsContent() {
   )
 }
 
-// Shared card chrome (matches the Admin panel section cards).
-function Section({ icon: Icon, title, desc, action, children }) {
+// Shared card chrome (matches the Admin panel section cards). Pass `collapsible`
+// (with `collapsed` + `onToggleCollapse`) to make the header a toggle that
+// hides the body — the action stays outside the toggle so it doesn't fire it.
+function Section({
+  icon: Icon,
+  title,
+  desc,
+  action,
+  children,
+  collapsible,
+  collapsed,
+  onToggleCollapse,
+}) {
+  const headerInner = (
+    <>
+      {collapsible && (
+        <ChevronDown
+          className={`h-5 w-5 shrink-0 text-gray-400 transition-transform ${
+            collapsed ? '-rotate-90' : ''
+          }`}
+        />
+      )}
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-maroon/10 text-maroon">
+        <Icon className="h-5 w-5" />
+      </span>
+      <div className="min-w-0 text-left">
+        <h2 className="font-display text-lg font-bold text-maroon">{title}</h2>
+        {desc && <p className="text-sm text-gray-500">{desc}</p>}
+      </div>
+    </>
+  )
+
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="flex items-center gap-3 border-b border-gray-100 p-5">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-maroon/10 text-maroon">
-          <Icon className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <h2 className="font-display text-lg font-bold text-maroon">
-            {title}
-          </h2>
-          {desc && <p className="text-sm text-gray-500">{desc}</p>}
-        </div>
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="flex min-w-0 flex-1 items-center gap-3"
+          >
+            {headerInner}
+          </button>
+        ) : (
+          headerInner
+        )}
         {action && <div className="ml-auto shrink-0">{action}</div>}
       </div>
-      <div className="p-5">{children}</div>
+      {!collapsed && <div className="p-5">{children}</div>}
     </section>
   )
 }
@@ -1284,14 +1322,47 @@ const textToReq = (text) =>
 
 function ApplicationPositions({ positions, onChanged }) {
   const [adding, setAdding] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
+
+  // Local order copy so a drag reorders instantly; re-syncs whenever the
+  // canonical list changes (after add / edit / delete / reload).
+  const [ordered, setOrdered] = useState(positions)
+  const [dragId, setDragId] = useState(null)
+  useEffect(() => {
+    setOrdered(positions)
+  }, [positions])
+
+  async function handleDrop(targetId) {
+    const current = dragId
+    setDragId(null)
+    if (!current || current === targetId) return
+    const ids = ordered.map((p) => p.id)
+    const from = ids.indexOf(current)
+    const to = ids.indexOf(targetId)
+    if (from === -1 || to === -1) return
+    const next = [...ordered]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    setOrdered(next)
+    // Persist the new order (one update per row, mirroring the agenda editor).
+    await Promise.all(
+      next.map((p, i) =>
+        supabase.from('positions').update({ order: i }).eq('id', p.id),
+      ),
+    )
+    onChanged()
+  }
 
   return (
     <Section
       icon={ClipboardList}
       title="Application Positions"
       desc="What candidates choose from when applying for an elected position."
+      collapsible
+      collapsed={collapsed}
+      onToggleCollapse={() => setCollapsed((c) => !c)}
       action={
-        !adding ? (
+        !collapsed && !adding ? (
           <button
             onClick={() => setAdding(true)}
             className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-3 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark"
@@ -1311,14 +1382,21 @@ function ApplicationPositions({ positions, onChanged }) {
         />
       )}
 
-      {positions.length === 0 ? (
+      {ordered.length === 0 ? (
         <p className="py-4 text-center text-sm text-gray-400">
           No application positions yet. Add one so candidates can apply.
         </p>
       ) : (
         <ul className="space-y-3">
-          {positions.map((p) => (
-            <AppPositionRow key={p.id} position={p} onChanged={onChanged} />
+          {ordered.map((p) => (
+            <AppPositionRow
+              key={p.id}
+              position={p}
+              isDragging={dragId === p.id}
+              onDragStart={() => setDragId(p.id)}
+              onDrop={() => handleDrop(p.id)}
+              onChanged={onChanged}
+            />
           ))}
         </ul>
       )}
@@ -1326,9 +1404,18 @@ function ApplicationPositions({ positions, onChanged }) {
   )
 }
 
-function AppPositionRow({ position, onChanged }) {
+function AppPositionRow({
+  position,
+  onChanged,
+  isDragging,
+  onDragStart,
+  onDrop,
+}) {
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
+  // The row is only draggable while the grip handle is held, so the edit /
+  // delete buttons and text stay normally interactive the rest of the time.
+  const [draggable, setDraggable] = useState(false)
 
   async function remove() {
     if (
@@ -1366,7 +1453,28 @@ function AppPositionRow({ position, onChanged }) {
   }
 
   return (
-    <li className="flex items-start gap-3 rounded-xl border border-gray-200 p-4">
+    <li
+      draggable={draggable}
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move'
+        onDragStart?.()
+      }}
+      onDragEnd={() => setDraggable(false)}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDraggable(false)
+        onDrop?.()
+      }}
+      className={`flex items-start gap-2 rounded-xl border border-gray-200 p-4 ${
+        isDragging ? 'opacity-50' : ''
+      }`}
+    >
+      <GripVertical
+        onMouseDown={() => setDraggable(true)}
+        onMouseUp={() => setDraggable(false)}
+        className="mt-0.5 h-4 w-4 shrink-0 cursor-grab text-gray-300 hover:text-gray-500"
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold text-maroon">{position.title}</p>
         {position.description && (
@@ -1778,32 +1886,197 @@ function SessionForm({ session, onCancel, onSaved }) {
   )
 }
 
+// A reusable editor for a list of time ranges (start / end / slot length). Used
+// both for the shared default ranges and for a day's customized ranges.
+function RangeRows({ ranges, onUpdate, onAdd, onRemove }) {
+  return (
+    <>
+      <div className="space-y-2">
+        {ranges.map((r, i) => (
+          <div
+            key={i}
+            className="grid gap-2 rounded-lg border border-gray-200 bg-white p-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+          >
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-gray-500">
+                Start
+              </span>
+              <input
+                type="time"
+                value={r.start}
+                onChange={(e) => onUpdate(i, { start: e.target.value })}
+                className={inputClass}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-gray-500">
+                End
+              </span>
+              <input
+                type="time"
+                value={r.end}
+                onChange={(e) => onUpdate(i, { end: e.target.value })}
+                className={inputClass}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-gray-500">
+                Slot length
+              </span>
+              <select
+                value={
+                  SLOT_LENGTHS.includes(Number(r.duration))
+                    ? r.duration
+                    : 'custom'
+                }
+                onChange={(e) =>
+                  onUpdate(i, {
+                    duration:
+                      e.target.value === 'custom'
+                        ? r.duration
+                        : Number(e.target.value),
+                  })
+                }
+                className={selectClass}
+              >
+                {SLOT_LENGTHS.map((m) => (
+                  <option key={m} value={m}>
+                    {m} minutes
+                  </option>
+                ))}
+                <option value="custom">Custom…</option>
+              </select>
+              {!SLOT_LENGTHS.includes(Number(r.duration)) && (
+                <input
+                  type="number"
+                  min={1}
+                  value={r.duration}
+                  onChange={(e) => onUpdate(i, { duration: e.target.value })}
+                  placeholder="Minutes"
+                  className={`${inputClass} mt-2`}
+                />
+              )}
+            </label>
+            <div className="flex items-end">
+              {ranges.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => onRemove(i)}
+                  className="grid h-[42px] w-9 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                  title="Remove time range"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={onAdd}
+        className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-maroon transition hover:text-maroon-dark"
+      >
+        <Plus className="h-4 w-4" /> Add another time range
+      </button>
+    </>
+  )
+}
+
+// Short "9:00 AM–10:00 AM · 15 min" summary for a range, for the per-day rows.
+const fmtRangeSummary = (r) => {
+  if (!r.start || !r.end) return 'Incomplete range'
+  const t = (hhmm) =>
+    new Date(`2000-01-01T${hhmm}`).toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit',
+    })
+  return `${t(r.start)}–${t(r.end)} · ${r.duration} min`
+}
+
+const newRange = () => ({ start: '', end: '', duration: 15 })
+
 // Bulk creator: pick any number of days, then one or more time ranges. Every
 // (day × time range) pair becomes its own session, so a day can hold several
 // sessions (e.g. a morning block and an afternoon block). Editing an existing
 // session still goes through the single-session SessionForm.
+//
+// Time ranges are shared by default: new days inherit the "default time ranges"
+// below. Any single day can be customized — `customRanges` then holds its own
+// copy (decoupled from the defaults). A day with `customRanges == null` keeps
+// following the defaults live.
 function MultiSessionForm({ onCancel, onSaved }) {
-  const [days, setDays] = useState([])
+  const [days, setDays] = useState([]) // [{ date, customRanges: null | Range[] }]
   const [newDay, setNewDay] = useState('')
-  const [ranges, setRanges] = useState([{ start: '', end: '', duration: 15 }])
+  const [defaultRanges, setDefaultRanges] = useState([newRange()])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   function addDay() {
     if (!newDay) return
-    setDays((d) => (d.includes(newDay) ? d : [...d, newDay].sort()))
+    setDays((d) =>
+      d.some((x) => x.date === newDay)
+        ? d
+        : [...d, { date: newDay, customRanges: null }].sort((a, b) =>
+            a.date < b.date ? -1 : 1,
+          ),
+    )
     setNewDay('')
   }
-  const removeDay = (d) => setDays((ds) => ds.filter((x) => x !== d))
+  const removeDay = (date) =>
+    setDays((ds) => ds.filter((x) => x.date !== date))
 
-  const updateRange = (i, patch) =>
-    setRanges((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
-  const addRange = () =>
-    setRanges((rs) => [...rs, { start: '', end: '', duration: 15 }])
-  const removeRange = (i) =>
-    setRanges((rs) => rs.filter((_, idx) => idx !== i))
+  // Default (shared) range editing.
+  const updateDefault = (i, patch) =>
+    setDefaultRanges((rs) =>
+      rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)),
+    )
+  const addDefault = () => setDefaultRanges((rs) => [...rs, newRange()])
+  const removeDefault = (i) =>
+    setDefaultRanges((rs) => rs.filter((_, idx) => idx !== i))
 
-  const totalSessions = days.length * ranges.length
+  // Per-day range editing. Customizing snapshots the current defaults into the
+  // day; resetting drops back to following the defaults.
+  const patchDay = (date, fn) =>
+    setDays((ds) => ds.map((d) => (d.date === date ? fn(d) : d)))
+  const customizeDay = (date) =>
+    patchDay(date, (d) => ({
+      ...d,
+      customRanges: defaultRanges.map((r) => ({ ...r })),
+    }))
+  const resetDay = (date) =>
+    patchDay(date, (d) => ({ ...d, customRanges: null }))
+  const updateDayRange = (date, i, patch) =>
+    patchDay(date, (d) => ({
+      ...d,
+      customRanges: d.customRanges.map((r, idx) =>
+        idx === i ? { ...r, ...patch } : r,
+      ),
+    }))
+  const addDayRange = (date) =>
+    patchDay(date, (d) => ({
+      ...d,
+      customRanges: [...d.customRanges, newRange()],
+    }))
+  const removeDayRange = (date, i) =>
+    patchDay(date, (d) => ({
+      ...d,
+      customRanges: d.customRanges.filter((_, idx) => idx !== i),
+    }))
+
+  // Effective ranges for a day: its own copy, or the shared defaults.
+  const rangesFor = (d) => d.customRanges ?? defaultRanges
+  const totalSessions = days.reduce((n, d) => n + rangesFor(d).length, 0)
+
+  function validateRanges(ranges) {
+    for (const r of ranges) {
+      if (!r.start || !r.end) return 'Every time range needs a start and end time.'
+      if (r.end <= r.start) return 'Each time range must end after it starts.'
+      if (!r.duration || Number(r.duration) < 1)
+        return 'Slot length must be at least 1 minute.'
+    }
+    return null
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -1812,26 +2085,19 @@ function MultiSessionForm({ onCancel, onSaved }) {
       setError('Add at least one day.')
       return
     }
-    for (const r of ranges) {
-      if (!r.start || !r.end) {
-        setError('Every time range needs a start and end time.')
-        return
-      }
-      if (r.end <= r.start) {
-        setError('Each time range must end after it starts.')
-        return
-      }
-      if (!r.duration || Number(r.duration) < 1) {
-        setError('Slot length must be at least 1 minute.')
-        return
-      }
-    }
-    // One row per (day × range). The slot-generation trigger fires per insert.
+    // One row per (day × that day's effective range). The slot-generation
+    // trigger fires per insert.
     const rows = []
-    for (const date of days) {
+    for (const d of days) {
+      const ranges = rangesFor(d)
+      const msg = validateRanges(ranges)
+      if (msg) {
+        setError(msg)
+        return
+      }
       for (const r of ranges) {
         rows.push({
-          date,
+          date: d.date,
           start_time: r.start,
           end_time: r.end,
           slot_duration: Number(r.duration),
@@ -1859,8 +2125,23 @@ function MultiSessionForm({ onCancel, onSaved }) {
         </div>
       )}
 
-      {/* Days */}
+      {/* Default time ranges — shared by every day unless that day is customized */}
       <span className="mb-1 block text-xs font-semibold text-gray-600">
+        Default time ranges
+      </span>
+      <p className="mb-2 text-[11px] text-gray-400">
+        Applied to every day you add. Customize an individual day below if it
+        needs different times.
+      </p>
+      <RangeRows
+        ranges={defaultRanges}
+        onUpdate={updateDefault}
+        onAdd={addDefault}
+        onRemove={removeDefault}
+      />
+
+      {/* Days */}
+      <span className="mb-1 mt-5 block text-xs font-semibold text-gray-600">
         Interview days
       </span>
       <div className="flex flex-wrap items-end gap-2">
@@ -1885,128 +2166,74 @@ function MultiSessionForm({ onCancel, onSaved }) {
           <Plus className="h-4 w-4" /> Add day
         </button>
       </div>
+
       {days.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {days.map((d) => (
-            <span
-              key={d}
-              className="inline-flex items-center gap-1.5 rounded-full bg-maroon/10 py-1 pl-3 pr-1.5 text-sm font-semibold text-maroon"
-            >
-              {fmtSessionDate(d)}
-              <button
-                type="button"
-                onClick={() => removeDay(d)}
-                className="grid h-5 w-5 place-items-center rounded-full text-maroon/60 transition hover:bg-maroon/20 hover:text-maroon"
-                title="Remove day"
+        <div className="mt-3 space-y-3">
+          {days.map((d) => {
+            const customized = d.customRanges != null
+            return (
+              <div
+                key={d.date}
+                className="rounded-lg border border-gray-200 bg-white p-3"
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </span>
-          ))}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-display text-sm font-bold text-maroon">
+                    {fmtSessionDate(d.date)}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        customized ? resetDay(d.date) : customizeDay(d.date)
+                      }
+                      className="rounded-md px-2 py-1 text-xs font-semibold text-maroon transition hover:bg-maroon/5"
+                    >
+                      {customized ? 'Use default times' : 'Customize times'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeDay(d.date)}
+                      className="grid h-6 w-6 place-items-center rounded-full text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                      title="Remove day"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {customized ? (
+                  <div className="mt-3">
+                    <RangeRows
+                      ranges={d.customRanges}
+                      onUpdate={(i, patch) => updateDayRange(d.date, i, patch)}
+                      onAdd={() => addDayRange(d.date)}
+                      onRemove={(i) => removeDayRange(d.date, i)}
+                    />
+                  </div>
+                ) : (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {defaultRanges.map((r, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-600"
+                      >
+                        {fmtRangeSummary(r)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
-
-      {/* Time ranges */}
-      <span className="mb-1 mt-5 block text-xs font-semibold text-gray-600">
-        Time ranges (applied to every selected day)
-      </span>
-      <div className="space-y-2">
-        {ranges.map((r, i) => (
-          <div
-            key={i}
-            className="grid gap-2 rounded-lg border border-gray-200 bg-white p-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
-          >
-            <label className="block">
-              <span className="mb-1 block text-[11px] font-semibold text-gray-500">
-                Start
-              </span>
-              <input
-                type="time"
-                value={r.start}
-                onChange={(e) => updateRange(i, { start: e.target.value })}
-                className={inputClass}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[11px] font-semibold text-gray-500">
-                End
-              </span>
-              <input
-                type="time"
-                value={r.end}
-                onChange={(e) => updateRange(i, { end: e.target.value })}
-                className={inputClass}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[11px] font-semibold text-gray-500">
-                Slot length
-              </span>
-              <select
-                value={
-                  SLOT_LENGTHS.includes(Number(r.duration))
-                    ? r.duration
-                    : 'custom'
-                }
-                onChange={(e) =>
-                  updateRange(i, {
-                    duration:
-                      e.target.value === 'custom'
-                        ? r.duration
-                        : Number(e.target.value),
-                  })
-                }
-                className={selectClass}
-              >
-                {SLOT_LENGTHS.map((m) => (
-                  <option key={m} value={m}>
-                    {m} minutes
-                  </option>
-                ))}
-                <option value="custom">Custom…</option>
-              </select>
-              {!SLOT_LENGTHS.includes(Number(r.duration)) && (
-                <input
-                  type="number"
-                  min={1}
-                  value={r.duration}
-                  onChange={(e) => updateRange(i, { duration: e.target.value })}
-                  placeholder="Minutes"
-                  className={`${inputClass} mt-2`}
-                />
-              )}
-            </label>
-            <div className="flex items-end">
-              {ranges.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeRange(i)}
-                  className="grid h-[42px] w-9 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                  title="Remove time range"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={addRange}
-        className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-maroon transition hover:text-maroon-dark"
-      >
-        <Plus className="h-4 w-4" /> Add another time range
-      </button>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-gray-400">
           {totalSessions > 0
             ? `Creates ${totalSessions} session${
                 totalSessions === 1 ? '' : 's'
-              } (${days.length} day${days.length === 1 ? '' : 's'} × ${
-                ranges.length
-              } range${ranges.length === 1 ? '' : 's'}).`
+              } across ${days.length} day${days.length === 1 ? '' : 's'}.`
             : 'Add days and time ranges to begin.'}
         </p>
         <div className="flex gap-2">
