@@ -334,7 +334,11 @@ function CommitteeDetail({ committee, members, canManage, onChanged }) {
           canManage={canManage}
           onChanged={onChanged}
         />
-        <ReportsSection committee={committee} canManage={canManage} />
+        <ReportsSection
+          committee={committee}
+          members={members}
+          canManage={canManage}
+        />
       </div>
     </div>
   )
@@ -719,10 +723,15 @@ function AddMember({ committee, existingIds, onAdded }) {
 }
 
 // ─────────────────────────── Reports ───────────────────────────
-function ReportsSection({ committee, canManage }) {
+function ReportsSection({ committee, members, canManage }) {
   const { profile } = useAuth()
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Only designated members of this committee (or committee managers) may
+  // submit reports — mirrors the RLS insert policy on committee_reports.
+  const canSubmit =
+    canManage || members.some((m) => m.member_id === profile?.id)
 
   async function load() {
     const { data } = await supabase
@@ -752,9 +761,15 @@ function ReportsSection({ committee, canManage }) {
         </h2>
       </div>
 
-      <div className="border-b border-gray-100 p-4">
-        <ReportForm committee={committee} onSubmitted={load} />
-      </div>
+      {canSubmit ? (
+        <div className="border-b border-gray-100 p-4">
+          <ReportForm committee={committee} onSubmitted={load} />
+        </div>
+      ) : (
+        <p className="border-b border-gray-100 px-5 py-3 text-xs text-gray-400">
+          Only members of this committee can submit reports.
+        </p>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-8">
