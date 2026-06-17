@@ -59,6 +59,16 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  // Re-pull the current user's profile on demand. Self-service actions that
+  // change a profile flag server-side (e.g. declaring candidacy sets
+  // is_candidate_application) can call this so dependent UI updates immediately
+  // instead of waiting for the next auth event or a full reload.
+  async function refreshProfile() {
+    const userId = session?.user?.id
+    if (!userId) return
+    setProfile(await fetchProfile(userId))
+  }
+
   // Permission check driven by the role's permissions jsonb, with optional
   // per-member overrides (profiles.permission_overrides) layered on top. The
   // admin tier (is_admin) implicitly passes every check and cannot be revoked
@@ -80,6 +90,7 @@ export function AuthProvider({ children }) {
     role,
     loading,
     hasPermission,
+    refreshProfile,
     // Kept for backward compatibility while components migrate to hasPermission.
     isStaff: profile?.clearance_level === 'admin' || profile?.clearance_level === 'officer',
     signOut: () => supabase.auth.signOut(),

@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import RequireAuth from '../components/RequireAuth.jsx'
 import supabase from '../lib/supabaseClient.js'
+import { useAuth } from '../lib/AuthContext.jsx'
 
 // Self-service candidacy management. A member running for office — including a
 // pending applicant who flagged candidacy at signup — can see and change which
@@ -18,6 +19,7 @@ export default function Candidacy() {
 }
 
 function CandidacyContent() {
+  const { refreshProfile } = useAuth()
   const [candidacy, setCandidacy] = useState(null)
   const [positions, setPositions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -61,6 +63,10 @@ function CandidacyContent() {
     setCandidacy(data ?? null)
     setSelected(data?.position_id ?? selected)
     setSaved(true)
+    // Declaring candidacy flips is_candidate_application on the profile; refresh
+    // the cached auth profile so the dashboard's "My Application" card appears
+    // immediately rather than after the next auth event or reload.
+    refreshProfile()
   }
 
   const filingOpen =
