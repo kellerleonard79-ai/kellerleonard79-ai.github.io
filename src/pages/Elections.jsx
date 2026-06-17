@@ -1061,14 +1061,14 @@ function PositionGroup({ group, cycle, roles, canManage, onChanged }) {
               value={upgradeRoleId}
               onChange={(e) => setUpgradeRoleId(e.target.value)}
               className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-maroon outline-none focus:border-maroon"
-              title="Optionally upgrade the winner's role"
+              title="By default the winner's role is upgraded automatically based on the position. Pick a role here to override."
             >
-              <option value="">Keep current role</option>
+              <option value="">Auto role (from position)</option>
               {roles
                 .filter((r) => !r.is_admin)
                 .map((r) => (
                   <option key={r.id} value={r.id}>
-                    Upgrade to {r.name}
+                    Override: upgrade to {r.name}
                   </option>
                 ))}
             </select>

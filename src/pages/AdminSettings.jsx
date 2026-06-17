@@ -1960,10 +1960,22 @@ function TierRow({ role, memberCount, allOrders, onChanged }) {
   const [savingMeta, setSavingMeta] = useState(false)
   const locked = role.is_admin
 
+  // Permission toggles each persist the *whole* permissions object. Without
+  // care, rapid clicks (before React re-renders) all read the same stale
+  // `perms` and clobber each other — last write wins, silently dropping a
+  // toggle you turned on or re-adding one you turned off. `permsRef` is updated
+  // synchronously so each toggle builds on the latest intent; savingRef/
+  // pendingRef serialize the writes so only one is in flight and the final
+  // state is what gets persisted.
+  const permsRef = useRef(role.permissions ?? {})
+  const savingRef = useRef(false)
+  const pendingRef = useRef(null)
+
   useEffect(() => {
     setName(role.name)
     setOrder(role.order)
     setPerms(role.permissions ?? {})
+    permsRef.current = role.permissions ?? {}
   }, [role])
 
   const orderCollision =
@@ -1985,18 +1997,42 @@ function TierRow({ role, memberCount, allOrders, onChanged }) {
     else onChanged()
   }
 
-  async function togglePerm(key) {
-    if (locked) return
-    const next = { ...perms, [key]: !perms[key] }
-    setPerms(next) // optimistic
+  // Serialize writes: persist the latest snapshot; if one is already in flight,
+  // stash the newest and run it once the current one resolves. This guarantees
+  // the value the DB ends up with is the last toggle the user made, regardless
+  // of network ordering.
+  async function persistPerms(next) {
+    if (savingRef.current) {
+      pendingRef.current = next
+      return
+    }
+    savingRef.current = true
     const { error } = await supabase
       .from('roles')
       .update({ permissions: next })
       .eq('id', role.id)
+    savingRef.current = false
     if (error) {
-      setPerms(perms) // revert
+      pendingRef.current = null
       window.alert(error.message)
+      onChanged() // reload from server so the UI reflects what actually saved
+      return
     }
+    if (pendingRef.current) {
+      const queued = pendingRef.current
+      pendingRef.current = null
+      persistPerms(queued)
+    }
+  }
+
+  function togglePerm(key) {
+    if (locked) return
+    // Build on the synchronously-tracked latest intent, not the (possibly
+    // stale) render-time `perms`, so back-to-back clicks don't clobber.
+    const next = { ...permsRef.current, [key]: !permsRef.current[key] }
+    permsRef.current = next
+    setPerms(next) // optimistic
+    persistPerms(next)
   }
 
   async function remove() {
@@ -2108,18 +2144,20 @@ function TierRow({ role, memberCount, allOrders, onChanged }) {
 function PositionsTab() {
   const [positions, setPositions] = useState([])
   const [counts, setCounts] = useState({})
+  const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState({ title: '', group: 'exec', order: 1 })
 
   const load = useCallback(async () => {
-    const [{ data: pos }, { data: profiles }] = await Promise.all([
+    const [{ data: pos }, { data: profiles }, { data: roleRows }] = await Promise.all([
       supabase
         .from('elected_positions')
         .select('*')
         .order('group', { ascending: true })
         .order('order', { ascending: true }),
       supabase.from('profiles').select('elected_position_id'),
+      supabase.from('roles').select('id, name, "order", is_admin').order('order', { ascending: true }),
     ])
     const c = {}
     for (const p of profiles ?? []) {
@@ -2128,6 +2166,7 @@ function PositionsTab() {
     }
     setCounts(c)
     setPositions(pos ?? [])
+    setRoles(roleRows ?? [])
     setLoading(false)
   }, [])
 
@@ -2170,6 +2209,7 @@ function PositionsTab() {
               <PositionRow
                 key={pos.id}
                 position={pos}
+                roles={roles}
                 memberCount={counts[pos.id] ?? 0}
                 onChanged={load}
               />
@@ -2223,27 +2263,35 @@ function PositionsTab() {
   )
 }
 
-function PositionRow({ position, memberCount, onChanged }) {
+function PositionRow({ position, roles = [], memberCount, onChanged }) {
   const [title, setTitle] = useState(position.title)
   const [group, setGroup] = useState(position.group)
   const [order, setOrder] = useState(position.order)
+  const [grantRoleId, setGrantRoleId] = useState(position.default_role_id ?? '')
 
   useEffect(() => {
     setTitle(position.title)
     setGroup(position.group)
     setOrder(position.order)
+    setGrantRoleId(position.default_role_id ?? '')
   }, [position])
 
   const dirty =
     title.trim() !== position.title ||
     group !== position.group ||
-    Number(order) !== position.order
+    Number(order) !== position.order ||
+    (grantRoleId || null) !== (position.default_role_id ?? null)
 
   async function save() {
     if (!title.trim()) return
     const { error } = await supabase
       .from('elected_positions')
-      .update({ title: title.trim(), group, order: Number(order) })
+      .update({
+        title: title.trim(),
+        group,
+        order: Number(order),
+        default_role_id: grantRoleId || null,
+      })
       .eq('id', position.id)
     if (error) window.alert(error.message)
     else onChanged()
@@ -2293,6 +2341,21 @@ function PositionRow({ position, memberCount, onChanged }) {
         onChange={(e) => setOrder(e.target.value)}
         className={`${inputClass} w-20`}
       />
+      <select
+        value={grantRoleId}
+        onChange={(e) => setGrantRoleId(e.target.value)}
+        title="Role automatically granted when a member wins this position"
+        className={`${inputClass} w-44`}
+      >
+        <option value="">No role change</option>
+        {roles
+          .filter((r) => !r.is_admin)
+          .map((r) => (
+            <option key={r.id} value={r.id}>
+              Grants: {r.name}
+            </option>
+          ))}
+      </select>
       <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
         <Toggle checked={position.show_in_elections} onChange={toggleElections} />
         Elections
