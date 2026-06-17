@@ -204,6 +204,9 @@ function CreateMeetingForm({ onCreated }) {
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
   const [agenda, setAgenda] = useState('')
+  const [scheduleSession, setScheduleSession] = useState(false)
+  const [sessionStart, setSessionStart] = useState('')
+  const [sessionEnd, setSessionEnd] = useState('')
   // Track whether the admin-configured default title was overridden by hand, so
   // changing the date keeps refreshing the suggested title until the user edits.
   const [titleEdited, setTitleEdited] = useState(false)
@@ -218,10 +221,28 @@ function CreateMeetingForm({ onCreated }) {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+
+    // Build the optional scheduled check-in window. datetime-local values are
+    // local wall-clock; toISOString() normalizes them to UTC for storage.
+    let session_start = null
+    let session_end = null
+    if (scheduleSession) {
+      session_start = sessionStart ? new Date(sessionStart).toISOString() : null
+      session_end = sessionEnd ? new Date(sessionEnd).toISOString() : null
+      if (session_start && session_end && session_end <= session_start) {
+        setError('Check-in close time must be after the open time.')
+        return
+      }
+    }
+
     setSubmitting(true)
-    const { error: insertError } = await supabase
-      .from('meetings')
-      .insert({ title: title.trim(), date, agenda: agenda.trim() || null })
+    const { error: insertError } = await supabase.from('meetings').insert({
+      title: title.trim(),
+      date,
+      agenda: agenda.trim() || null,
+      session_start,
+      session_end,
+    })
     setSubmitting(false)
     if (insertError) {
       setError(insertError.message)
@@ -285,6 +306,52 @@ function CreateMeetingForm({ onCreated }) {
           placeholder="Short description…"
         />
       </label>
+
+      {/* Optional scheduled QR check-in window */}
+      <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+        <label className="flex items-center gap-2.5">
+          <input
+            type="checkbox"
+            checked={scheduleSession}
+            onChange={(e) => setScheduleSession(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
+          />
+          <span className="text-sm font-semibold text-maroon">
+            Schedule QR check-in window
+          </span>
+        </label>
+        <p className="mt-1 pl-6 text-xs text-gray-500">
+          Check-in opens and closes automatically during this window. Leave off
+          to open it manually at the meeting.
+        </p>
+        {scheduleSession && (
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-maroon">
+                Opens
+              </span>
+              <input
+                type="datetime-local"
+                value={sessionStart}
+                onChange={(e) => setSessionStart(e.target.value)}
+                className={inputClass}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-maroon">
+                Closes
+              </span>
+              <input
+                type="datetime-local"
+                value={sessionEnd}
+                onChange={(e) => setSessionEnd(e.target.value)}
+                className={inputClass}
+              />
+            </label>
+          </div>
+        )}
+      </div>
+
       <button
         type="submit"
         disabled={submitting}

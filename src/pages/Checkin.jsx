@@ -6,6 +6,7 @@ import Footer from '../components/Footer.jsx'
 import Crest from '../components/Crest.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
+import { isSessionOpen } from '../lib/format.js'
 
 // status: loading | success | already | inactive | notfound | error
 export default function Checkin() {
@@ -32,7 +33,7 @@ export default function Checkin() {
     async function checkIn() {
       const { data: meetingRow, error: meetingError } = await supabase
         .from('meetings')
-        .select('id, title, date, is_active')
+        .select('id, title, date, is_active, session_start, session_end')
         .eq('id', meetingId)
         .maybeSingle()
 
@@ -42,7 +43,7 @@ export default function Checkin() {
       }
       setMeeting(meetingRow)
 
-      if (!meetingRow.is_active) {
+      if (!isSessionOpen(meetingRow)) {
         setStatus('inactive')
         return
       }

@@ -17,6 +17,40 @@ export function formatTime(ts) {
   })
 }
 
+// Human-readable date + time for a timestamptz (used for scheduled sessions).
+export function formatDateTime(ts) {
+  if (!ts) return ''
+  return new Date(ts).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+// Convert a timestamptz/ISO string into the local "YYYY-MM-DDTHH:mm" value an
+// <input type="datetime-local"> expects.
+export function toDatetimeLocal(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const off = d.getTimezoneOffset()
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16)
+}
+
+// A meeting's QR check-in is open when an officer flipped it on manually, or
+// when "now" falls inside its optional scheduled window. Kept in sync with the
+// attendance-insert RLS policy in 20260616080000_meeting_session_schedule.sql.
+export function isSessionOpen(meeting, now = Date.now()) {
+  if (!meeting) return false
+  if (meeting.is_active) return true
+  const start = meeting.session_start ? new Date(meeting.session_start).getTime() : null
+  const end = meeting.session_end ? new Date(meeting.session_end).getTime() : null
+  if (!start && !end) return false
+  if (start && now < start) return false
+  if (end && now > end) return false
+  return true
+}
+
 // Today as a YYYY-MM-DD string in local time.
 export function todayISO() {
   const now = new Date()

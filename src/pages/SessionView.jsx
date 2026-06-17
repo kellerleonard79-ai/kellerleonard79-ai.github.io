@@ -7,7 +7,13 @@ import RequireStaff from '../components/RequireStaff.jsx'
 import CheckinQR from '../components/CheckinQR.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
-import { formatDate, formatTime, checkinUrl } from '../lib/format.js'
+import {
+  formatDate,
+  formatTime,
+  formatDateTime,
+  checkinUrl,
+  isSessionOpen,
+} from '../lib/format.js'
 
 const STATUSES = ['present', 'excused', 'unexcused']
 
@@ -157,6 +163,8 @@ function SessionContent() {
     m.full_name?.toLowerCase().includes(query.trim().toLowerCase()),
   )
   const url = checkinUrl(meeting.id)
+  const open = isSessionOpen(meeting)
+  const hasSchedule = meeting.session_start || meeting.session_end
 
   return (
     <Shell>
@@ -210,19 +218,25 @@ function SessionContent() {
 
       {/* QR session */}
       <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="mb-3 flex justify-center">
+        <div className="mb-3 flex flex-col items-center gap-1.5">
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-semibold ${
-              meeting.is_active
+              open
                 ? 'bg-green-100 text-green-700'
                 : 'bg-gray-100 text-gray-500'
             }`}
           >
-            {meeting.is_active && (
+            {open && (
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-600" />
             )}
-            {meeting.is_active ? 'Session open' : 'Session closed'}
+            {open ? 'Session open' : 'Session closed'}
           </span>
+          {hasSchedule && (
+            <span className="text-xs text-gray-500">
+              Scheduled {formatDateTime(meeting.session_start)}
+              {meeting.session_end ? ` – ${formatTime(meeting.session_end)}` : ''}
+            </span>
+          )}
         </div>
         <CheckinQR url={url} size={200} downloadName={`${meeting.title}-qr.png`}>
           <button
@@ -233,12 +247,18 @@ function SessionContent() {
                 : 'border border-green-300 text-green-700 hover:bg-green-50'
             }`}
           >
-            {meeting.is_active ? 'Close session' : 'Reopen session'}
+            {meeting.is_active ? 'Close check-in now' : 'Open check-in now'}
           </button>
         </CheckinQR>
-        {!meeting.is_active && (
+        {!open && (
           <p className="mt-3 text-center text-xs text-amber-600">
             Students can only check in while the session is open.
+          </p>
+        )}
+        {open && !meeting.is_active && (
+          <p className="mt-3 text-center text-xs text-gray-500">
+            Open automatically by its schedule. Opening manually keeps it open
+            past the window.
           </p>
         )}
       </div>

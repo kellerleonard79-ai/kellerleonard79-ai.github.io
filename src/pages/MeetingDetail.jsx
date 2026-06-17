@@ -12,7 +12,13 @@ import Footer from '../components/Footer.jsx'
 import RequireStaff from '../components/RequireStaff.jsx'
 import CheckinQR from '../components/CheckinQR.jsx'
 import supabase from '../lib/supabaseClient.js'
-import { formatDate, checkinUrl } from '../lib/format.js'
+import {
+  formatDate,
+  formatDateTime,
+  checkinUrl,
+  isSessionOpen,
+  toDatetimeLocal,
+} from '../lib/format.js'
 
 export default function MeetingDetail() {
   return (
@@ -139,7 +145,12 @@ function DetailContent() {
           <h2 className="mt-3 font-display text-lg font-bold text-maroon">
             QR Session
           </h2>
-          <SessionBadge active={meeting.is_active} />
+          <SessionBadge active={isSessionOpen(meeting)} />
+          {(meeting.session_start || meeting.session_end) && (
+            <p className="mt-1.5 text-xs text-gray-500">
+              Scheduled {formatDateTime(meeting.session_start)}
+            </p>
+          )}
         </Link>
       </div>
 
@@ -196,19 +207,47 @@ function SessionBadge({ active }) {
 function EditMeeting({ meeting, onDone, onCancel }) {
   const [title, setTitle] = useState(meeting.title)
   const [date, setDate] = useState(meeting.date)
+  const [scheduleSession, setScheduleSession] = useState(
+    Boolean(meeting.session_start || meeting.session_end),
+  )
+  const [sessionStart, setSessionStart] = useState(
+    toDatetimeLocal(meeting.session_start),
+  )
+  const [sessionEnd, setSessionEnd] = useState(
+    toDatetimeLocal(meeting.session_end),
+  )
+  const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
   async function save() {
+    setError('')
+    // When scheduling is off, clear any existing window so check-in reverts to
+    // manual-only. datetime-local values are local; normalize to UTC for storage.
+    let session_start = null
+    let session_end = null
+    if (scheduleSession) {
+      session_start = sessionStart ? new Date(sessionStart).toISOString() : null
+      session_end = sessionEnd ? new Date(sessionEnd).toISOString() : null
+      if (session_start && session_end && session_end <= session_start) {
+        setError('Check-in close time must be after the open time.')
+        return
+      }
+    }
     setSaving(true)
     await supabase
       .from('meetings')
-      .update({ title: title.trim(), date })
+      .update({ title: title.trim(), date, session_start, session_end })
       .eq('id', meeting.id)
     onDone()
   }
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 sm:col-span-2">
+          {error}
+        </div>
+      )}
       <label className="block">
         <span className="mb-1.5 block text-sm font-semibold text-maroon">
           Title
@@ -230,6 +269,48 @@ function EditMeeting({ meeting, onDone, onCancel }) {
           className={inputClass}
         />
       </label>
+
+      {/* Scheduled QR check-in window */}
+      <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:col-span-2">
+        <label className="flex items-center gap-2.5">
+          <input
+            type="checkbox"
+            checked={scheduleSession}
+            onChange={(e) => setScheduleSession(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-maroon focus:ring-maroon/30"
+          />
+          <span className="text-sm font-semibold text-maroon">
+            Schedule QR check-in window
+          </span>
+        </label>
+        {scheduleSession && (
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-maroon">
+                Opens
+              </span>
+              <input
+                type="datetime-local"
+                value={sessionStart}
+                onChange={(e) => setSessionStart(e.target.value)}
+                className={inputClass}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-maroon">
+                Closes
+              </span>
+              <input
+                type="datetime-local"
+                value={sessionEnd}
+                onChange={(e) => setSessionEnd(e.target.value)}
+                className={inputClass}
+              />
+            </label>
+          </div>
+        )}
+      </div>
+
       <div className="flex gap-2 sm:col-span-2">
         <button
           onClick={save}
