@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ChevronLeft,
-  ChevronDown,
   ShieldCheck,
   Award,
   ClipboardList,
@@ -37,7 +36,6 @@ import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { meetingTitleFromFormat, todayISO } from '../lib/format.js'
 import { PERMISSION_KEYS } from '../lib/permissions.js'
-import MemberPermissions from '../components/MemberPermissions.jsx'
 
 // PERMISSION_KEYS lives in src/lib/permissions.js (shared with the per-member
 // override editor and the runtime permission check).
@@ -1454,7 +1452,7 @@ function MembersSection() {
       supabase
         .from('profiles')
         .select(
-          'id, full_name, student_id, status, role_id, permission_overrides, role:roles(name, is_admin, permissions)',
+          'id, full_name, student_id, status, role_id, role:roles(name, is_admin)',
         )
         .order('full_name', { ascending: true }),
       supabase
@@ -1487,72 +1485,7 @@ function MembersSection() {
       <CreateAccountCard roles={roles} onChanged={load} />
       <PendingCard pending={pending} roles={roles} onChanged={load} />
       <RolesCard members={active} roles={roles} onChanged={load} />
-      <MemberPermissionsCard members={active} onChanged={load} />
     </div>
-  )
-}
-
-// Per-member permission overrides — grant or revoke individual permissions on
-// top of a member's role. Each member expands to the shared editor.
-function MemberPermissionsCard({ members, onChanged }) {
-  const [openId, setOpenId] = useState(null)
-
-  return (
-    <Card
-      title="Custom permissions"
-      desc="Grant or revoke individual permissions for a single member, on top of their role. Overrides win over the role's defaults; admin-tier members always have everything."
-    >
-      {members.length === 0 ? (
-        <p className="py-4 text-center text-sm text-gray-400">No members yet.</p>
-      ) : (
-        <ul className="space-y-3">
-          {members.map((m) => {
-            const open = openId === m.id
-            const count = m.role?.is_admin
-              ? 0
-              : Object.keys(m.permission_overrides ?? {}).length
-            return (
-              <li
-                key={m.id}
-                className="overflow-hidden rounded-xl border border-gray-200"
-              >
-                <button
-                  onClick={() => setOpenId(open ? null : m.id)}
-                  className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-gray-50"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-maroon">
-                      {m.full_name ?? 'Member'}
-                    </p>
-                    <p className="mt-0.5 truncate text-sm text-gray-500">
-                      {m.role?.name ?? 'No role'}
-                      {m.student_id ? ` · ID ${m.student_id}` : ''}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {count > 0 && (
-                      <span className="inline-flex items-center rounded-full bg-maroon/10 px-2.5 py-1 text-xs font-semibold text-maroon">
-                        {count} override{count === 1 ? '' : 's'}
-                      </span>
-                    )}
-                    <ChevronDown
-                      className={`h-4 w-4 text-gray-400 transition ${
-                        open ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </div>
-                </button>
-                {open && (
-                  <div className="border-t border-gray-100 p-4">
-                    <MemberPermissions member={m} onSaved={onChanged} />
-                  </div>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </Card>
   )
 }
 
