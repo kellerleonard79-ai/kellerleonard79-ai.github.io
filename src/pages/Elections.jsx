@@ -17,6 +17,9 @@ import {
   Pencil,
   Trash2,
   ClipboardList,
+  CalendarClock,
+  Ban,
+  RefreshCw,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
@@ -162,6 +165,8 @@ function ElectionsContent() {
                 onChanged={load}
               />
             )}
+
+            {canManage && <InterviewScheduling />}
 
             {selectedCycle ? (
               <CycleDetail
@@ -1505,6 +1510,746 @@ function AppPositionForm({ position, onCancel, onSaved }) {
         </button>
       </div>
     </form>
+  )
+}
+
+// ─────────────────── Interview scheduling (the `interview_sessions` table) ───────────────────
+// Admins define a block of time (e.g. 7:30–8:20 AM on June 18) and a per-slot
+// length; the DB trigger slices the block into bookable slots automatically.
+// Candidates book a slot from their Application Dashboard. Here managers can:
+//   • create / edit / delete sessions (editing regenerates slots — see the
+//     20260617010000 migration),
+//   • black out individual slots they don't want offered (set_slot_availability),
+//   • release a slot a candidate booked (cancel_interview_booking).
+
+// Slot length presets, in minutes. The form also accepts any custom value.
+const SLOT_LENGTHS = [5, 10, 15, 20, 30]
+
+const fmtSlotTime = (iso) =>
+  new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+const fmtSessionDate = (d) =>
+  new Date(`${d}T00:00:00`).toLocaleDateString([], {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  })
+
+function InterviewScheduling() {
+  const [sessions, setSessions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+
+  const load = useCallback(async () => {
+    const { data: secs } = await supabase
+      .from('interview_sessions')
+      .select('*')
+      .order('date', { ascending: true })
+      .order('start_time', { ascending: true })
+
+    // Managers read interview_slots directly (RLS allows it) so we can show who
+    // booked each slot — the privacy-preserving get_session_slots RPC hides that.
+    const withSlots = await Promise.all(
+      (secs ?? []).map(async (s) => {
+        const { data: slots } = await supabase
+          .from('interview_slots')
+          .select(
+            'id, start_time, end_time, is_available, booked_by_id, applicant:applicants!booked_by_id(student_id, member:profiles(full_name))',
+          )
+          .eq('session_id', s.id)
+          .order('start_time', { ascending: true })
+        return { ...s, slots: slots ?? [] }
+      }),
+    )
+    setSessions(withSlots)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return (
+    <Section
+      icon={CalendarClock}
+      title="Interview Scheduling"
+      desc="Set the dates and times candidates can book interviews into."
+      action={
+        !creating ? (
+          <button
+            onClick={() => setCreating(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-3 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark"
+          >
+            <Plus className="h-4 w-4" /> New session
+          </button>
+        ) : null
+      }
+    >
+      {creating && (
+        <MultiSessionForm
+          onCancel={() => setCreating(false)}
+          onSaved={() => {
+            setCreating(false)
+            load()
+          }}
+        />
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-6">
+          <Loader2 className="h-6 w-6 animate-spin text-maroon" />
+        </div>
+      ) : sessions.length === 0 ? (
+        <p className="py-4 text-center text-sm text-gray-400">
+          No interview sessions yet. Add one so candidates can book a time.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {sessions.map((s) => (
+            <SessionCard key={s.id} session={s} onChanged={load} />
+          ))}
+        </div>
+      )}
+    </Section>
+  )
+}
+
+// Create or edit an interview session. Pass `session` to edit an existing one;
+// editing the date/window/length regenerates the slot grid (clearing bookings).
+function SessionForm({ session, onCancel, onSaved }) {
+  const isEdit = Boolean(session)
+  const [date, setDate] = useState(session?.date ?? '')
+  // time columns come back as "07:30:00"; the <input type="time"> wants "07:30".
+  const [start, setStart] = useState(session?.start_time?.slice(0, 5) ?? '')
+  const [end, setEnd] = useState(session?.end_time?.slice(0, 5) ?? '')
+  const [duration, setDuration] = useState(session?.slot_duration ?? 15)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit(e) {
+    e.preventDefault()
+    setError('')
+    if (!date || !start || !end) {
+      setError('Date, start and end times are all required.')
+      return
+    }
+    if (end <= start) {
+      setError('End time must be after the start time.')
+      return
+    }
+    if (!duration || duration < 1) {
+      setError('Slot length must be at least 1 minute.')
+      return
+    }
+    setBusy(true)
+    const payload = {
+      date,
+      start_time: start,
+      end_time: end,
+      slot_duration: Number(duration),
+    }
+    const confirmRegen =
+      isEdit &&
+      session.slots?.some((sl) => sl.booked_by_id) &&
+      !window.confirm(
+        'Changing this session regenerates its time slots and clears any existing bookings. Continue?',
+      )
+    if (confirmRegen) {
+      setBusy(false)
+      return
+    }
+    const { error } = isEdit
+      ? await supabase
+          .from('interview_sessions')
+          .update(payload)
+          .eq('id', session.id)
+      : await supabase.from('interview_sessions').insert(payload)
+    setBusy(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    onSaved()
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className="mb-5 rounded-xl border border-maroon/20 bg-maroon/[0.03] p-4"
+    >
+      {error && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-gray-600">
+            Date
+          </span>
+          <input
+            type="date"
+            required
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className={inputClass}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-gray-600">
+            Slot length
+          </span>
+          <select
+            value={SLOT_LENGTHS.includes(Number(duration)) ? duration : 'custom'}
+            onChange={(e) =>
+              setDuration(
+                e.target.value === 'custom' ? duration : Number(e.target.value),
+              )
+            }
+            className={selectClass}
+          >
+            {SLOT_LENGTHS.map((m) => (
+              <option key={m} value={m}>
+                {m} minutes
+              </option>
+            ))}
+            <option value="custom">Custom…</option>
+          </select>
+          {!SLOT_LENGTHS.includes(Number(duration)) && (
+            <input
+              type="number"
+              min={1}
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              placeholder="Minutes"
+              className={`${inputClass} mt-2`}
+            />
+          )}
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-gray-600">
+            Session start
+          </span>
+          <input
+            type="time"
+            required
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+            className={inputClass}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-gray-600">
+            Session end
+          </span>
+          <input
+            type="time"
+            required
+            value={end}
+            onChange={(e) => setEnd(e.target.value)}
+            className={inputClass}
+          />
+        </label>
+      </div>
+
+      <div className="mt-4 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:text-maroon"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:opacity-60"
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : isEdit ? (
+            <Check className="h-4 w-4" />
+          ) : (
+            <Plus className="h-4 w-4" />
+          )}
+          {isEdit ? 'Save changes' : 'Create session'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// Bulk creator: pick any number of days, then one or more time ranges. Every
+// (day × time range) pair becomes its own session, so a day can hold several
+// sessions (e.g. a morning block and an afternoon block). Editing an existing
+// session still goes through the single-session SessionForm.
+function MultiSessionForm({ onCancel, onSaved }) {
+  const [days, setDays] = useState([])
+  const [newDay, setNewDay] = useState('')
+  const [ranges, setRanges] = useState([{ start: '', end: '', duration: 15 }])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  function addDay() {
+    if (!newDay) return
+    setDays((d) => (d.includes(newDay) ? d : [...d, newDay].sort()))
+    setNewDay('')
+  }
+  const removeDay = (d) => setDays((ds) => ds.filter((x) => x !== d))
+
+  const updateRange = (i, patch) =>
+    setRanges((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
+  const addRange = () =>
+    setRanges((rs) => [...rs, { start: '', end: '', duration: 15 }])
+  const removeRange = (i) =>
+    setRanges((rs) => rs.filter((_, idx) => idx !== i))
+
+  const totalSessions = days.length * ranges.length
+
+  async function submit(e) {
+    e.preventDefault()
+    setError('')
+    if (days.length === 0) {
+      setError('Add at least one day.')
+      return
+    }
+    for (const r of ranges) {
+      if (!r.start || !r.end) {
+        setError('Every time range needs a start and end time.')
+        return
+      }
+      if (r.end <= r.start) {
+        setError('Each time range must end after it starts.')
+        return
+      }
+      if (!r.duration || Number(r.duration) < 1) {
+        setError('Slot length must be at least 1 minute.')
+        return
+      }
+    }
+    // One row per (day × range). The slot-generation trigger fires per insert.
+    const rows = []
+    for (const date of days) {
+      for (const r of ranges) {
+        rows.push({
+          date,
+          start_time: r.start,
+          end_time: r.end,
+          slot_duration: Number(r.duration),
+        })
+      }
+    }
+    setBusy(true)
+    const { error } = await supabase.from('interview_sessions').insert(rows)
+    setBusy(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    onSaved()
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className="mb-5 rounded-xl border border-maroon/20 bg-maroon/[0.03] p-4"
+    >
+      {error && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* Days */}
+      <span className="mb-1 block text-xs font-semibold text-gray-600">
+        Interview days
+      </span>
+      <div className="flex flex-wrap items-end gap-2">
+        <input
+          type="date"
+          value={newDay}
+          onChange={(e) => setNewDay(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              addDay()
+            }
+          }}
+          className={`${inputClass} max-w-[12rem]`}
+        />
+        <button
+          type="button"
+          onClick={addDay}
+          disabled={!newDay}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-maroon/30 px-3 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5 disabled:opacity-60"
+        >
+          <Plus className="h-4 w-4" /> Add day
+        </button>
+      </div>
+      {days.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {days.map((d) => (
+            <span
+              key={d}
+              className="inline-flex items-center gap-1.5 rounded-full bg-maroon/10 py-1 pl-3 pr-1.5 text-sm font-semibold text-maroon"
+            >
+              {fmtSessionDate(d)}
+              <button
+                type="button"
+                onClick={() => removeDay(d)}
+                className="grid h-5 w-5 place-items-center rounded-full text-maroon/60 transition hover:bg-maroon/20 hover:text-maroon"
+                title="Remove day"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Time ranges */}
+      <span className="mb-1 mt-5 block text-xs font-semibold text-gray-600">
+        Time ranges (applied to every selected day)
+      </span>
+      <div className="space-y-2">
+        {ranges.map((r, i) => (
+          <div
+            key={i}
+            className="grid gap-2 rounded-lg border border-gray-200 bg-white p-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+          >
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-gray-500">
+                Start
+              </span>
+              <input
+                type="time"
+                value={r.start}
+                onChange={(e) => updateRange(i, { start: e.target.value })}
+                className={inputClass}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-gray-500">
+                End
+              </span>
+              <input
+                type="time"
+                value={r.end}
+                onChange={(e) => updateRange(i, { end: e.target.value })}
+                className={inputClass}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-gray-500">
+                Slot length
+              </span>
+              <select
+                value={
+                  SLOT_LENGTHS.includes(Number(r.duration))
+                    ? r.duration
+                    : 'custom'
+                }
+                onChange={(e) =>
+                  updateRange(i, {
+                    duration:
+                      e.target.value === 'custom'
+                        ? r.duration
+                        : Number(e.target.value),
+                  })
+                }
+                className={selectClass}
+              >
+                {SLOT_LENGTHS.map((m) => (
+                  <option key={m} value={m}>
+                    {m} minutes
+                  </option>
+                ))}
+                <option value="custom">Custom…</option>
+              </select>
+              {!SLOT_LENGTHS.includes(Number(r.duration)) && (
+                <input
+                  type="number"
+                  min={1}
+                  value={r.duration}
+                  onChange={(e) => updateRange(i, { duration: e.target.value })}
+                  placeholder="Minutes"
+                  className={`${inputClass} mt-2`}
+                />
+              )}
+            </label>
+            <div className="flex items-end">
+              {ranges.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeRange(i)}
+                  className="grid h-[42px] w-9 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                  title="Remove time range"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={addRange}
+        className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-maroon transition hover:text-maroon-dark"
+      >
+        <Plus className="h-4 w-4" /> Add another time range
+      </button>
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-gray-400">
+          {totalSessions > 0
+            ? `Creates ${totalSessions} session${
+                totalSessions === 1 ? '' : 's'
+              } (${days.length} day${days.length === 1 ? '' : 's'} × ${
+                ranges.length
+              } range${ranges.length === 1 ? '' : 's'}).`
+            : 'Add days and time ranges to begin.'}
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:text-maroon"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={busy || totalSessions === 0}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:opacity-60"
+          >
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            Create sessions
+          </button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
+function SessionCard({ session, onChanged }) {
+  const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const bookedCount = session.slots.filter((s) => s.booked_by_id).length
+  const openCount = session.slots.filter(
+    (s) => s.is_available && !s.booked_by_id,
+  ).length
+
+  async function deleteSession() {
+    if (
+      !window.confirm(
+        `Delete the interview session on ${fmtSessionDate(session.date)}? ${
+          bookedCount > 0
+            ? `${bookedCount} booked interview${
+                bookedCount === 1 ? '' : 's'
+              } will be cancelled. `
+            : ''
+        }This cannot be undone.`,
+      )
+    )
+      return
+    setDeleting(true)
+    const { error } = await supabase
+      .from('interview_sessions')
+      .delete()
+      .eq('id', session.id)
+    setDeleting(false)
+    if (error) {
+      window.alert(`Delete failed: ${error.message}`)
+      return
+    }
+    onChanged()
+  }
+
+  if (editing) {
+    return (
+      <SessionForm
+        session={session}
+        onCancel={() => setEditing(false)}
+        onSaved={() => {
+          setEditing(false)
+          onChanged()
+        }}
+      />
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gray-50 px-4 py-3">
+        <div className="min-w-0">
+          <h4 className="font-semibold text-maroon">
+            {fmtSessionDate(session.date)}
+          </h4>
+          <p className="mt-0.5 text-sm text-gray-500">
+            {fmtSlotTime(`${session.date}T${session.start_time}`)} –{' '}
+            {fmtSlotTime(`${session.date}T${session.end_time}`)} ·{' '}
+            {session.slot_duration} min slots · {openCount} open · {bookedCount}{' '}
+            booked
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            onClick={() => setEditing(true)}
+            className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
+            title="Edit session"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            onClick={deleteSession}
+            disabled={deleting}
+            className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+            title="Delete session"
+          >
+            {deleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+      </div>
+      <div className="p-4">
+        {session.slots.length === 0 ? (
+          <p className="text-center text-sm text-gray-400">
+            This window is shorter than one slot — no slots were generated.
+          </p>
+        ) : (
+          <>
+            <p className="mb-3 text-xs text-gray-400">
+              Click an open slot to black it out (e.g. nobody can interview
+              then). Booked slots show the candidate — release one to free it up.
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {session.slots.map((slot) => (
+                <AdminSlot key={slot.id} slot={slot} onChanged={onChanged} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function AdminSlot({ slot, onChanged }) {
+  const [busy, setBusy] = useState(false)
+  const booked = Boolean(slot.booked_by_id)
+  const blocked = !slot.is_available
+
+  async function toggleAvailability() {
+    setBusy(true)
+    const { error } = await supabase.rpc('set_slot_availability', {
+      p_slot_id: slot.id,
+      p_is_available: blocked, // flip it
+    })
+    setBusy(false)
+    if (error) {
+      window.alert(error.message)
+      return
+    }
+    onChanged()
+  }
+
+  async function release() {
+    if (
+      !window.confirm(
+        "Release this candidate's booked interview slot? They'll need to book again.",
+      )
+    )
+      return
+    setBusy(true)
+    const { error } = await supabase.rpc('cancel_interview_booking', {
+      p_slot_id: slot.id,
+    })
+    setBusy(false)
+    if (error) {
+      window.alert(error.message)
+      return
+    }
+    onChanged()
+  }
+
+  const label = fmtSlotTime(slot.start_time)
+  const base =
+    'flex flex-col items-center justify-center gap-0.5 rounded-lg border px-2 py-2 text-sm font-semibold transition'
+
+  if (booked) {
+    const name =
+      slot.applicant?.member?.full_name ??
+      slot.applicant?.student_id ??
+      'Booked'
+    return (
+      <button
+        onClick={release}
+        disabled={busy}
+        title="Release this booking"
+        className={`${base} border-green-300 bg-green-50 text-green-700 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-60`}
+      >
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <>
+            <span>{label}</span>
+            <span className="max-w-full truncate text-[10px] font-medium">
+              {name}
+            </span>
+          </>
+        )}
+      </button>
+    )
+  }
+
+  if (blocked) {
+    return (
+      <button
+        onClick={toggleAvailability}
+        disabled={busy}
+        title="Re-open this slot"
+        className={`${base} border-gray-200 bg-gray-100 text-gray-400 hover:border-maroon/30 hover:text-maroon disabled:opacity-60`}
+      >
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <>
+            <span className="line-through">{label}</span>
+            <span className="flex items-center gap-1 text-[10px] font-medium">
+              <RefreshCw className="h-3 w-3" /> Re-open
+            </span>
+          </>
+        )}
+      </button>
+    )
+  }
+
+  return (
+    <button
+      onClick={toggleAvailability}
+      disabled={busy}
+      title="Black out this slot"
+      className={`${base} border-maroon/30 bg-white text-maroon hover:border-gray-300 hover:bg-gray-50 hover:text-gray-400 disabled:opacity-60`}
+    >
+      {busy ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <>
+          <span>{label}</span>
+          <span className="flex items-center gap-1 text-[10px] font-medium text-gray-400">
+            <Ban className="h-3 w-3" /> Block
+          </span>
+        </>
+      )}
+    </button>
   )
 }
 

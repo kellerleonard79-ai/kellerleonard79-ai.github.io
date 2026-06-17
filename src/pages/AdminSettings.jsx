@@ -587,14 +587,24 @@ function ConstitutionCard() {
     setError('')
 
     // The upload is gated by an `edit_site` RLS policy on the documents bucket.
-    // If the session has silently expired, supabase-js sends the request as
-    // anon and RLS rejects it with an opaque "row-level security" error. Catch
-    // that here and tell the user how to recover, instead of failing cryptically.
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    if (!session) {
-      setError('Your session has expired. Please sign out and sign back in, then try the upload again.')
+    // The opaque "row-level security" failure happens both when the request is
+    // anonymous (lost session) and when the signed-in account simply lacks
+    // edit_site. Probe both through the SAME client the upload uses so the
+    // message pinpoints the cause instead of failing cryptically.
+    const { data: who } = await supabase.auth.getUser()
+    if (!who?.user) {
+      setError('You are not signed in (the upload would be anonymous). Please sign out and sign back in, then retry.')
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+    const { data: canEdit } = await supabase.rpc('has_permission', {
+      perm_key: 'edit_site',
+    })
+    if (canEdit !== true) {
+      setError(
+        `Signed in as ${who.user.email ?? who.user.id}, but this account lacks the "edit_site" permission needed to upload. Sign in with an admin account.`,
+      )
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
       return
