@@ -586,50 +586,38 @@ function ConstitutionCard() {
     setUploading(true)
     setError('')
 
-    // The upload is gated by an `edit_site` RLS policy on the documents bucket.
-    // The opaque "row-level security" failure happens both when the request is
-    // anonymous (lost session) and when the signed-in account simply lacks
-    // edit_site. Probe both through the SAME client the upload uses so the
-    // message pinpoints the cause instead of failing cryptically.
-    const { data: who } = await supabase.auth.getUser()
-    if (!who?.user) {
-      setError('You are not signed in (the upload would be anonymous). Please sign out and sign back in, then retry.')
+    // Upload via the upload-document Edge Function rather than the browser
+    // Storage client. The documents bucket's INSERT policy gates on
+    // has_permission('edit_site'), but the Storage API processes the browser's
+    // request as anon (it doesn't honor the user JWT here), so a direct
+    // supabase.storage upload is rejected by RLS even for admins. The function
+    // verifies edit_site via GoTrue, then writes with the service role.
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data, error: fnError } = await supabase.functions.invoke(
+      'upload-document',
+      { body: formData },
+    )
+    if (fnError || data?.error) {
+      // On a non-2xx the real message is in the error's Response body, not data.
+      let msg = data?.error ?? fnError?.message ?? 'Unknown error'
+      try {
+        const body = await fnError?.context?.json()
+        if (body?.error) msg = body.error
+      } catch {
+        // keep msg
+      }
+      setError(`Upload failed: ${msg}`)
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
       return
     }
-    const { data: canEdit } = await supabase.rpc('has_permission', {
-      perm_key: 'edit_site',
-    })
-    if (canEdit !== true) {
-      setError(
-        `Signed in as ${who.user.email ?? who.user.id}, but this account lacks the "edit_site" permission needed to upload. Sign in with an admin account.`,
-      )
-      setUploading(false)
-      if (fileRef.current) fileRef.current.value = ''
-      return
-    }
-
-    const ext = file.name.split('.').pop()
-    const path = `constitution-${Date.now()}.${ext}`
-    const { error: upErr } = await supabase.storage
-      .from('documents')
-      .upload(path, file, { upsert: true })
-    if (upErr) {
-      // Surface the real cause — e.g. "Bucket not found" (constitution migration
-      // not applied) or an RLS denial — instead of a generic message.
-      setError(`Upload failed: ${upErr.message}`)
-      setUploading(false)
-      if (fileRef.current) fileRef.current.value = ''
-      return
-    }
-    const { data } = supabase.storage.from('documents').getPublicUrl(path)
-    setUrl(data.publicUrl)
+    setUrl(data.url)
     setUploading(false)
     if (fileRef.current) fileRef.current.value = ''
     // Persist immediately: an admin who uploads a file expects it to take
     // effect, not to also have to click Save afterward.
-    await save(data.publicUrl)
+    await save(data.url)
   }
 
   // `override` lets handleUpload save the freshly uploaded URL without waiting on

@@ -402,6 +402,13 @@ verify_jwt = true
 [functions.committee-report-url]
 verify_jwt = true
 
+# Uploads the SGA constitution to the public documents bucket. verify_jwt keeps
+# anonymous callers out; the function additionally enforces has_permission(
+# 'edit_site') against the caller's JWT, then writes with the service role
+# because the Storage API rejects the browser's user token for this bucket.
+[functions.upload-document]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327
