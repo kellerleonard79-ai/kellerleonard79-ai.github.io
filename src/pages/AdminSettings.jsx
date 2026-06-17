@@ -585,6 +585,21 @@ function ConstitutionCard() {
     if (!file) return
     setUploading(true)
     setError('')
+
+    // The upload is gated by an `edit_site` RLS policy on the documents bucket.
+    // If the session has silently expired, supabase-js sends the request as
+    // anon and RLS rejects it with an opaque "row-level security" error. Catch
+    // that here and tell the user how to recover, instead of failing cryptically.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session) {
+      setError('Your session has expired. Please sign out and sign back in, then try the upload again.')
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+
     const ext = file.name.split('.').pop()
     const path = `constitution-${Date.now()}.${ext}`
     const { error: upErr } = await supabase.storage
