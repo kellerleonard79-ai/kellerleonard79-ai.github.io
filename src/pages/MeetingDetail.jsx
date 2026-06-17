@@ -9,9 +9,10 @@ import {
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
-import RequireStaff from '../components/RequireStaff.jsx'
+import RequirePermission from '../components/RequirePermission.jsx'
 import CheckinQR from '../components/CheckinQR.jsx'
 import supabase from '../lib/supabaseClient.js'
+import { useAuth } from '../lib/AuthContext.jsx'
 import {
   formatDate,
   formatDateTime,
@@ -22,15 +23,21 @@ import {
 
 export default function MeetingDetail() {
   return (
-    <RequireStaff>
+    // Viewable by any member who can view_meetings; the management controls
+    // below (edit, agenda editor, QR session, delete) stay gated on
+    // create_meetings / edit_agendas so General Members get a read-only view.
+    <RequirePermission permission="view_meetings">
       <DetailContent />
-    </RequireStaff>
+    </RequirePermission>
   )
 }
 
 function DetailContent() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { hasPermission } = useAuth()
+  const canManage = hasPermission('create_meetings')
+  const canEditAgenda = hasPermission('edit_agendas')
   const [meeting, setMeeting] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -110,81 +117,95 @@ function DetailContent() {
               </h1>
               <p className="mt-1 text-gray-500">{formatDate(meeting.date)}</p>
             </div>
-            <button
-              onClick={() => setEditing(true)}
-              className="text-sm font-medium text-gray-400 transition hover:text-maroon"
-            >
-              Edit
-            </button>
+            {canManage && (
+              <button
+                onClick={() => setEditing(true)}
+                className="text-sm font-medium text-gray-400 transition hover:text-maroon"
+              >
+                Edit
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* Agenda + QR session cards */}
-      <div className="mt-5 grid gap-5 sm:grid-cols-2">
-        <Link
-          to={`/dashboard/meetings/${meeting.id}/agenda`}
-          className="group rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm transition hover:border-maroon/30 hover:shadow-md"
-        >
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-maroon/8 text-maroon transition group-hover:bg-maroon group-hover:text-white">
-            <ClipboardList className="h-6 w-6" />
-          </span>
-          <h2 className="mt-3 font-display text-lg font-bold text-maroon">
-            Agenda
-          </h2>
-          <p className="text-sm text-gray-500">View and edit</p>
-        </Link>
-
-        <Link
-          to={`/dashboard/meetings/${meeting.id}/session`}
-          className="group rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm transition hover:border-maroon/30 hover:shadow-md"
-        >
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-maroon/8 text-maroon transition group-hover:bg-maroon group-hover:text-white">
-            <QrCode className="h-6 w-6" />
-          </span>
-          <h2 className="mt-3 font-display text-lg font-bold text-maroon">
-            QR Session
-          </h2>
-          <SessionBadge active={isSessionOpen(meeting)} />
-          {(meeting.session_start || meeting.session_end) && (
-            <p className="mt-1.5 text-xs text-gray-500">
-              Scheduled {formatDateTime(meeting.session_start)}
-            </p>
+      {/* Agenda + QR session cards. Both link to officer-only tools (agenda
+          editor needs edit_agendas, QR session needs create_meetings), so they
+          only appear for members who can use them. */}
+      {(canEditAgenda || canManage) && (
+        <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          {canEditAgenda && (
+            <Link
+              to={`/dashboard/meetings/${meeting.id}/agenda`}
+              className="group rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm transition hover:border-maroon/30 hover:shadow-md"
+            >
+              <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-maroon/8 text-maroon transition group-hover:bg-maroon group-hover:text-white">
+                <ClipboardList className="h-6 w-6" />
+              </span>
+              <h2 className="mt-3 font-display text-lg font-bold text-maroon">
+                Agenda
+              </h2>
+              <p className="text-sm text-gray-500">View and edit</p>
+            </Link>
           )}
-        </Link>
-      </div>
 
-      {/* Share QR */}
-      <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="text-center text-sm text-gray-500">
-          Share this QR at the meeting for check-in
-        </p>
-        <div className="mt-4">
-          <CheckinQR url={url} size={200} downloadName={`${meeting.title}-qr.png`}>
+          {canManage && (
             <Link
               to={`/dashboard/meetings/${meeting.id}/session`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-maroon/30 px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+              className="group rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm transition hover:border-maroon/30 hover:shadow-md"
             >
-              Full session view <ArrowRight className="h-4 w-4" />
+              <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-maroon/8 text-maroon transition group-hover:bg-maroon group-hover:text-white">
+                <QrCode className="h-6 w-6" />
+              </span>
+              <h2 className="mt-3 font-display text-lg font-bold text-maroon">
+                QR Session
+              </h2>
+              <SessionBadge active={isSessionOpen(meeting)} />
+              {(meeting.session_start || meeting.session_end) && (
+                <p className="mt-1.5 text-xs text-gray-500">
+                  Scheduled {formatDateTime(meeting.session_start)}
+                </p>
+              )}
             </Link>
-          </CheckinQR>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* Share QR — managing the live check-in is an officer action. */}
+      {canManage && (
+        <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <p className="text-center text-sm text-gray-500">
+            Share this QR at the meeting for check-in
+          </p>
+          <div className="mt-4">
+            <CheckinQR url={url} size={200} downloadName={`${meeting.title}-qr.png`}>
+              <Link
+                to={`/dashboard/meetings/${meeting.id}/session`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-maroon/30 px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+              >
+                Full session view <ArrowRight className="h-4 w-4" />
+              </Link>
+            </CheckinQR>
+          </div>
+        </div>
+      )}
 
       {/* Danger zone */}
-      <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-gray-500">
-          Permanently delete this meeting and all associated data.
-        </p>
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
-        >
-          {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
-          Delete meeting
-        </button>
-      </div>
+      {canManage && (
+        <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <p className="text-sm text-gray-500">
+            Permanently delete this meeting and all associated data.
+          </p>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+          >
+            {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
+            Delete meeting
+          </button>
+        </div>
+      )}
     </Shell>
   )
 }

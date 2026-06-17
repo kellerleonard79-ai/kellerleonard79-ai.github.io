@@ -3,20 +3,25 @@ import { Link } from 'react-router-dom'
 import { ChevronLeft, Plus, ArrowRight, Loader2, X } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
-import RequireStaff from '../components/RequireStaff.jsx'
+import RequirePermission from '../components/RequirePermission.jsx'
 import supabase from '../lib/supabaseClient.js'
+import { useAuth } from '../lib/AuthContext.jsx'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 import { formatDate, todayISO, meetingTitleFromFormat } from '../lib/format.js'
 
 export default function Meetings() {
   return (
-    <RequireStaff>
+    // General Members can view the meetings list; only members who can
+    // create_meetings see the "New meeting" creation UI below.
+    <RequirePermission permission="view_meetings">
       <MeetingsContent />
-    </RequireStaff>
+    </RequirePermission>
   )
 }
 
 function MeetingsContent() {
+  const { hasPermission } = useAuth()
+  const canCreate = hasPermission('create_meetings')
   const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -71,13 +76,15 @@ function MeetingsContent() {
             >
               <ChevronLeft className="h-4 w-4" /> Dashboard
             </Link>
-            <button
-              onClick={() => setShowForm((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
-            >
-              {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              {showForm ? 'Cancel' : 'New meeting'}
-            </button>
+            {canCreate && (
+              <button
+                onClick={() => setShowForm((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
+              >
+                {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                {showForm ? 'Cancel' : 'New meeting'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -98,7 +105,11 @@ function MeetingsContent() {
           {loading ? (
             <EmptyCard>Loading…</EmptyCard>
           ) : upcoming.length === 0 ? (
-            <EmptyCard>No upcoming meetings. Create one above.</EmptyCard>
+            <EmptyCard>
+              {canCreate
+                ? 'No upcoming meetings. Create one above.'
+                : 'No upcoming meetings.'}
+            </EmptyCard>
           ) : (
             <ul className="mt-3 space-y-3">
               {upcoming.map((m) => (

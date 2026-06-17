@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ChevronLeft, Search, ArrowRight, Loader2, Circle, CircleCheck, Download, X } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
-import RequireStaff from '../components/RequireStaff.jsx'
+import RequirePermission from '../components/RequirePermission.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { gradeLabel, todayISO } from '../lib/format.js'
@@ -76,9 +76,12 @@ function downloadCsv(text, filename) {
 
 export default function MemberDirectory() {
   return (
-    <RequireStaff>
+    // General Members can view the directory (read-only); the dues toggle inside
+    // is separately gated on `edit_directory`. Gating on view_directory — not
+    // create_meetings — matches the access-control matrix.
+    <RequirePermission permission="view_directory">
       <DirectoryContent />
-    </RequireStaff>
+    </RequirePermission>
   )
 }
 
