@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Menu, X, LogIn, LogOut, UserPlus, LayoutDashboard, UserCircle } from 'lucide-react'
+import { Menu, X, LogIn, LogOut, UserPlus, LayoutDashboard, UserCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 
@@ -14,7 +14,7 @@ const links = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
-  const { session, signOut } = useAuth()
+  const { session, loading, signOut } = useAuth()
   const { settings } = useSiteSettings()
   const signupEnabled = settings?.signup_enabled ?? false
 
@@ -67,7 +67,15 @@ export default function Navbar() {
             </Link>
           )}
 
-          {session ? (
+          {/* Until auth resolves (`loading`), render a neutral placeholder
+              rather than the logged-out CTA — otherwise pages briefly flash
+              "Member Login" before the session is read, making members think
+              they were signed out. */}
+          {loading ? (
+            <span className="ml-1 inline-flex h-9 w-9 items-center justify-center">
+              <Loader2 className="h-4 w-4 animate-spin text-maroon/50" />
+            </span>
+          ) : session ? (
             <button
               onClick={signOut}
               className="ml-1 inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
@@ -153,7 +161,13 @@ export default function Navbar() {
               </Link>
             )}
 
-            {session ? (
+            {/* Mirror the desktop behavior: no logged-out CTA until auth
+                resolves, so the menu never flashes "Member Login". */}
+            {loading ? (
+              <div className="mt-2 flex justify-center py-2">
+                <Loader2 className="h-5 w-5 animate-spin text-maroon/50" />
+              </div>
+            ) : session ? (
               <button
                 onClick={() => {
                   setOpen(false)
