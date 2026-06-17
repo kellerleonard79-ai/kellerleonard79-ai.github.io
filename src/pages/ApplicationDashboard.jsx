@@ -214,6 +214,16 @@ function Content() {
     setSessions(await loadSessions())
   }
 
+  // Switching an already-booked time goes through a single atomic RPC so the
+  // applicant can never end up holding no slot if the target is contended.
+  async function rebookSlot(slotId) {
+    const { error } = await supabase.rpc('rebook_interview_slot', {
+      p_slot_id: slotId,
+    })
+    if (error) throw error
+    setSessions(await loadSessions())
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -356,6 +366,7 @@ function Content() {
           sessions={sessions}
           bookedSlot={bookedSlot}
           onBook={bookSlot}
+          onRebook={rebookSlot}
           onClose={() => setActiveModal(null)}
         />
       )}
@@ -713,7 +724,7 @@ function EndorsementsModal({ settings, applicant, onUpload, onSkip, onClose }) {
 // ---------------------------------------------------------------------------
 // Module 4 — Interview Scheduler
 // ---------------------------------------------------------------------------
-function InterviewModal({ sessions, bookedSlot, onBook, onClose }) {
+function InterviewModal({ sessions, bookedSlot, onBook, onRebook, onClose }) {
   const fmtTime = (iso) =>
     new Date(iso).toLocaleTimeString([], {
       hour: 'numeric',
@@ -729,10 +740,16 @@ function InterviewModal({ sessions, bookedSlot, onBook, onClose }) {
   return (
     <Modal title="Schedule Your Interview" icon={CalendarClock} onClose={onClose}>
       {bookedSlot && (
-        <p className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-          <CheckCircle2 className="h-4 w-4" /> You&apos;re booked for{' '}
-          {fmtTime(bookedSlot.start_time)} on {fmtDate(bookedSlot.session.date)}.
-        </p>
+        <div className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4" /> You&apos;re booked for{' '}
+            {fmtTime(bookedSlot.start_time)} on {fmtDate(bookedSlot.session.date)}.
+          </p>
+          <p className="mt-1 pl-6 text-xs text-green-600">
+            Need a different time? Pick any open slot below to switch — your
+            current slot is freed automatically.
+          </p>
+        </div>
       )}
 
       {sessions.length === 0 && (
@@ -751,10 +768,11 @@ function InterviewModal({ sessions, bookedSlot, onBook, onClose }) {
               {s.slots.map((slot) => {
                 const taken = slot.is_booked || !slot.is_available
                 const mine = slot.is_mine
-                // Once you hold a slot anywhere, the others stay visible but
-                // locked — one interview per applicant.
-                const lockedOut = Boolean(bookedSlot) && !mine
-                const disabled = taken || lockedOut
+                // An open slot stays clickable even once you hold one elsewhere:
+                // selecting it switches your booking (one interview per
+                // applicant). Only genuinely taken/blacked-out slots are locked.
+                const switching = Boolean(bookedSlot) && !mine
+                const disabled = taken
 
                 return (
                   <SlotButton
@@ -762,6 +780,10 @@ function InterviewModal({ sessions, bookedSlot, onBook, onClose }) {
                     label={fmtTime(slot.start_time)}
                     mine={mine}
                     disabled={disabled}
+                    switching={switching}
+                    confirmMessage={`Switch your interview to ${fmtTime(
+                      slot.start_time,
+                    )} on ${fmtDate(s.date)}?`}
                     reason={
                       mine
                         ? 'Your slot'
@@ -771,7 +793,9 @@ function InterviewModal({ sessions, bookedSlot, onBook, onClose }) {
                             ? 'Taken'
                             : null
                     }
-                    onBook={() => onBook(slot.id)}
+                    onBook={() =>
+                      switching ? onRebook(slot.id) : onBook(slot.id)
+                    }
                   />
                 )
               })}
@@ -783,11 +807,21 @@ function InterviewModal({ sessions, bookedSlot, onBook, onClose }) {
   )
 }
 
-function SlotButton({ label, mine, disabled, reason, onBook }) {
+function SlotButton({
+  label,
+  mine,
+  disabled,
+  switching,
+  confirmMessage,
+  reason,
+  onBook,
+}) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
   async function run() {
+    // Switching discards a confirmed slot, so make the applicant confirm it.
+    if (switching && confirmMessage && !window.confirm(confirmMessage)) return
     setErr('')
     setBusy(true)
     try {
@@ -803,9 +837,12 @@ function SlotButton({ label, mine, disabled, reason, onBook }) {
     'flex flex-col items-center justify-center rounded-lg border px-2 py-2.5 text-sm font-semibold transition'
   if (mine) {
     return (
-      <div className={`${base} border-green-300 bg-green-50 text-green-700`}>
+      <div
+        className={`${base} border-green-400 bg-green-100 text-green-700 ring-1 ring-green-300`}
+      >
         <Check className="mb-0.5 h-4 w-4" />
         {label}
+        <span className="text-[10px] font-medium">Your slot</span>
       </div>
     )
   }
@@ -827,7 +864,14 @@ function SlotButton({ label, mine, disabled, reason, onBook }) {
       title={err || undefined}
       className={`${base} border-maroon/30 bg-white text-maroon hover:border-maroon hover:bg-maroon hover:text-white disabled:opacity-60`}
     >
-      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : label}
+      {busy ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <>
+          {label}
+          {switching && <span className="text-[10px] font-medium">Switch</span>}
+        </>
+      )}
     </button>
   )
 }

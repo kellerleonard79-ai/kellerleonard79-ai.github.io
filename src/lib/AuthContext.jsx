@@ -46,7 +46,18 @@ export function AuthProvider({ children }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      // The initial session is read authoritatively in init(), but only *after*
+      // clock skew is measured so token expiry is compensated. The listener's
+      // own INITIAL_SESSION fires at client construction, before that
+      // measurement — so on a skewed device it reports a still-valid session as
+      // expired (null). Honoring it would clobber the good session init() is
+      // about to set, leaving `session` null while `loading` is already false,
+      // which makes the route guards bounce the member to /login?redirect=<the
+      // page they were on> and (after re-auth) drop them there — frequently
+      // their profile — instead of the dashboard. init() owns the initial read;
+      // ignore it here and honor only real post-load transitions.
+      if (event === 'INITIAL_SESSION') return
       setSession(newSession)
       setProfile(
         newSession?.user ? await fetchProfile(newSession.user.id) : null,
