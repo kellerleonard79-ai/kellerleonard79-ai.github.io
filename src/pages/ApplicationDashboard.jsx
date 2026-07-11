@@ -17,10 +17,7 @@ import {
   Vote,
   X,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
-import Footer from '../components/Footer.jsx'
 import Markdown from '../components/Markdown.jsx'
-import RequireAuth from '../components/RequireAuth.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 import supabase from '../lib/supabaseClient.js'
@@ -35,12 +32,9 @@ const STATUS = {
   completed: { label: 'Completed', cls: 'bg-green-100 text-green-700' },
 }
 
+// Auth is guaranteed by the surrounding DashboardLayout shell.
 export default function ApplicationDashboard() {
-  return (
-    <RequireAuth>
-      <Content />
-    </RequireAuth>
-  )
+  return <Content />
 }
 
 function Content() {
@@ -267,7 +261,6 @@ function Content() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar />
 
       <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
         <Link
@@ -333,7 +326,6 @@ function Content() {
         </ul>
       </div>
 
-      <Footer />
 
       {/* Modals */}
       {activeModal === 'position' && (

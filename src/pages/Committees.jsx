@@ -21,19 +21,13 @@ import {
   CalendarClock,
   AlertTriangle,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
-import Footer from '../components/Footer.jsx'
-import RequireAuth from '../components/RequireAuth.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { formatDate, todayISO } from '../lib/format.js'
 
+// Auth is guaranteed by the surrounding DashboardLayout shell.
 export default function Committees() {
-  return (
-    <RequireAuth>
-      <CommitteesContent />
-    </RequireAuth>
-  )
+  return <CommitteesContent />
 }
 
 const inputClass =
@@ -235,11 +229,9 @@ function CommitteesContent() {
 function Shell({ children }) {
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         {children}
       </div>
-      <Footer />
     </div>
   )
 }

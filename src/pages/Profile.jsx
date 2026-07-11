@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, Loader2, Trash2 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
-import Footer from '../components/Footer.jsx'
-import RequireAuth from '../components/RequireAuth.jsx'
 import RequireStaff from '../components/RequireStaff.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { formatDate, formatTime, gradeLabel } from '../lib/format.js'
 
-// Two entry points share one view:
+// Two entry points share one view (both inside the DashboardLayout shell,
+// which guarantees a signed-in session):
 //   /dashboard/profile          -> a member's own profile (any clearance)
 //   /dashboard/members/:id      -> staff viewing another member's profile
 export default function Profile() {
@@ -26,11 +24,7 @@ export default function Profile() {
       </RequireStaff>
     )
   }
-  return (
-    <RequireAuth>
-      <OwnProfile />
-    </RequireAuth>
-  )
+  return <OwnProfile />
 }
 
 function OwnProfile() {
@@ -465,7 +459,6 @@ function formatDateTime(ts) {
 function Shell({ children, backTo = '/dashboard', backLabel = 'Dashboard' }) {
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar />
       <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
         <Link
           to={backTo}
@@ -475,7 +468,6 @@ function Shell({ children, backTo = '/dashboard', backLabel = 'Dashboard' }) {
         </Link>
         <div className="mt-4">{children}</div>
       </div>
-      <Footer />
     </div>
   )
 }

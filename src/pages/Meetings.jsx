@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, Plus, ArrowRight, Loader2, X } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
-import Footer from '../components/Footer.jsx'
 import RequirePermission from '../components/RequirePermission.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
@@ -58,7 +56,6 @@ function MeetingsContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar />
 
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
         {/* Header */}
@@ -166,7 +163,6 @@ function MeetingsContent() {
         </section>
       </div>
 
-      <Footer />
     </div>
   )
 }

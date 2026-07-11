@@ -20,6 +20,7 @@ import Elections from './pages/Elections.jsx'
 import Bookkeeping from './pages/Bookkeeping.jsx'
 import Committees from './pages/Committees.jsx'
 import AdminSettings from './pages/AdminSettings.jsx'
+import DashboardLayout from './components/DashboardLayout.jsx'
 import ClockWarning from './components/ClockWarning.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 
@@ -40,30 +41,38 @@ export default function App() {
       <Route path="/join" element={<Join />} />
       <Route path="/login" element={<Login />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/dashboard/profile" element={<Profile />} />
-      <Route path="/dashboard/candidacy" element={<Candidacy />} />
-      <Route path="/dashboard/application" element={<ApplicationDashboard />} />
-      <Route
-        path="/dashboard/edit-site"
-        element={<Navigate to="/dashboard/admin/announcements" replace />}
-      />
-      <Route
-        path="/dashboard/security"
-        element={<Navigate to="/dashboard/admin/members" replace />}
-      />
-      <Route path="/dashboard/admin" element={<AdminSettings />} />
-      <Route path="/dashboard/admin/:section" element={<AdminSettings />} />
-      <Route path="/dashboard/archives" element={<Archives />} />
-      <Route path="/dashboard/elections" element={<Elections />} />
-      <Route path="/dashboard/bookkeeping" element={<Bookkeeping />} />
-      <Route path="/dashboard/committees" element={<Committees />} />
-      <Route path="/dashboard/members" element={<MemberDirectory />} />
-      <Route path="/dashboard/members/:id" element={<Profile />} />
-      <Route path="/dashboard/meetings" element={<Meetings />} />
-      <Route path="/dashboard/meetings/:id" element={<MeetingDetail />} />
-      <Route path="/dashboard/meetings/:id/agenda" element={<AgendaEditor />} />
-      <Route path="/dashboard/meetings/:id/session" element={<SessionView />} />
+
+      {/* Officer/member area: one persistent sidebar shell (DashboardLayout)
+          wraps every /dashboard/* route so tools stay one click apart and the
+          sidebar never remounts on navigation. */}
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route index element={<Dashboard />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="candidacy" element={<Candidacy />} />
+        <Route path="application" element={<ApplicationDashboard />} />
+        <Route
+          path="edit-site"
+          element={<Navigate to="/dashboard/admin/announcements" replace />}
+        />
+        <Route
+          path="security"
+          element={<Navigate to="/dashboard/admin/members" replace />}
+        />
+        <Route path="admin" element={<AdminSettings />} />
+        <Route path="admin/:section" element={<AdminSettings />} />
+        <Route path="archives" element={<Archives />} />
+        <Route path="elections" element={<Elections />} />
+        <Route path="bookkeeping" element={<Bookkeeping />} />
+        <Route path="committees" element={<Committees />} />
+        <Route path="members" element={<MemberDirectory />} />
+        <Route path="members/:id" element={<Profile />} />
+        <Route path="meetings" element={<Meetings />} />
+        <Route path="meetings/:id" element={<MeetingDetail />} />
+        <Route path="meetings/:id/agenda" element={<AgendaEditor />} />
+        <Route path="meetings/:id/session" element={<SessionView />} />
+      </Route>
+
+      {/* QR check-in is a public landing, intentionally outside the shell. */}
       <Route path="/checkin/:meetingId" element={<Checkin />} />
       {/* Catch-all: an unmatched path otherwise renders nothing (blank page). */}
       <Route path="*" element={<Navigate to="/" replace />} />

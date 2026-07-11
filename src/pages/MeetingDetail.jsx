@@ -7,8 +7,6 @@ import {
   Loader2,
   ArrowRight,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
-import Footer from '../components/Footer.jsx'
 import RequirePermission from '../components/RequirePermission.jsx'
 import CheckinQR from '../components/CheckinQR.jsx'
 import supabase from '../lib/supabaseClient.js'
@@ -354,11 +352,9 @@ function EditMeeting({ meeting, onDone, onCancel }) {
 function Shell({ children }) {
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar />
       <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
         {children}
       </div>
-      <Footer />
     </div>
   )
 }

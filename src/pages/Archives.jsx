@@ -19,18 +19,12 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
-import Footer from '../components/Footer.jsx'
-import RequireAuth from '../components/RequireAuth.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import supabase from '../lib/supabaseClient.js'
 
+// Auth is guaranteed by the surrounding DashboardLayout shell.
 export default function Archives() {
-  return (
-    <RequireAuth>
-      <ArchivesContent />
-    </RequireAuth>
-  )
+  return <ArchivesContent />
 }
 
 function ArchivesContent() {
@@ -140,7 +134,6 @@ function ArchivesContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -240,7 +233,6 @@ function ArchivesContent() {
           </div>
         </div>
       </div>
-      <Footer />
     </div>
   )
 }

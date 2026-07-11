@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChevronLeft, Loader2, RefreshCw } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
-import Footer from '../components/Footer.jsx'
 import RequireStaff from '../components/RequireStaff.jsx'
 import CheckinQR from '../components/CheckinQR.jsx'
 import supabase from '../lib/supabaseClient.js'
@@ -366,11 +364,9 @@ function StatusButton({ status, active, onClick }) {
 function Shell({ children }) {
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar />
       <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
         {children}
       </div>
-      <Footer />
     </div>
   )
 }

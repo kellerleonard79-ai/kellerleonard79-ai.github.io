@@ -23,8 +23,6 @@ import {
   Ban,
   RefreshCw,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
-import Footer from '../components/Footer.jsx'
 import RequirePermission from '../components/RequirePermission.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import supabase from '../lib/supabaseClient.js'
@@ -127,7 +125,6 @@ function ElectionsContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar />
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -198,7 +195,6 @@ function ElectionsContent() {
           </div>
         )}
       </div>
-      <Footer />
     </div>
   )
 }

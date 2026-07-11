@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2, Lock } from 'lucide-react'
-import Navbar from './Navbar.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 
 // Gates a route on a single permission key (checked via hasPermission). Sends
@@ -50,18 +49,17 @@ export default function RequirePermission({ permission, children }) {
   return children
 }
 
+// Renders inside the dashboard shell (DashboardLayout provides the chrome), so
+// this is just the centered gate message — no Navbar of its own.
 function Gate({ icon, title, sub, action }) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
-        {icon}
-        <h1 className="mt-4 font-display text-2xl font-bold text-maroon">
-          {title}
-        </h1>
-        {sub && <p className="mt-2 text-gray-600">{sub}</p>}
-        {action}
-      </div>
+    <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
+      {icon}
+      <h1 className="mt-4 font-display text-2xl font-bold text-maroon">
+        {title}
+      </h1>
+      {sub && <p className="mt-2 text-gray-600">{sub}</p>}
+      {action}
     </div>
   )
 }

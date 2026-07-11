@@ -1,21 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Loader2, Vote, Check, AlertCircle, ArrowLeft } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
-import Footer from '../components/Footer.jsx'
-import RequireAuth from '../components/RequireAuth.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 
 // Self-service candidacy management. A member running for office — including a
 // pending applicant who flagged candidacy at signup — can see and change which
 // position they're running for, up to a global limit, until the filing deadline.
+// Auth is guaranteed by the surrounding DashboardLayout shell.
 export default function Candidacy() {
-  return (
-    <RequireAuth>
-      <CandidacyContent />
-    </RequireAuth>
-  )
+  return <CandidacyContent />
 }
 
 function CandidacyContent() {
@@ -83,7 +77,6 @@ function CandidacyContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <Navbar />
       <div className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6">
         <Link
           to="/dashboard"
@@ -199,7 +192,6 @@ function CandidacyContent() {
           </div>
         )}
       </div>
-      <Footer />
     </div>
   )
 }

@@ -32,16 +32,17 @@ Requires `.env` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see `.env
 - `src/main.jsx` mounts `BrowserRouter` → `SiteSettingsProvider` → `AuthProvider` → `App`. Provider order matters: settings load independent of auth; auth wraps the routed app.
 - Despite GitHub Pages, routing uses `BrowserRouter` (not hash routing); the `404.html` copy is what makes deep links and refreshes work.
 - `src/App.jsx` is the full route table. Pages live in `src/pages/`, shared pieces in `src/components/`, cross-cutting logic in `src/lib/`.
+- **All `/dashboard/*` routes nest under a single layout route (`src/components/DashboardLayout.jsx`)** that renders a persistent left sidebar + `<Outlet/>`. The sidebar stays mounted across navigation (no remount), lists the tools the signed-in member can access (gated by `hasPermission`/`anyPermission`, mirroring each page's own guard), and owns profile + sign-out. `/dashboard` itself is the index route — a light welcome pane (`Dashboard.jsx`), not a card hub. `/checkin/:meetingId` is intentionally left **outside** the shell (public QR landing). Dashboard pages therefore render only their own content — no `Navbar`/`Footer`/`RequireAuth` of their own.
 - Legacy routes (`/dashboard/edit-site`, `/dashboard/security`) now `<Navigate>` to sections of the unified `AdminSettings` page (`/dashboard/admin/:section`).
 
 ### Auth & permissions (the central abstraction)
 - `src/lib/AuthContext.jsx` (`useAuth`) loads the Supabase session and the user's `profiles` row joined with its `roles` row (`select('*, role:roles(*)')`). The role carries a `permissions` jsonb and an `is_admin` flag.
 - **`hasPermission(key)` is the canonical access check used everywhere.** Admin roles (`is_admin`) pass every check; no role denies everything. Permission keys are strings like `create_meetings`, `view_elections`, `manage_bookkeeping`, etc. Prefer `hasPermission` over inspecting roles directly.
 - Route/section gating components in `src/components/`:
-  - `RequireAuth` — any signed-in member.
-  - `RequirePermission permission="key"` — gates on one permission key; redirects signed-out users to `/login?redirect=...`, shows an access-denied screen otherwise.
+  - `DashboardLayout` — the shell itself: gates the whole `/dashboard/*` area to any signed-in member (redirects signed-out users to `/login?redirect=...`). This is why dashboard pages no longer need their own `RequireAuth`.
+  - `RequirePermission permission="key"` — gates one page on a single permission key; shows an access-denied screen (rendered *inside* the shell — it no longer draws its own `Navbar`) to members whose role lacks it. Direct-URL protection, since the sidebar already hides tools a member can't open.
   - `RequireStaff` — thin wrapper = `RequirePermission permission="create_meetings"` (i.e. "officers who can run meetings").
-- Gating is applied **inside each page component** (pages wrap their content in these guards), not in `App.jsx`. New protected pages should do the same.
+- The shell provides the auth gate; **per-page permission gating still lives inside each page component** (pages that need a specific permission wrap their content in `RequirePermission`/`RequireStaff`), not in `App.jsx`. New protected dashboard pages should keep doing this and rely on the layout for auth + chrome.
 - `clearance_level` (`member`/`officer`/`admin`) is a **legacy** column still synced for back-compat (e.g. in the `create-user` function). The roles/permissions system is the source of truth; don't add new logic keyed on `clearance_level`.
 
 ### Site settings & branding

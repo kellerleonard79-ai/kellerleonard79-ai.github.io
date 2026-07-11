@@ -17,8 +17,6 @@ import {
   Lock,
   X,
 } from 'lucide-react'
-import Navbar from '../components/Navbar.jsx'
-import Footer from '../components/Footer.jsx'
 import RequireStaff from '../components/RequireStaff.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
@@ -1532,14 +1530,8 @@ function Detail({ label, value }) {
 function Shell({ children }) {
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 print:bg-white">
-      <div className="print:hidden">
-        <Navbar />
-      </div>
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
         {children}
-      </div>
-      <div className="print:hidden">
-        <Footer />
       </div>
     </div>
   )
