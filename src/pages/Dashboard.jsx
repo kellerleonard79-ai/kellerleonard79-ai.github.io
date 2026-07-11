@@ -5,7 +5,6 @@ import {
   CalendarDays,
   ClipboardList,
   Clock,
-  Loader2,
   Vote,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext.jsx'
@@ -97,7 +96,7 @@ export default function Dashboard() {
       </header>
 
       {/* Active election cycles — only for members who can view elections, and
-          only when one is actually open. */}
+          only when one is actually open. Sits full-width above the grid. */}
       {canViewElections && openCycles.length > 0 && (
         <section className="mt-8">
           <SectionHeading icon={Vote}>Elections</SectionHeading>
@@ -130,82 +129,74 @@ export default function Dashboard() {
         </section>
       )}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-3">
-        {/* Left column — meetings + assignments */}
-        <div className="space-y-8 lg:col-span-2">
-          {canViewMeetings && (
-            <section>
-              <SectionHeading icon={CalendarDays}>Upcoming meetings</SectionHeading>
-              {loadingMeetings ? (
-                <Placeholder>
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin text-maroon/50" />
-                </Placeholder>
-              ) : meetings.length === 0 ? (
-                <Placeholder>No upcoming meetings scheduled.</Placeholder>
-              ) : (
-                <ul className="mt-3 space-y-3">
-                  {meetings.map((m) => (
-                    <li key={m.id}>
-                      <Link
-                        to={`/dashboard/meetings/${m.id}`}
-                        className="group flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm transition hover:border-maroon/30 hover:shadow-md"
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate font-semibold text-maroon">
-                              {m.title}
-                            </p>
-                            {m.is_active && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
-                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-600" />
-                                Live
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-500">
-                            <Clock className="h-3.5 w-3.5" />
-                            {formatDate(m.date)}
-                          </p>
-                        </div>
-                        <ArrowRight className="h-5 w-5 shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-maroon" />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
-
-          {/* Assignments — the slot a future task/assignment system will fill.
-              No data source exists yet, so this is intentionally an empty state. */}
+      {/* One grid, top-aligned: meetings and assignments share a row and read as
+          a single composition; the calendar spans the full width below so its
+          agenda renders without truncating titles. */}
+      <div className="mt-8 grid items-start gap-x-8 gap-y-8 sm:grid-cols-2">
+        {canViewMeetings && (
           <section>
-            <SectionHeading icon={ClipboardList}>Assignments</SectionHeading>
-            <div className="mt-3 rounded-2xl border border-dashed border-gray-300 bg-white/50 px-5 py-10 text-center">
-              <ClipboardList className="mx-auto h-8 w-8 text-gray-300" />
-              <p className="mt-2 text-sm font-medium text-gray-500">
-                No assignments yet
-              </p>
-              <p className="mt-1 text-xs text-gray-400">
-                Tasks assigned to you will show up here.
-              </p>
-            </div>
+            <SectionHeading icon={CalendarDays}>Upcoming meetings</SectionHeading>
+            {loadingMeetings ? (
+              <MutedNote>Loading…</MutedNote>
+            ) : meetings.length === 0 ? (
+              <MutedNote>No upcoming meetings scheduled.</MutedNote>
+            ) : (
+              <ul className="mt-3 space-y-3">
+                {meetings.map((m) => (
+                  <li key={m.id}>
+                    <Link
+                      to={`/dashboard/meetings/${m.id}`}
+                      className="group flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm transition hover:border-maroon/30 hover:shadow-md"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate font-semibold text-maroon">
+                            {m.title}
+                          </p>
+                          {m.is_active && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-600" />
+                              Live
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-500">
+                          <Clock className="h-3.5 w-3.5" />
+                          {formatDate(m.date)}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-5 w-5 shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-maroon" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
-        </div>
+        )}
 
-        {/* Right column — school calendar */}
-        <div className="lg:col-span-1">
+        {/* Assignments — the slot a future task/assignment system will fill. No
+            data source exists yet, so this stays a compact empty state. */}
+        <section>
+          <SectionHeading icon={ClipboardList}>Assignments</SectionHeading>
+          <MutedNote>
+            No assignments yet — tasks assigned to you will show up here.
+          </MutedNote>
+        </section>
+
+        {/* School calendar spans the full grid width for a clean agenda render. */}
+        <section className="sm:col-span-2">
           <SectionHeading icon={CalendarDays}>Calendar</SectionHeading>
           <div className="mt-3 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             <iframe
               title="PHS SGA School Calendar"
               src={calendarSrc}
-              className="h-[420px] w-full lg:h-[560px]"
+              className="h-[440px] w-full sm:h-[480px]"
               style={{ border: 0 }}
               frameBorder="0"
               scrolling="no"
             />
           </div>
-        </div>
+        </section>
       </div>
     </div>
   )
@@ -220,12 +211,10 @@ function SectionHeading({ icon: Icon, children }) {
   )
 }
 
-function Placeholder({ children }) {
-  return (
-    <div className="mt-3 rounded-2xl border border-dashed border-gray-300 bg-white/50 px-5 py-8 text-center text-sm text-gray-400">
-      {children}
-    </div>
-  )
+// Compact one-line empty/loading state — deliberately not a large dashed box, so
+// sections with nothing to show take minimal vertical space.
+function MutedNote({ children }) {
+  return <p className="mt-3 text-sm text-gray-400">{children}</p>
 }
 
 function PendingWelcome({ profile, firstName }) {
