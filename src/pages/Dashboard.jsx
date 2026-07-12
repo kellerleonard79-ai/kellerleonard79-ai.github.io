@@ -10,7 +10,7 @@ import {
 import { useAuth } from '../lib/AuthContext.jsx'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 import supabase from '../lib/supabaseClient.js'
-import { formatDate, formatDateTime, todayISO } from '../lib/format.js'
+import { formatDate, todayISO } from '../lib/format.js'
 
 // Same public PHS SGA calendar the homepage embeds; an admin can override it via
 // site_settings.calendar_url. Kept in sync with Home.jsx's DEFAULT_CALENDAR_SRC.
@@ -27,14 +27,11 @@ export default function Dashboard() {
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Tiger'
 
   // Which sections a member sees is driven by the same permissions that gate the
-  // tools themselves: general members can view meetings; only officers/admins
-  // with view_elections see active cycles (RLS blocks the read otherwise).
+  // tools themselves: general members can view meetings.
   const canViewMeetings = hasPermission('view_meetings')
-  const canViewElections = hasPermission('view_elections')
 
   const [meetings, setMeetings] = useState([])
   const [loadingMeetings, setLoadingMeetings] = useState(canViewMeetings)
-  const [openCycles, setOpenCycles] = useState([])
   const [assignments, setAssignments] = useState([])
   const [loadingAssignments, setLoadingAssignments] = useState(true)
 
@@ -57,25 +54,6 @@ export default function Dashboard() {
       active = false
     }
   }, [canViewMeetings])
-
-  useEffect(() => {
-    if (!canViewElections) return
-    let active = true
-    // Only surface cycles that are actually taking part (is_open). Nothing shows
-    // when there's no active cycle.
-    supabase
-      .from('election_cycles')
-      .select('id, name, is_open, close_date, filing_deadline')
-      .eq('is_open', true)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (!active) return
-        setOpenCycles(data ?? [])
-      })
-    return () => {
-      active = false
-    }
-  }, [canViewElections])
 
   // Tasks this member is an assignee on. RLS already scopes the read to their
   // own items; every card links to the Assignments page, the one place in the
@@ -130,40 +108,6 @@ export default function Dashboard() {
           {profile?.student_id && <span>ID {profile.student_id}</span>}
         </p>
       </header>
-
-      {/* Active election cycles — only for members who can view elections, and
-          only when one is actually open. Sits full-width above the grid. */}
-      {canViewElections && openCycles.length > 0 && (
-        <section className="mt-8">
-          <SectionHeading icon={Vote}>Elections</SectionHeading>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {openCycles.map((c) => (
-              <Link
-                key={c.id}
-                to="/dashboard/elections"
-                className="group flex items-start justify-between gap-4 rounded-2xl border border-maroon/20 bg-maroon/[0.03] px-5 py-4 shadow-sm transition hover:border-maroon/40 hover:shadow-md"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate font-semibold text-maroon">{c.name}</p>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700">
-                      Open
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-sm text-gray-500">
-                    {c.filing_deadline
-                      ? `Filing closes ${formatDateTime(c.filing_deadline)}`
-                      : c.close_date
-                        ? `Voting closes ${formatDateTime(c.close_date)}`
-                        : 'Applications are open'}
-                  </p>
-                </div>
-                <ArrowRight className="mt-0.5 h-5 w-5 shrink-0 text-maroon/40 transition group-hover:translate-x-0.5 group-hover:text-maroon" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* One grid, top-aligned: meetings and assignments share a row and read as
           a single composition; the calendar spans the full width below so its
@@ -320,7 +264,7 @@ function PendingWelcome({ profile, firstName }) {
               running for.
             </p>
             <Link
-              to="/dashboard/candidacy"
+              to="/dashboard/application"
               className="mt-5 inline-flex items-center gap-2 rounded-lg bg-maroon px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-maroon-dark"
             >
               <Vote className="h-4 w-4" /> Manage my candidacy
