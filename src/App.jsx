@@ -11,7 +11,6 @@ import AgendaEditor from './pages/AgendaEditor.jsx'
 import SessionView from './pages/SessionView.jsx'
 import Checkin from './pages/Checkin.jsx'
 import Profile from './pages/Profile.jsx'
-import Candidacy from './pages/Candidacy.jsx'
 import ApplicationDashboard from './pages/ApplicationDashboard.jsx'
 import ElectionsPublic from './pages/ElectionsPublic.jsx'
 import MemberDirectory from './pages/MemberDirectory.jsx'
@@ -49,7 +48,12 @@ export default function App() {
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="profile" element={<Profile />} />
-        <Route path="candidacy" element={<Candidacy />} />
+        {/* Candidacy + application were merged into one page; keep the old
+            deep link working. */}
+        <Route
+          path="candidacy"
+          element={<Navigate to="/dashboard/application" replace />}
+        />
         <Route path="application" element={<ApplicationDashboard />} />
         <Route
           path="edit-site"

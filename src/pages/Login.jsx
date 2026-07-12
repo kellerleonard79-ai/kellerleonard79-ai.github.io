@@ -109,7 +109,7 @@ export default function Login() {
     if (prof?.status === 'pending') {
       if (prof?.is_candidate_application) {
         setSubmitting(false)
-        navigate('/dashboard/candidacy', { replace: true })
+        navigate('/dashboard/application', { replace: true })
         return
       }
       await supabase.auth.signOut()

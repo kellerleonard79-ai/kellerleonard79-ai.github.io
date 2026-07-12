@@ -95,15 +95,16 @@ export default function DashboardLayout() {
   // pending applicants get the approval notice (landing pane) and no tools.
   const items = [{ label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, end: true }]
 
+  // Candidacy + application live on one unified page now. Pending applicants
+  // only ever see the candidacy picker there, so label their entry accordingly.
   if (profile?.is_candidate_application) {
-    // Approved candidates get the full application checklist; pending applicants
-    // only get the candidacy picker (mirrors the old pending experience).
-    if (!pending) {
-      items.push({ label: 'My Application', to: '/dashboard/application', icon: ClipboardList })
-    }
-    items.push({ label: 'My Candidacy', to: '/dashboard/candidacy', icon: Vote })
+    items.push({
+      label: pending ? 'My Candidacy' : 'My Application',
+      to: '/dashboard/application',
+      icon: pending ? Vote : ClipboardList,
+    })
   } else if (cycleOpen && !pending) {
-    items.push({ label: 'Run for a Position', to: '/dashboard/candidacy', icon: Vote })
+    items.push({ label: 'Run for a Position', to: '/dashboard/application', icon: Vote })
   }
 
   if (!pending) {
