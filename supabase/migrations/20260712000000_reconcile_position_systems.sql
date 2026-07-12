@@ -55,8 +55,13 @@ where p.title = ep.title;
 
 -- ----------------------------------------------------------------------------
 -- 2. Repoint applicants.position_id from `positions` to `elected_positions`.
---    Remap existing values through the shared title before swapping the FK.
+--    Drop the old FK FIRST so the remap can write elected_positions ids (which
+--    aren't in `positions`), then remap through the shared title, then re-add the
+--    FK pointing at elected_positions.
 -- ----------------------------------------------------------------------------
+alter table public.applicants
+  drop constraint if exists applicants_position_id_fkey;
+
 update public.applicants a
 set position_id = ep.id
 from public.positions p
@@ -64,8 +69,6 @@ join public.elected_positions ep on ep.title = p.title
 where a.position_id = p.id
   and a.position_id is not null;
 
-alter table public.applicants
-  drop constraint if exists applicants_position_id_fkey;
 alter table public.applicants
   add constraint applicants_position_id_fkey
     foreign key (position_id) references public.elected_positions(id) on delete set null;
