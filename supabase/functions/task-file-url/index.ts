@@ -1,12 +1,12 @@
-// committee-task-file-url — mint a short-lived signed URL for a task
-// submission's file.
+// task-file-url — mint a short-lived signed URL for a task submission's file.
+// Replaces committee-task-file-url and committee-report-url: submissions are
+// the app's single work-product mechanism now, all filed in one bucket.
 //
 // The raw storage path is never exposed to the client. Given a submission id,
 // this function reads the row through a caller-scoped client so the
-// committee_task_submissions SELECT RLS policy enforces access against the
-// caller's own JWT. Only if the row is visible does it use the service-role key
-// to sign the private object, returning the temporary URL. Same shape as
-// committee-report-url.
+// task_submissions SELECT RLS policy enforces access against the caller's own
+// JWT. Only if the row is visible does it use the service-role key to sign the
+// private object, returning the temporary URL.
 //
 // Reserved secrets (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY)
 // are injected automatically by the Edge Functions runtime.
@@ -53,14 +53,14 @@ Deno.serve(async (req) => {
       return json({ error: 'Missing submission_id' }, 400)
     }
 
-    // Caller-scoped client — the committee_task_submissions SELECT RLS policy
-    // gates this read, so an inaccessible submission simply returns no row.
+    // Caller-scoped client — the task_submissions SELECT RLS policy gates this
+    // read, so an inaccessible submission simply returns no row.
     const callerClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     })
 
     const { data: submission, error: readError } = await callerClient
-      .from('committee_task_submissions')
+      .from('task_submissions')
       .select('file_url')
       .eq('id', submission_id)
       .maybeSingle()

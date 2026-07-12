@@ -11,20 +11,19 @@ import {
   Loader2,
   X,
   Pencil,
-  FileText,
-  Upload,
-  Send,
   Search,
   UserPlus,
   Star,
+  Settings2,
   ClipboardList,
-  CalendarClock,
-  AlertTriangle,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext.jsx'
 import supabase from '../lib/supabaseClient.js'
-import { formatDate, todayISO } from '../lib/format.js'
 
+// Committees are the org chart — WHO is on what, nothing more. All work (tasks
+// and submissions) lives on the Assignments page; this page only links out to
+// it. The default view is informational for every member; holders of
+// manage_committees can flip into a Manage mode to edit rosters and chairs.
 // Auth is guaranteed by the surrounding DashboardLayout shell.
 export default function Committees() {
   return <CommitteesContent />
@@ -36,9 +35,11 @@ const inputClass =
 function CommitteesContent() {
   const { hasPermission } = useAuth()
   const canManage = hasPermission('manage_committees')
+  const [managing, setManaging] = useState(false)
 
   const [committees, setCommittees] = useState([])
   const [members, setMembers] = useState([]) // all rows across committees
+  const [openTasks, setOpenTasks] = useState({}) // committee_id -> open count
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
   const [creating, setCreating] = useState(false)
@@ -62,6 +63,47 @@ function CommitteesContent() {
     load()
   }, [])
 
+  // Open-task counts per committee, for the "N open tasks →" line. RLS scopes
+  // the reads: a member counts tasks they're assigned to, an assigning officer
+  // counts everything. "Open" = not complete under the task's requires_each
+  // rule, mirroring the Assignments page.
+  useEffect(() => {
+    let active = true
+    async function loadCounts() {
+      const { data: tasks } = await supabase
+        .from('tasks')
+        .select('id, committee_id, requires_each')
+        .not('committee_id', 'is', null)
+      const list = tasks ?? []
+      if (!list.length) {
+        if (active) setOpenTasks({})
+        return
+      }
+      const ids = list.map((t) => t.id)
+      const [{ data: assignees }, { data: subs }] = await Promise.all([
+        supabase.from('task_assignees').select('task_id, member_id').in('task_id', ids),
+        supabase.from('task_submissions').select('task_id, member_id').in('task_id', ids),
+      ])
+      if (!active) return
+      const counts = {}
+      for (const t of list) {
+        const who = (assignees ?? []).filter((a) => a.task_id === t.id)
+        const done = new Set(
+          (subs ?? []).filter((s) => s.task_id === t.id).map((s) => s.member_id),
+        )
+        const complete = t.requires_each
+          ? who.length > 0 && who.every((a) => done.has(a.member_id))
+          : done.size > 0
+        if (!complete) counts[t.committee_id] = (counts[t.committee_id] ?? 0) + 1
+      }
+      setOpenTasks(counts)
+    }
+    loadCounts()
+    return () => {
+      active = false
+    }
+  }, [])
+
   // member rows grouped by committee_id
   const membersByCommittee = useMemo(() => {
     const map = {}
@@ -83,6 +125,7 @@ function CommitteesContent() {
   }, [committees, loading, selectedId])
 
   const selected = committees.find((c) => c.id === selectedId) ?? null
+  const editing = canManage && managing
 
   if (loading) {
     return (
@@ -102,21 +145,43 @@ function CommitteesContent() {
             Committees
           </h1>
           <p className="mt-1 text-gray-500">
-            Working groups, their members and submitted reports.
+            Working groups, their members and chairs. Tasks live in{' '}
+            <Link
+              to="/dashboard/assignments"
+              className="font-medium text-maroon underline-offset-2 hover:underline"
+            >
+              Assignments
+            </Link>
+            .
           </p>
         </div>
-        <Link
-          to="/dashboard"
-          className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-maroon"
-        >
-          <ChevronLeft className="h-4 w-4" /> Dashboard
-        </Link>
+        <div className="flex items-center gap-3">
+          {canManage && (
+            <button
+              onClick={() => setManaging((m) => !m)}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                managing
+                  ? 'border-maroon bg-maroon text-white hover:bg-maroon-dark'
+                  : 'border-gray-300 text-gray-600 hover:border-maroon/40 hover:text-maroon'
+              }`}
+            >
+              <Settings2 className="h-4 w-4" />
+              {managing ? 'Done managing' : 'Manage'}
+            </button>
+          )}
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-maroon"
+          >
+            <ChevronLeft className="h-4 w-4" /> Dashboard
+          </Link>
+        </div>
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[20rem_1fr]">
         {/* ── Left column: committee list ── */}
         <aside className="lg:sticky lg:top-6 lg:self-start">
-          {canManage && (
+          {editing && (
             <div className="mb-4">
               {creating ? (
                 <NewCommitteeForm
@@ -201,13 +266,14 @@ function CommitteesContent() {
           )}
         </aside>
 
-        {/* ── Right column: selected committee + submitted reports ── */}
+        {/* ── Right column: selected committee ── */}
         <div className="min-w-0">
           {selected ? (
             <CommitteeDetail
               committee={selected}
               members={membersByCommittee[selected.id] ?? []}
-              canManage={canManage}
+              openCount={openTasks[selected.id] ?? 0}
+              editing={editing}
               onChanged={load}
             />
           ) : (
@@ -215,7 +281,7 @@ function CommitteesContent() {
               <div>
                 <UsersRound className="mx-auto h-8 w-8 text-gray-300" />
                 <p className="mt-3 text-sm text-gray-400">
-                  Select a committee to view its members and reports.
+                  Select a committee to view its members.
                 </p>
               </div>
             </div>
@@ -229,7 +295,7 @@ function CommitteesContent() {
 function Shell({ children }) {
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         {children}
       </div>
     </div>
@@ -314,46 +380,39 @@ function NewCommitteeForm({ onCreated, onCancel }) {
 }
 
 // ─────────────────────────── Detail ───────────────────────────
-function CommitteeDetail({ committee, members, canManage, onChanged }) {
+function CommitteeDetail({ committee, members, openCount, editing, onChanged }) {
   return (
     <div>
       <CommitteeHeader
         committee={committee}
-        canManage={canManage}
+        openCount={openCount}
+        editing={editing}
         onChanged={onChanged}
       />
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+      <div className="mt-6">
         <MembersSection
           committee={committee}
           members={members}
-          canManage={canManage}
+          editing={editing}
           onChanged={onChanged}
-        />
-        <ReportsSection
-          committee={committee}
-          members={members}
-          canManage={canManage}
-        />
-      </div>
-
-      <div className="mt-6">
-        <TasksSection
-          committee={committee}
-          members={members}
-          canManage={canManage}
         />
       </div>
     </div>
   )
 }
 
-function CommitteeHeader({ committee, canManage, onChanged }) {
-  const [editing, setEditing] = useState(false)
+function CommitteeHeader({ committee, openCount, editing, onChanged }) {
+  const [editingHeader, setEditingHeader] = useState(false)
   const [name, setName] = useState(committee.name)
   const [description, setDescription] = useState(committee.description)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  // Leaving Manage mode also closes an in-progress header edit.
+  useEffect(() => {
+    if (!editing) setEditingHeader(false)
+  }, [editing])
 
   async function save(e) {
     e.preventDefault()
@@ -374,14 +433,14 @@ function CommitteeHeader({ committee, canManage, onChanged }) {
       )
       return
     }
-    setEditing(false)
+    setEditingHeader(false)
     onChanged()
   }
 
   async function remove() {
     if (
       !window.confirm(
-        `Delete "${committee.name}"? Its members and reports will also be removed. This cannot be undone.`,
+        `Delete "${committee.name}"? Its roster will be removed; already-assigned tasks stay with their assignees in Assignments. This cannot be undone.`,
       )
     )
       return
@@ -396,7 +455,7 @@ function CommitteeHeader({ committee, canManage, onChanged }) {
     onChanged()
   }
 
-  if (editing) {
+  if (editingHeader) {
     return (
       <form
         onSubmit={save}
@@ -422,11 +481,7 @@ function CommitteeHeader({ committee, canManage, onChanged }) {
             disabled={saving || !name.trim()}
             className="inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:opacity-60"
           >
-            {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              'Save'
-            )}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
           </button>
           <button
             type="button"
@@ -434,7 +489,7 @@ function CommitteeHeader({ committee, canManage, onChanged }) {
               setName(committee.name)
               setDescription(committee.description)
               setError('')
-              setEditing(false)
+              setEditingHeader(false)
             }}
             className="text-sm font-medium text-gray-500 hover:text-maroon"
           >
@@ -456,11 +511,23 @@ function CommitteeHeader({ committee, canManage, onChanged }) {
             {committee.description}
           </p>
         )}
+        {/* The one line linking out to work — no task list, no submission form
+            here. openCount reflects what the viewer can see via RLS. */}
+        {openCount > 0 && (
+          <Link
+            to={`/dashboard/assignments?committee=${committee.id}`}
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-maroon underline-offset-2 hover:underline"
+          >
+            <ClipboardList className="h-4 w-4" />
+            {openCount} open task{openCount === 1 ? '' : 's'}
+            <ChevronRight className="h-4 w-4" />
+          </Link>
+        )}
       </div>
-      {canManage && (
+      {editing && (
         <div className="flex shrink-0 items-center gap-2">
           <button
-            onClick={() => setEditing(true)}
+            onClick={() => setEditingHeader(true)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 transition hover:border-maroon/40 hover:text-maroon"
           >
             <Pencil className="h-4 w-4" /> Edit
@@ -480,7 +547,7 @@ function CommitteeHeader({ committee, canManage, onChanged }) {
 }
 
 // ─────────────────────────── Members ───────────────────────────
-function MembersSection({ committee, members, canManage, onChanged }) {
+function MembersSection({ committee, members, editing, onChanged }) {
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState('')
 
@@ -540,7 +607,7 @@ function MembersSection({ committee, members, canManage, onChanged }) {
         </h2>
       </div>
 
-      {canManage && (
+      {editing && (
         <div className="border-b border-gray-100 p-4">
           <AddMember
             committee={committee}
@@ -573,12 +640,10 @@ function MembersSection({ committee, members, canManage, onChanged }) {
                   )}
                 </p>
                 <p className="truncate text-xs text-gray-400">
-                  {row.member?.position ||
-                    row.member?.role?.name ||
-                    'Member'}
+                  {row.member?.position || row.member?.role?.name || 'Member'}
                 </p>
               </div>
-              {canManage && (
+              {editing && (
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     onClick={() => toggleChair(row)}
@@ -642,9 +707,7 @@ function AddMember({ committee, existingIds, onAdded }) {
         .ilike('full_name', `%${term}%`)
         .order('full_name', { ascending: true })
         .limit(8)
-      const filtered = (data ?? []).filter(
-        (p) => !existingIds.includes(p.id),
-      )
+      const filtered = (data ?? []).filter((p) => !existingIds.includes(p.id))
       setResults(filtered)
       setSearching(false)
     }, 250)
@@ -723,605 +786,5 @@ function AddMember({ committee, existingIds, onAdded }) {
       )}
       {error && <p className="mt-1 px-1 text-xs text-red-600">{error}</p>}
     </div>
-  )
-}
-
-// ─────────────────────────── Reports ───────────────────────────
-function ReportsSection({ committee, members, canManage }) {
-  const { profile } = useAuth()
-  const [reports, setReports] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  // Only designated members of this committee (or committee managers) may
-  // submit reports — mirrors the RLS insert policy on committee_reports.
-  const canSubmit =
-    canManage || members.some((m) => m.member_id === profile?.id)
-
-  async function load() {
-    const { data } = await supabase
-      .from('committee_reports')
-      .select(
-        'id, committee_id, submitted_by, body, has_file, created_at, submitter:profiles(full_name)',
-      )
-      .eq('committee_id', committee.id)
-      .order('created_at', { ascending: false })
-    setReports(data ?? [])
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    load()
-  }, [committee.id])
-
-  // A report can be deleted by its submitter or a committee manager.
-  const canDelete = (r) => canManage || r.submitted_by === profile?.id
-
-  return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3.5">
-        <h2 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-maroon">
-          <FileText className="h-4 w-4" /> Reports
-          <span className="text-gray-400">({reports.length})</span>
-        </h2>
-      </div>
-
-      {canSubmit ? (
-        <div className="border-b border-gray-100 p-4">
-          <ReportForm committee={committee} onSubmitted={load} />
-        </div>
-      ) : (
-        <p className="border-b border-gray-100 px-5 py-3 text-xs text-gray-400">
-          Only members of this committee can submit reports.
-        </p>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-maroon" />
-        </div>
-      ) : reports.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-gray-400">
-          No reports submitted yet.
-        </p>
-      ) : (
-        <ul className="divide-y divide-gray-100">
-          {reports.map((r) => (
-            <ReportRow
-              key={r.id}
-              report={r}
-              canDelete={canDelete(r)}
-              onDeleted={load}
-            />
-          ))}
-        </ul>
-      )}
-    </section>
-  )
-}
-
-function ReportRow({ report, canDelete, onDeleted }) {
-  const [opening, setOpening] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [error, setError] = useState('')
-
-  async function openFile() {
-    setOpening(true)
-    setError('')
-    const tab = window.open('', '_blank')
-    const { data, error: fnError } = await supabase.functions.invoke(
-      'committee-report-url',
-      { body: { report_id: report.id } },
-    )
-    setOpening(false)
-    if (fnError || !data?.url) {
-      if (tab) tab.close()
-      setError('Could not open this file.')
-      return
-    }
-    if (tab) tab.location = data.url
-    else window.open(data.url, '_blank')
-  }
-
-  async function remove() {
-    if (!window.confirm('Delete this report? This cannot be undone.')) return
-    setDeleting(true)
-    const { error: delError } = await supabase
-      .from('committee_reports')
-      .delete()
-      .eq('id', report.id)
-    setDeleting(false)
-    if (delError) {
-      setError('Could not delete this report.')
-      return
-    }
-    onDeleted()
-  }
-
-  return (
-    <li className="px-5 py-3.5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs text-gray-400">
-            {report.submitter?.full_name ?? 'Unknown'} ·{' '}
-            {new Date(report.created_at).toLocaleDateString()}
-          </p>
-          {report.body && (
-            <p className="mt-1 whitespace-pre-line text-sm text-maroon">
-              {report.body}
-            </p>
-          )}
-          {report.has_file && (
-            <button
-              onClick={openFile}
-              disabled={opening}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-maroon px-3 py-1.5 text-xs font-semibold text-maroon transition hover:bg-maroon/5 disabled:opacity-60"
-            >
-              {opening ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <FileText className="h-3.5 w-3.5" />
-              )}
-              Open file
-            </button>
-          )}
-        </div>
-        {canDelete && (
-          <button
-            onClick={remove}
-            disabled={deleting}
-            title="Delete report"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-          >
-            {deleting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4" />
-            )}
-          </button>
-        )}
-      </div>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </li>
-  )
-}
-
-function ReportForm({ committee, onSubmitted }) {
-  const { profile } = useAuth()
-  const [body, setBody] = useState('')
-  const [file, setFile] = useState(null)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const fileRef = useRef(null)
-
-  function reset() {
-    setBody('')
-    setFile(null)
-    if (fileRef.current) fileRef.current.value = ''
-  }
-
-  async function submit(e) {
-    e.preventDefault()
-    setError('')
-    const text = body.trim()
-    // At least one of text / file — matches the DB check constraint.
-    if (!text && !file) {
-      setError('Add a note or attach a file.')
-      return
-    }
-
-    setSaving(true)
-    let filePath = null
-    if (file) {
-      const safeName = file.name.replace(/[^\w.\-]+/g, '_')
-      filePath = `${profile.id}/${Date.now()}-${safeName}`
-      const { error: uploadError } = await supabase.storage
-        .from('committee-reports')
-        .upload(filePath, file, { upsert: false })
-      if (uploadError) {
-        setSaving(false)
-        setError('File upload failed. Please try again.')
-        return
-      }
-    }
-
-    const { error: insertError } = await supabase
-      .from('committee_reports')
-      .insert({
-        committee_id: committee.id,
-        submitted_by: profile.id,
-        body: text || null,
-        file_url: filePath,
-      })
-
-    setSaving(false)
-    if (insertError) {
-      // Roll back the orphaned upload if the row insert failed.
-      if (filePath)
-        await supabase.storage.from('committee-reports').remove([filePath])
-      setError('Could not submit the report. Please try again.')
-      return
-    }
-    reset()
-    onSubmitted()
-  }
-
-  return (
-    <form onSubmit={submit} className="space-y-3">
-      <textarea
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        placeholder="Write a report, or attach a file below…"
-        rows={2}
-        className={`${inputClass} resize-y`}
-      />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-maroon">
-          <Upload className="h-3.5 w-3.5" />
-          <span>{file ? file.name : 'Attach file'}</span>
-          <input
-            ref={fileRef}
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="hidden"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={saving || (!body.trim() && !file)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-          Submit
-        </button>
-      </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-    </form>
-  )
-}
-
-// ─────────────────────────── Tasks ───────────────────────────
-// Tasks are assigned to a committee from the admin panel; every committee
-// member sees them here and submits work (text and/or file). Submissions are
-// visible to all members and to admins (matches the RLS SELECT policy).
-function TasksSection({ committee, members, canManage }) {
-  const { profile } = useAuth()
-  const [tasks, setTasks] = useState([])
-  const [subsByTask, setSubsByTask] = useState({})
-  const [loading, setLoading] = useState(true)
-
-  // Same gate as committee reports: only designated members (or managers) may
-  // submit — mirrors the committee_task_submissions insert RLS policy.
-  const canSubmit =
-    canManage || members.some((m) => m.member_id === profile?.id)
-
-  async function load() {
-    const { data: taskRows } = await supabase
-      .from('committee_tasks')
-      .select('id, committee_id, title, description, due_date, created_at')
-      .eq('committee_id', committee.id)
-      .order('created_at', { ascending: false })
-    const list = taskRows ?? []
-    setTasks(list)
-
-    // Pull submissions for all of this committee's tasks in one query, grouped
-    // by task_id for rendering.
-    const ids = list.map((t) => t.id)
-    let grouped = {}
-    if (ids.length) {
-      const { data: subs } = await supabase
-        .from('committee_task_submissions')
-        .select(
-          'id, task_id, submitted_by, body, has_file, created_at, submitter:profiles(full_name)',
-        )
-        .in('task_id', ids)
-        .order('created_at', { ascending: false })
-      for (const s of subs ?? []) (grouped[s.task_id] ??= []).push(s)
-    }
-    setSubsByTask(grouped)
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    load()
-  }, [committee.id])
-
-  return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3.5">
-        <h2 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-maroon">
-          <ClipboardList className="h-4 w-4" /> Tasks
-          <span className="text-gray-400">({tasks.length})</span>
-        </h2>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-maroon" />
-        </div>
-      ) : tasks.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-gray-400">
-          No tasks assigned to this committee yet.
-        </p>
-      ) : (
-        <ul className="divide-y divide-gray-100">
-          {tasks.map((t) => (
-            <TaskCard
-              key={t.id}
-              task={t}
-              submissions={subsByTask[t.id] ?? []}
-              canSubmit={canSubmit}
-              canManage={canManage}
-              onChanged={load}
-            />
-          ))}
-        </ul>
-      )}
-    </section>
-  )
-}
-
-function DueBadge({ due }) {
-  if (!due)
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">
-        <CalendarClock className="h-3 w-3" /> No due date
-      </span>
-    )
-  const overdue = due < todayISO()
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-        overdue ? 'bg-red-50 text-red-600' : 'bg-maroon/10 text-maroon'
-      }`}
-    >
-      {overdue ? (
-        <AlertTriangle className="h-3 w-3" />
-      ) : (
-        <CalendarClock className="h-3 w-3" />
-      )}
-      {overdue ? 'Overdue · ' : 'Due '}
-      {formatDate(due, { month: 'short', day: 'numeric', year: 'numeric' })}
-    </span>
-  )
-}
-
-function TaskCard({ task, submissions, canSubmit, canManage, onChanged }) {
-  const { profile } = useAuth()
-  const mine = submissions.some((s) => s.submitted_by === profile?.id)
-
-  return (
-    <li className="px-5 py-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="font-display font-bold text-maroon">{task.title}</p>
-          {task.description && (
-            <p className="mt-1 whitespace-pre-line text-sm text-gray-600">
-              {task.description}
-            </p>
-          )}
-        </div>
-        <DueBadge due={task.due_date} />
-      </div>
-
-      {/* Submissions */}
-      {submissions.length > 0 && (
-        <ul className="mt-3 space-y-2 border-l-2 border-maroon/15 pl-3">
-          {submissions.map((s) => (
-            <TaskSubmissionRow
-              key={s.id}
-              submission={s}
-              canDelete={canManage || s.submitted_by === profile?.id}
-              onDeleted={onChanged}
-            />
-          ))}
-        </ul>
-      )}
-
-      {/* Submission form */}
-      {canSubmit ? (
-        <div className="mt-3">
-          {mine && (
-            <p className="mb-2 text-xs text-gray-400">
-              You've already submitted — you can add another submission below.
-            </p>
-          )}
-          <TaskSubmissionForm task={task} onSubmitted={onChanged} />
-        </div>
-      ) : (
-        submissions.length === 0 && (
-          <p className="mt-3 text-xs text-gray-400">
-            Only members of this committee can submit work for this task.
-          </p>
-        )
-      )}
-    </li>
-  )
-}
-
-function TaskSubmissionRow({ submission, canDelete, onDeleted }) {
-  const [opening, setOpening] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [error, setError] = useState('')
-
-  async function openFile() {
-    setOpening(true)
-    setError('')
-    const tab = window.open('', '_blank')
-    const { data, error: fnError } = await supabase.functions.invoke(
-      'committee-task-file-url',
-      { body: { submission_id: submission.id } },
-    )
-    setOpening(false)
-    if (fnError || !data?.url) {
-      if (tab) tab.close()
-      setError('Could not open this file.')
-      return
-    }
-    if (tab) tab.location = data.url
-    else window.open(data.url, '_blank')
-  }
-
-  async function remove() {
-    if (!window.confirm('Delete this submission? This cannot be undone.')) return
-    setDeleting(true)
-    const { error: delError } = await supabase
-      .from('committee_task_submissions')
-      .delete()
-      .eq('id', submission.id)
-    setDeleting(false)
-    if (delError) {
-      setError('Could not delete this submission.')
-      return
-    }
-    onDeleted()
-  }
-
-  return (
-    <li>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs text-gray-400">
-            {submission.submitter?.full_name ?? 'Unknown'} ·{' '}
-            {new Date(submission.created_at).toLocaleDateString()}
-          </p>
-          {submission.body && (
-            <p className="mt-0.5 whitespace-pre-line text-sm text-maroon">
-              {submission.body}
-            </p>
-          )}
-          {submission.has_file && (
-            <button
-              onClick={openFile}
-              disabled={opening}
-              className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg border border-maroon px-3 py-1.5 text-xs font-semibold text-maroon transition hover:bg-maroon/5 disabled:opacity-60"
-            >
-              {opening ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <FileText className="h-3.5 w-3.5" />
-              )}
-              Open file
-            </button>
-          )}
-        </div>
-        {canDelete && (
-          <button
-            onClick={remove}
-            disabled={deleting}
-            title="Delete submission"
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-          >
-            {deleting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-3.5 w-3.5" />
-            )}
-          </button>
-        )}
-      </div>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </li>
-  )
-}
-
-function TaskSubmissionForm({ task, onSubmitted }) {
-  const { profile } = useAuth()
-  const [body, setBody] = useState('')
-  const [file, setFile] = useState(null)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const fileRef = useRef(null)
-
-  function reset() {
-    setBody('')
-    setFile(null)
-    if (fileRef.current) fileRef.current.value = ''
-  }
-
-  async function submit(e) {
-    e.preventDefault()
-    setError('')
-    const text = body.trim()
-    // At least one of text / file — matches the DB check constraint.
-    if (!text && !file) {
-      setError('Add a note or attach a file.')
-      return
-    }
-
-    setSaving(true)
-    let filePath = null
-    if (file) {
-      const safeName = file.name.replace(/[^\w.\-]+/g, '_')
-      filePath = `${profile.id}/${Date.now()}-${safeName}`
-      const { error: uploadError } = await supabase.storage
-        .from('committee-task-files')
-        .upload(filePath, file, { upsert: false })
-      if (uploadError) {
-        setSaving(false)
-        setError('File upload failed. Please try again.')
-        return
-      }
-    }
-
-    const { error: insertError } = await supabase
-      .from('committee_task_submissions')
-      .insert({
-        task_id: task.id,
-        submitted_by: profile.id,
-        body: text || null,
-        file_url: filePath,
-      })
-
-    setSaving(false)
-    if (insertError) {
-      // Roll back the orphaned upload if the row insert failed.
-      if (filePath)
-        await supabase.storage.from('committee-task-files').remove([filePath])
-      setError('Could not submit. Please try again.')
-      return
-    }
-    reset()
-    onSubmitted()
-  }
-
-  return (
-    <form onSubmit={submit} className="space-y-3">
-      <textarea
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        placeholder="Write your submission, or attach a file below…"
-        rows={2}
-        className={`${inputClass} resize-y`}
-      />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-maroon">
-          <Upload className="h-3.5 w-3.5" />
-          <span>{file ? file.name : 'Attach file'}</span>
-          <input
-            ref={fileRef}
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="hidden"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={saving || (!body.trim() && !file)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-          Submit
-        </button>
-      </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-    </form>
   )
 }

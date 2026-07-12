@@ -56,12 +56,13 @@ Requires `.env` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see `.env
 - **RLS is the real security boundary.** Migrations enable Row Level Security and rely on a `public.is_admin()` SECURITY DEFINER helper (avoids the recursive-policy trap of a profiles policy querying profiles). Frontend `hasPermission` gating is for UX; never assume it protects data.
 - **Edge Functions** (`supabase/functions/`, Deno) handle privileged operations that must bypass RLS with the service-role key, always after re-verifying the caller via `is_admin()` RPC:
   - `create-user` / `delete-user` — admin-driven account lifecycle.
-  - `agenda-file-url`, `archive-file-url`, `committee-report-url` — signed Storage URLs for restricted files.
+  - `agenda-file-url`, `archive-file-url`, `task-file-url` — signed Storage URLs for restricted files.
   - Called from the client via `supabase.functions.invoke('name', ...)`.
 - **Login is by student ID**, not email. Supabase Auth only knows emails, so `Login` calls the `email_for_student_id(p_student_id)` SECURITY DEFINER RPC to resolve the email, then `signInWithPassword`. That RPC intentionally exposes only the email for one matching student_id.
 
 ### Feature areas (one page module each)
-Public: `Home`, `About`, `Join` (signup gated by `site_settings.signup_enabled`), `ElectionsPublic`, `Login`. Dashboard: `Dashboard` (permission-gated card grid), `MemberDirectory`, `Profile` (own + `/members/:id` admin edit), `Meetings`/`MeetingDetail`/`AgendaEditor`/`SessionView` (+ public `Checkin/:meetingId` QR flow), `Elections`/`Candidacy`/`ApplicationDashboard`, `Bookkeeping`, `Archives`, `Committees`, and `AdminSettings` (unified admin hub: branding, roles/permissions, positions, join-form builder, members, announcements, etc.).
+Public: `Home`, `About`, `Join` (signup gated by `site_settings.signup_enabled`), `ElectionsPublic`, `Login`. Dashboard: `Dashboard` (permission-gated card grid), `MemberDirectory`, `Profile` (own + `/members/:id` admin edit), `Meetings`/`MeetingDetail`/`AgendaEditor`/`SessionView` (+ public `Checkin/:meetingId` QR flow), `Elections`/`Candidacy`/`ApplicationDashboard`, `Bookkeeping`, `Archives`, `Committees`, `Assignments`, and `AdminSettings` (unified admin hub: branding, roles/permissions, positions, join-form builder, members, announcements, etc.).
+- **Committees vs Assignments split**: Committees is the org chart (roster/chair/description; Manage mode gated on `manage_committees`). Assignments is ALL work — an assignment is a `tasks` row plus an explicit assignee snapshot in `task_assignees` (committee/grade pickers are just shortcuts; joining a committee later does not inherit its tasks). `task_submissions` is the app's **only** submission mechanism (`requires_each` controls whether everyone or any one assignee must submit); authoring is gated on `assign_tasks`. Don't add task lists or submission forms anywhere else.
 
 ## Conventions
 - Roles, elected positions, and agenda section types are **data, not enums** — they live in DB tables and are admin-editable. Don't hardcode role names, position titles, or section types.
