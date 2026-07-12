@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  GripVertical,
   Vote,
   UserPlus,
   Loader2,
@@ -18,7 +17,6 @@ import {
   Users,
   Pencil,
   Trash2,
-  ClipboardList,
   CalendarClock,
   Ban,
   RefreshCw,
@@ -60,7 +58,6 @@ function ElectionsContent() {
   const [candidates, setCandidates] = useState([])
   const [applications, setApplications] = useState([])
   const [positions, setPositions] = useState([])
-  const [appPositions, setAppPositions] = useState([])
   const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedCycleId, setSelectedCycleId] = useState(null)
@@ -71,7 +68,7 @@ function ElectionsContent() {
       { data: cand },
       { data: apps },
       { data: pos },
-      { data: appPos },
+      { data: slots },
       { data: rls },
     ] = await Promise.all([
       supabase
@@ -95,21 +92,35 @@ function ElectionsContent() {
         .select('id, title, "group", "order", show_in_elections')
         .order('group', { ascending: true })
         .order('order', { ascending: true }),
+      // Booked interview slots, linked back to the candidate they belong to via
+      // applicants.election_candidate_id — so the scoring grid can show each
+      // candidate's booked time instead of the admin hunting the schedule.
+      // Returns empty for viewers without manage_elections (interview_slots RLS).
       supabase
-        .from('positions')
-        .select('*')
-        .order('order', { ascending: true })
-        .order('title', { ascending: true }),
+        .from('interview_slots')
+        .select(
+          'start_time, booked_by_id, applicant:applicants!booked_by_id(election_candidate_id)',
+        )
+        .not('booked_by_id', 'is', null),
       supabase
         .from('roles')
         .select('id, name, permissions, is_admin, order')
         .order('order', { ascending: true }),
     ])
+    // Map each candidate to their earliest booked interview time.
+    const slotByCand = {}
+    for (const sl of slots ?? []) {
+      const cid = sl.applicant?.election_candidate_id
+      if (!cid) continue
+      if (!slotByCand[cid] || new Date(sl.start_time) < new Date(slotByCand[cid]))
+        slotByCand[cid] = sl.start_time
+    }
     setCycles(cyc ?? [])
-    setCandidates(cand ?? [])
+    setCandidates(
+      (cand ?? []).map((c) => ({ ...c, booked_interview: slotByCand[c.id] ?? null })),
+    )
     setApplications(apps ?? [])
     setPositions(pos ?? [])
-    setAppPositions(appPos ?? [])
     setRoles(rls ?? [])
     setLoading(false)
   }, [])
@@ -161,13 +172,6 @@ function ElectionsContent() {
               canManage={canManage}
               onChanged={load}
             />
-
-            {canManage && (
-              <ApplicationPositions
-                positions={appPositions}
-                onChanged={load}
-              />
-            )}
 
             {canManage && <InterviewScheduling />}
 
@@ -1235,6 +1239,20 @@ function CandidateRow({
         </div>
       </div>
 
+      {candidate.booked_interview && (
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-maroon/[0.06] px-2.5 py-1 text-xs font-medium text-maroon">
+          <CalendarClock className="h-3.5 w-3.5" />
+          Interview booked ·{' '}
+          {new Date(candidate.booked_interview).toLocaleString([], {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          })}
+        </p>
+      )}
+
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <label className="block">
           <span className="mb-1 block text-xs font-semibold text-gray-600">
@@ -1299,321 +1317,6 @@ function CandidateRow({
         />
       </label>
     </li>
-  )
-}
-
-// ─────────────────── Application positions (the `positions` table) ───────────────────
-// These are what candidates pick from in the "Apply for an Elected Position"
-// flow (ApplicationDashboard). Distinct from `elected_positions` (managed in
-// Admin Settings); this rich version carries a markdown blurb + a requirements
-// checklist shown on each position card.
-
-// Requirements are stored as a text[] but edited as one-per-line in a textarea.
-const reqToText = (req) => (req ?? []).join('\n')
-const textToReq = (text) =>
-  text
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-
-function ApplicationPositions({ positions, onChanged }) {
-  const [adding, setAdding] = useState(false)
-  const [collapsed, setCollapsed] = useState(true)
-
-  // Local order copy so a drag reorders instantly; re-syncs whenever the
-  // canonical list changes (after add / edit / delete / reload).
-  const [ordered, setOrdered] = useState(positions)
-  const [dragId, setDragId] = useState(null)
-  useEffect(() => {
-    setOrdered(positions)
-  }, [positions])
-
-  async function handleDrop(targetId) {
-    const current = dragId
-    setDragId(null)
-    if (!current || current === targetId) return
-    const ids = ordered.map((p) => p.id)
-    const from = ids.indexOf(current)
-    const to = ids.indexOf(targetId)
-    if (from === -1 || to === -1) return
-    const next = [...ordered]
-    const [moved] = next.splice(from, 1)
-    next.splice(to, 0, moved)
-    setOrdered(next)
-    // Persist the new order (one update per row, mirroring the agenda editor).
-    await Promise.all(
-      next.map((p, i) =>
-        supabase.from('positions').update({ order: i }).eq('id', p.id),
-      ),
-    )
-    onChanged()
-  }
-
-  return (
-    <Section
-      icon={ClipboardList}
-      title="Application Positions"
-      desc="What candidates choose from when applying for an elected position."
-      collapsible
-      collapsed={collapsed}
-      onToggleCollapse={() => setCollapsed((c) => !c)}
-      action={
-        !collapsed && !adding ? (
-          <button
-            onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-3 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark"
-          >
-            <Plus className="h-4 w-4" /> New position
-          </button>
-        ) : null
-      }
-    >
-      {adding && (
-        <AppPositionForm
-          onCancel={() => setAdding(false)}
-          onSaved={() => {
-            setAdding(false)
-            onChanged()
-          }}
-        />
-      )}
-
-      {ordered.length === 0 ? (
-        <p className="py-4 text-center text-sm text-gray-400">
-          No application positions yet. Add one so candidates can apply.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {ordered.map((p) => (
-            <AppPositionRow
-              key={p.id}
-              position={p}
-              isDragging={dragId === p.id}
-              onDragStart={() => setDragId(p.id)}
-              onDrop={() => handleDrop(p.id)}
-              onChanged={onChanged}
-            />
-          ))}
-        </ul>
-      )}
-    </Section>
-  )
-}
-
-function AppPositionRow({
-  position,
-  onChanged,
-  isDragging,
-  onDragStart,
-  onDrop,
-}) {
-  const [editing, setEditing] = useState(false)
-  const [busy, setBusy] = useState(false)
-  // The row is only draggable while the grip handle is held, so the edit /
-  // delete buttons and text stay normally interactive the rest of the time.
-  const [draggable, setDraggable] = useState(false)
-
-  async function remove() {
-    if (
-      !window.confirm(
-        `Delete "${position.title}"? Existing applications keep their data but lose this position.`,
-      )
-    )
-      return
-    setBusy(true)
-    const { error } = await supabase
-      .from('positions')
-      .delete()
-      .eq('id', position.id)
-    setBusy(false)
-    if (error) {
-      window.alert(error.message)
-      return
-    }
-    onChanged()
-  }
-
-  if (editing) {
-    return (
-      <li>
-        <AppPositionForm
-          position={position}
-          onCancel={() => setEditing(false)}
-          onSaved={() => {
-            setEditing(false)
-            onChanged()
-          }}
-        />
-      </li>
-    )
-  }
-
-  return (
-    <li
-      draggable={draggable}
-      onDragStart={(e) => {
-        e.dataTransfer.effectAllowed = 'move'
-        onDragStart?.()
-      }}
-      onDragEnd={() => setDraggable(false)}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault()
-        setDraggable(false)
-        onDrop?.()
-      }}
-      className={`flex items-start gap-2 rounded-xl border border-gray-200 p-4 ${
-        isDragging ? 'opacity-50' : ''
-      }`}
-    >
-      <GripVertical
-        onMouseDown={() => setDraggable(true)}
-        onMouseUp={() => setDraggable(false)}
-        className="mt-0.5 h-4 w-4 shrink-0 cursor-grab text-gray-300 hover:text-gray-500"
-      />
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold text-maroon">{position.title}</p>
-        {position.description && (
-          <p className="mt-0.5 line-clamp-2 text-sm text-gray-500">
-            {position.description}
-          </p>
-        )}
-        {position.requirements?.length > 0 && (
-          <p className="mt-1 text-xs text-gray-400">
-            {position.requirements.length} requirement
-            {position.requirements.length === 1 ? '' : 's'}
-          </p>
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          onClick={() => setEditing(true)}
-          className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
-          title="Edit"
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
-        <button
-          onClick={remove}
-          disabled={busy}
-          className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
-          title="Delete"
-        >
-          {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
-        </button>
-      </div>
-    </li>
-  )
-}
-
-// Create or edit a row in the `positions` table. Pass `position` to edit.
-function AppPositionForm({ position, onCancel, onSaved }) {
-  const isEdit = Boolean(position)
-  const [title, setTitle] = useState(position?.title ?? '')
-  const [description, setDescription] = useState(position?.description ?? '')
-  const [requirements, setRequirements] = useState(
-    reqToText(position?.requirements),
-  )
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-
-  async function submit(e) {
-    e.preventDefault()
-    if (!title.trim()) return
-    setBusy(true)
-    setError('')
-    const payload = {
-      title: title.trim(),
-      description: description.trim() || null,
-      requirements: textToReq(requirements),
-    }
-    const { error } = isEdit
-      ? await supabase.from('positions').update(payload).eq('id', position.id)
-      : await supabase.from('positions').insert(payload)
-    setBusy(false)
-    if (error) {
-      setError(error.message)
-      return
-    }
-    onSaved()
-  }
-
-  return (
-    <form
-      onSubmit={submit}
-      className="mb-5 rounded-xl border border-maroon/20 bg-maroon/[0.03] p-4"
-    >
-      {error && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-      <label className="block">
-        <span className="mb-1 block text-xs font-semibold text-gray-600">
-          Position title
-        </span>
-        <input
-          type="text"
-          required
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Executive President"
-          className={inputClass}
-        />
-      </label>
-
-      <label className="mt-3 block">
-        <span className="mb-1 block text-xs font-semibold text-gray-600">
-          Description (Markdown, optional)
-        </span>
-        <textarea
-          rows={4}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="What the role involves, expectations, etc."
-          className={`${inputClass} resize-y`}
-        />
-      </label>
-
-      <label className="mt-3 block">
-        <span className="mb-1 block text-xs font-semibold text-gray-600">
-          Requirements (one per line, optional)
-        </span>
-        <textarea
-          rows={3}
-          value={requirements}
-          onChange={(e) => setRequirements(e.target.value)}
-          placeholder={'2.5 GPA\nTeacher recommendation\nAttend the candidate meeting'}
-          className={`${inputClass} resize-y`}
-        />
-      </label>
-
-      <div className="mt-4 flex items-center gap-2">
-        <button
-          type="submit"
-          disabled={busy || !title.trim()}
-          className="inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:opacity-60"
-        >
-          {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Check className="h-4 w-4" />
-          )}
-          {isEdit ? 'Save' : 'Add position'}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition hover:text-maroon"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
   )
 }
 
