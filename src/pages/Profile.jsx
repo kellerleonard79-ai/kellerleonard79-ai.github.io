@@ -1,10 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, Loader2, Trash2 } from 'lucide-react'
+import {
+  ChevronLeft,
+  Loader2,
+  Trash2,
+  ClipboardList,
+  CalendarClock,
+  AlertTriangle,
+  FileText,
+  Upload,
+  Send,
+} from 'lucide-react'
 import RequireStaff from '../components/RequireStaff.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
-import { formatDate, formatTime, gradeLabel } from '../lib/format.js'
+import { formatDate, formatTime, gradeLabel, todayISO } from '../lib/format.js'
 
 // Two entry points share one view (both inside the DashboardLayout shell,
 // which guarantees a signed-in session):
@@ -42,26 +52,54 @@ function OwnProfile() {
 }
 
 function ProfileContent({ profileId, backTo, backLabel, allowAdminControls }) {
-  const { hasPermission } = useAuth()
+  const { hasPermission, profile: authProfile } = useAuth()
   const canManage = allowAdminControls && hasPermission('manage_roles')
+  // Individual assignments: the member sees & submits their own; an assigning
+  // officer reviewing a profile sees that member's tasks + submissions.
+  const isOwn = authProfile?.id === profileId
+  const canReview = hasPermission('manage_assignments')
+  const showAssignments = isOwn || canReview
   const [profile, setProfile] = useState(null)
   const [attendance, setAttendance] = useState([])
+  const [tasks, setTasks] = useState([])
+  const [subsByTask, setSubsByTask] = useState({})
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [{ data: p }, { data: a }] = await Promise.all([
+    const [{ data: p }, { data: a }, { data: taskRows }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', profileId).maybeSingle(),
       supabase
         .from('attendance')
         .select('status, checked_in_at, meetings(title, date)')
         .eq('profile_id', profileId)
         .order('checked_in_at', { ascending: false }),
+      supabase
+        .from('committee_tasks')
+        .select('id, title, description, due_date, created_at')
+        .eq('assignee_id', profileId)
+        .order('created_at', { ascending: false }),
     ])
     setProfile(p)
     setNotFound(!p)
     setAttendance(a ?? [])
+
+    const list = taskRows ?? []
+    setTasks(list)
+    const ids = list.map((t) => t.id)
+    const grouped = {}
+    if (ids.length) {
+      const { data: subs } = await supabase
+        .from('committee_task_submissions')
+        .select(
+          'id, task_id, submitted_by, body, has_file, created_at, submitter:profiles(full_name)',
+        )
+        .in('task_id', ids)
+        .order('created_at', { ascending: false })
+      for (const s of subs ?? []) (grouped[s.task_id] ??= []).push(s)
+    }
+    setSubsByTask(grouped)
     setLoading(false)
   }, [profileId])
 
@@ -198,7 +236,317 @@ function ProfileContent({ profileId, backTo, backLabel, allowAdminControls }) {
           </ul>
         )}
       </section>
+
+      {showAssignments && (
+        <AssignmentsSection
+          tasks={tasks}
+          subsByTask={subsByTask}
+          isOwn={isOwn}
+          canReview={canReview}
+          currentUserId={authProfile?.id}
+          onChanged={load}
+        />
+      )}
     </Shell>
+  )
+}
+
+// Individual (person-targeted) assignments for this profile. The assigned member
+// submits work here (text + optional file, same model as committee tasks); an
+// assigning officer reviewing the profile sees the tasks and submissions.
+function AssignmentsSection({
+  tasks,
+  subsByTask,
+  isOwn,
+  canReview,
+  currentUserId,
+  onChanged,
+}) {
+  return (
+    <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+      <h2 className="flex items-center gap-2 font-display text-lg font-bold text-maroon">
+        <ClipboardList className="h-5 w-5" /> Assignments
+        <span className="text-sm font-normal text-gray-400">({tasks.length})</span>
+      </h2>
+
+      {tasks.length === 0 ? (
+        <p className="mt-4 text-sm text-gray-400">
+          {isOwn
+            ? 'No individual assignments right now.'
+            : 'This member has no individual assignments.'}
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-4">
+          {tasks.map((t) => (
+            <IndividualTaskCard
+              key={t.id}
+              task={t}
+              submissions={subsByTask[t.id] ?? []}
+              isOwn={isOwn}
+              canReview={canReview}
+              currentUserId={currentUserId}
+              onChanged={onChanged}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function TaskDueBadge({ due }) {
+  if (!due)
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">
+        <CalendarClock className="h-3 w-3" /> No due date
+      </span>
+    )
+  const overdue = due < todayISO()
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+        overdue ? 'bg-red-50 text-red-600' : 'bg-maroon/10 text-maroon'
+      }`}
+    >
+      {overdue ? (
+        <AlertTriangle className="h-3 w-3" />
+      ) : (
+        <CalendarClock className="h-3 w-3" />
+      )}
+      {overdue ? 'Overdue · ' : 'Due '}
+      {formatDate(due, { month: 'short', day: 'numeric', year: 'numeric' })}
+    </span>
+  )
+}
+
+function IndividualTaskCard({
+  task,
+  submissions,
+  isOwn,
+  canReview,
+  currentUserId,
+  onChanged,
+}) {
+  return (
+    <li className="rounded-xl border border-gray-200 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-display font-bold text-maroon">{task.title}</p>
+          {task.description && (
+            <p className="mt-1 whitespace-pre-line text-sm text-gray-600">
+              {task.description}
+            </p>
+          )}
+        </div>
+        <TaskDueBadge due={task.due_date} />
+      </div>
+
+      {submissions.length > 0 && (
+        <ul className="mt-3 space-y-2 border-l-2 border-maroon/15 pl-3">
+          {submissions.map((s) => (
+            <TaskSubmissionRow
+              key={s.id}
+              submission={s}
+              canDelete={canReview || s.submitted_by === currentUserId}
+              onDeleted={onChanged}
+            />
+          ))}
+        </ul>
+      )}
+
+      {isOwn && (
+        <div className="mt-3">
+          <TaskSubmissionForm
+            task={task}
+            currentUserId={currentUserId}
+            onSubmitted={onChanged}
+          />
+        </div>
+      )}
+    </li>
+  )
+}
+
+function TaskSubmissionRow({ submission, canDelete, onDeleted }) {
+  const [opening, setOpening] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState('')
+
+  async function openFile() {
+    setOpening(true)
+    setError('')
+    const tab = window.open('', '_blank')
+    const { data, error: fnError } = await supabase.functions.invoke(
+      'committee-task-file-url',
+      { body: { submission_id: submission.id } },
+    )
+    setOpening(false)
+    if (fnError || !data?.url) {
+      if (tab) tab.close()
+      setError('Could not open this file.')
+      return
+    }
+    if (tab) tab.location = data.url
+    else window.open(data.url, '_blank')
+  }
+
+  async function remove() {
+    if (!window.confirm('Delete this submission? This cannot be undone.')) return
+    setDeleting(true)
+    const { error: delError } = await supabase
+      .from('committee_task_submissions')
+      .delete()
+      .eq('id', submission.id)
+    setDeleting(false)
+    if (delError) {
+      setError('Could not delete this submission.')
+      return
+    }
+    onDeleted()
+  }
+
+  return (
+    <li>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-gray-400">
+            {submission.submitter?.full_name ?? 'Unknown'} ·{' '}
+            {new Date(submission.created_at).toLocaleDateString()}
+          </p>
+          {submission.body && (
+            <p className="mt-0.5 whitespace-pre-line text-sm text-maroon">
+              {submission.body}
+            </p>
+          )}
+          {submission.has_file && (
+            <button
+              onClick={openFile}
+              disabled={opening}
+              className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg border border-maroon px-3 py-1.5 text-xs font-semibold text-maroon transition hover:bg-maroon/5 disabled:opacity-60"
+            >
+              {opening ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FileText className="h-3.5 w-3.5" />
+              )}
+              Open file
+            </button>
+          )}
+        </div>
+        {canDelete && (
+          <button
+            onClick={remove}
+            disabled={deleting}
+            title="Delete submission"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+          >
+            {deleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </button>
+        )}
+      </div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </li>
+  )
+}
+
+function TaskSubmissionForm({ task, currentUserId, onSubmitted }) {
+  const [body, setBody] = useState('')
+  const [file, setFile] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const fileRef = useRef(null)
+
+  function reset() {
+    setBody('')
+    setFile(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  async function submit(e) {
+    e.preventDefault()
+    setError('')
+    const text = body.trim()
+    // At least one of text / file — matches the DB check constraint.
+    if (!text && !file) {
+      setError('Add a note or attach a file.')
+      return
+    }
+
+    setSaving(true)
+    let filePath = null
+    if (file) {
+      const safeName = file.name.replace(/[^\w.\-]+/g, '_')
+      filePath = `${currentUserId}/${Date.now()}-${safeName}`
+      const { error: uploadError } = await supabase.storage
+        .from('committee-task-files')
+        .upload(filePath, file, { upsert: false })
+      if (uploadError) {
+        setSaving(false)
+        setError('File upload failed. Please try again.')
+        return
+      }
+    }
+
+    const { error: insertError } = await supabase
+      .from('committee_task_submissions')
+      .insert({
+        task_id: task.id,
+        submitted_by: currentUserId,
+        body: text || null,
+        file_url: filePath,
+      })
+
+    setSaving(false)
+    if (insertError) {
+      // Roll back the orphaned upload if the row insert failed.
+      if (filePath)
+        await supabase.storage.from('committee-task-files').remove([filePath])
+      setError('Could not submit. Please try again.')
+      return
+    }
+    reset()
+    onSubmitted()
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Write your submission, or attach a file below…"
+        rows={2}
+        className="w-full resize-y rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-maroon shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20"
+      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-maroon">
+          <Upload className="h-3.5 w-3.5" />
+          <span>{file ? file.name : 'Attach file'}</span>
+          <input
+            ref={fileRef}
+            type="file"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="hidden"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={saving || (!body.trim() && !file)}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+          Submit
+        </button>
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </form>
   )
 }
 

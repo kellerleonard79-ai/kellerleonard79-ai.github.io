@@ -35,6 +35,8 @@ export default function Dashboard() {
   const [meetings, setMeetings] = useState([])
   const [loadingMeetings, setLoadingMeetings] = useState(canViewMeetings)
   const [openCycles, setOpenCycles] = useState([])
+  const [assignments, setAssignments] = useState([])
+  const [loadingAssignments, setLoadingAssignments] = useState(true)
 
   useEffect(() => {
     if (!canViewMeetings) return
@@ -74,6 +76,55 @@ export default function Dashboard() {
       active = false
     }
   }, [canViewElections])
+
+  // "Assigned to me": individual tasks targeting this member, plus tasks assigned
+  // to any committee they belong to. RLS keeps each member's view to their own
+  // items; the two link to where the member actually submits.
+  useEffect(() => {
+    if (!profile?.id) return
+    let active = true
+    async function loadAssignments() {
+      const { data: individual } = await supabase
+        .from('committee_tasks')
+        .select('id, title, due_date, created_at')
+        .eq('assignee_id', profile.id)
+
+      const { data: memberships } = await supabase
+        .from('committee_members')
+        .select('committee_id')
+        .eq('member_id', profile.id)
+      const committeeIds = (memberships ?? []).map((m) => m.committee_id)
+      let committeeTasks = []
+      if (committeeIds.length) {
+        const { data } = await supabase
+          .from('committee_tasks')
+          .select('id, title, due_date, created_at, committee:committees(name)')
+          .in('committee_id', committeeIds)
+        committeeTasks = data ?? []
+      }
+      if (!active) return
+      const merged = [
+        ...(individual ?? []).map((t) => ({
+          ...t,
+          target: 'Personal',
+          to: '/dashboard/profile',
+        })),
+        ...committeeTasks.map((t) => ({
+          ...t,
+          target: t.committee?.name ?? 'Committee',
+          to: '/dashboard/committees',
+        })),
+      ].sort((a, b) =>
+        (a.due_date ?? '9999-12-31').localeCompare(b.due_date ?? '9999-12-31'),
+      )
+      setAssignments(merged)
+      setLoadingAssignments(false)
+    }
+    loadAssignments()
+    return () => {
+      active = false
+    }
+  }, [profile?.id])
 
   if (profile?.status === 'pending') {
     return <PendingWelcome profile={profile} firstName={firstName} />
@@ -174,13 +225,41 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* Assignments — the slot a future task/assignment system will fill. No
-            data source exists yet, so this stays a compact empty state. */}
+        {/* Assignments assigned to this member — directly (individual tasks) or
+            via a committee they're on. Links to where they submit. */}
         <section>
           <SectionHeading icon={ClipboardList}>Assignments</SectionHeading>
-          <MutedNote>
-            No assignments yet — tasks assigned to you will show up here.
-          </MutedNote>
+          {loadingAssignments ? (
+            <MutedNote>Loading…</MutedNote>
+          ) : assignments.length === 0 ? (
+            <MutedNote>
+              No assignments yet — tasks assigned to you will show up here.
+            </MutedNote>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {assignments.map((t) => (
+                <li key={t.id}>
+                  <Link
+                    to={t.to}
+                    className="group flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm transition hover:border-maroon/30 hover:shadow-md"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-maroon">
+                        {t.title}
+                      </p>
+                      <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                        <span className="inline-flex items-center rounded-full bg-maroon/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-maroon">
+                          {t.target}
+                        </span>
+                        <AssignmentDue due={t.due_date} />
+                      </p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-maroon" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         {/* School calendar spans the full grid width for a clean agenda render. */}
@@ -215,6 +294,18 @@ function SectionHeading({ icon: Icon, children }) {
 // sections with nothing to show take minimal vertical space.
 function MutedNote({ children }) {
   return <p className="mt-3 text-sm text-gray-400">{children}</p>
+}
+
+function AssignmentDue({ due }) {
+  if (!due) return null
+  const overdue = due < todayISO()
+  return (
+    <span className={`inline-flex items-center gap-1 ${overdue ? 'text-red-600' : ''}`}>
+      <Clock className="h-3.5 w-3.5" />
+      {overdue ? 'Overdue · ' : 'Due '}
+      {formatDate(due)}
+    </span>
+  )
 }
 
 function PendingWelcome({ profile, firstName }) {

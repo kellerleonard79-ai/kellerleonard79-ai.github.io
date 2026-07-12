@@ -19,6 +19,7 @@ import Archives from './pages/Archives.jsx'
 import Elections from './pages/Elections.jsx'
 import Bookkeeping from './pages/Bookkeeping.jsx'
 import Committees from './pages/Committees.jsx'
+import Assignments from './pages/Assignments.jsx'
 import AdminSettings from './pages/AdminSettings.jsx'
 import DashboardLayout from './components/DashboardLayout.jsx'
 import ClockWarning from './components/ClockWarning.jsx'
@@ -58,6 +59,13 @@ export default function App() {
           path="security"
           element={<Navigate to="/dashboard/admin/members" replace />}
         />
+        {/* Assigning work moved out of the Admin committee-tasks tab into its
+            own console; keep old deep links working. */}
+        <Route
+          path="admin/committee-tasks"
+          element={<Navigate to="/dashboard/assignments" replace />}
+        />
+        <Route path="assignments" element={<Assignments />} />
         <Route path="admin" element={<AdminSettings />} />
         <Route path="admin/:section" element={<AdminSettings />} />
         <Route path="archives" element={<Archives />} />

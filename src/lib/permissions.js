@@ -16,6 +16,7 @@ export const PERMISSION_KEYS = [
   ['edit_site', 'Edit site'],
   ['manage_roles', 'Manage roles'],
   ['manage_committees', 'Manage committees'],
+  ['manage_assignments', 'Manage assignments'],
 ]
 
 // Resolve a member's effective permission for one key. Mirrors the SQL
