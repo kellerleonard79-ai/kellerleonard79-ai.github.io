@@ -83,7 +83,13 @@ function Content() {
   const refresh = useCallback(async () => {
     const [a, p, s] = await Promise.all([
       loadApplicant(),
-      supabase.from('positions').select('*').order('title'),
+      // Positions were unified onto elected_positions; the application picker and
+      // the candidacy card now draw from the same electable list.
+      supabase
+        .from('elected_positions')
+        .select('id, title, description, requirements, "order"')
+        .eq('show_in_elections', true)
+        .order('order', { ascending: true }),
       loadSessions(),
     ])
     setApplicant(a)

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ChevronLeft,
+  ChevronDown,
   ShieldCheck,
   Award,
   ClipboardList,
@@ -2120,6 +2121,16 @@ function TierRow({ role, memberCount, allOrders, onChanged }) {
 }
 
 /* ═══════════════════════ People — Elected Positions ═══════════════════════ */
+// A position's description (markdown) + requirements checklist were folded in
+// from the retired application `positions` table, so this is now the single
+// place positions are authored. Requirements are a text[] edited one-per-line.
+const reqToText = (req) => (req ?? []).join('\n')
+const textToReq = (text) =>
+  text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+
 function PositionsTab() {
   const [positions, setPositions] = useState([])
   const [counts, setCounts] = useState({})
@@ -2247,19 +2258,29 @@ function PositionRow({ position, roles = [], memberCount, onChanged }) {
   const [group, setGroup] = useState(position.group)
   const [order, setOrder] = useState(position.order)
   const [grantRoleId, setGrantRoleId] = useState(position.default_role_id ?? '')
+  const [description, setDescription] = useState(position.description ?? '')
+  const [reqText, setReqText] = useState(reqToText(position.requirements))
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     setTitle(position.title)
     setGroup(position.group)
     setOrder(position.order)
     setGrantRoleId(position.default_role_id ?? '')
+    setDescription(position.description ?? '')
+    setReqText(reqToText(position.requirements))
   }, [position])
 
   const dirty =
     title.trim() !== position.title ||
     group !== position.group ||
     Number(order) !== position.order ||
-    (grantRoleId || null) !== (position.default_role_id ?? null)
+    (grantRoleId || null) !== (position.default_role_id ?? null) ||
+    (description.trim() || '') !== (position.description ?? '') ||
+    reqText !== reqToText(position.requirements)
+
+  const detailCount =
+    (position.description ? 1 : 0) + (position.requirements?.length ?? 0)
 
   async function save() {
     if (!title.trim()) return
@@ -2270,6 +2291,8 @@ function PositionRow({ position, roles = [], memberCount, onChanged }) {
         group,
         order: Number(order),
         default_role_id: grantRoleId || null,
+        description: description.trim() || null,
+        requirements: textToReq(reqText),
       })
       .eq('id', position.id)
     if (error) window.alert(error.message)
@@ -2297,65 +2320,104 @@ function PositionRow({ position, roles = [], memberCount, onChanged }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 p-3">
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        className={`${inputClass} flex-1 min-w-[12rem]`}
-      />
-      <select
-        value={group}
-        onChange={(e) => setGroup(e.target.value)}
-        className={`${inputClass} w-36`}
-      >
-        {POSITION_GROUPS.map((g) => (
-          <option key={g} value={g}>
-            {groupLabel(g)}
-          </option>
-        ))}
-      </select>
-      <input
-        type="number"
-        value={order}
-        onChange={(e) => setOrder(e.target.value)}
-        className={`${inputClass} w-20`}
-      />
-      <select
-        value={grantRoleId}
-        onChange={(e) => setGrantRoleId(e.target.value)}
-        title="Role automatically granted when a member wins this position"
-        className={`${inputClass} w-44`}
-      >
-        <option value="">No role change</option>
-        {roles
-          .filter((r) => !r.is_admin)
-          .map((r) => (
-            <option key={r.id} value={r.id}>
-              Grants: {r.name}
+    <div className="rounded-xl border border-gray-200">
+      <div className="flex flex-wrap items-center gap-3 p-3">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className={`${inputClass} flex-1 min-w-[12rem]`}
+        />
+        <select
+          value={group}
+          onChange={(e) => setGroup(e.target.value)}
+          className={`${inputClass} w-36`}
+        >
+          {POSITION_GROUPS.map((g) => (
+            <option key={g} value={g}>
+              {groupLabel(g)}
             </option>
           ))}
-      </select>
-      <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
-        <Toggle checked={position.show_in_elections} onChange={toggleElections} />
-        Elections
-      </label>
-      {dirty && (
-        <button
-          onClick={save}
-          disabled={!title.trim()}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-3 py-2 text-xs font-semibold text-white transition hover:bg-maroon-dark disabled:opacity-60"
+        </select>
+        <input
+          type="number"
+          value={order}
+          onChange={(e) => setOrder(e.target.value)}
+          className={`${inputClass} w-20`}
+        />
+        <select
+          value={grantRoleId}
+          onChange={(e) => setGrantRoleId(e.target.value)}
+          title="Role automatically granted when a member wins this position"
+          className={`${inputClass} w-44`}
         >
-          Save
+          <option value="">No role change</option>
+          {roles
+            .filter((r) => !r.is_admin)
+            .map((r) => (
+              <option key={r.id} value={r.id}>
+                Grants: {r.name}
+              </option>
+            ))}
+        </select>
+        <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+          <Toggle checked={position.show_in_elections} onChange={toggleElections} />
+          Elections
+        </label>
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-gray-500 transition hover:bg-gray-100 hover:text-maroon"
+          title="Description & requirements shown to applicants"
+        >
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          />
+          Details{detailCount > 0 ? ` (${detailCount})` : ''}
         </button>
+        {dirty && (
+          <button
+            onClick={save}
+            disabled={!title.trim()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-3 py-2 text-xs font-semibold text-white transition hover:bg-maroon-dark disabled:opacity-60"
+          >
+            Save
+          </button>
+        )}
+        <button
+          onClick={remove}
+          disabled={memberCount > 0}
+          title={memberCount > 0 ? `${memberCount} member(s) hold this` : 'Delete'}
+          className="grid h-9 w-9 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="space-y-3 border-t border-gray-100 p-3">
+          <Labeled label="Description (Markdown — shown on the application card)">
+            <textarea
+              rows={4}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What the role involves, expectations, etc."
+              className={`${inputClass} resize-y`}
+            />
+          </Labeled>
+          <Labeled label="Requirements (one per line)">
+            <textarea
+              rows={3}
+              value={reqText}
+              onChange={(e) => setReqText(e.target.value)}
+              placeholder={'2.5 GPA\nTeacher recommendation\nAttend the candidate meeting'}
+              className={`${inputClass} resize-y`}
+            />
+          </Labeled>
+          <p className="text-xs text-gray-400">
+            These appear on the position card in the “Choose Your Position” step of a
+            candidate’s application. Use the Save button above to apply changes.
+          </p>
+        </div>
       )}
-      <button
-        onClick={remove}
-        disabled={memberCount > 0}
-        title={memberCount > 0 ? `${memberCount} member(s) hold this` : 'Delete'}
-        className="grid h-9 w-9 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-400"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
     </div>
   )
 }
@@ -2609,26 +2671,102 @@ function CandidacySettingsSection() {
   }
 
   return (
+    <div className="space-y-6">
+      <Card
+        title="Position changes allowed"
+        desc="How many times a candidate may change which position they're running for after applying. The filing deadline (set per election cycle) is the final cutoff."
+      >
+        <Labeled label="Changes per candidate">
+          <input
+            type="number"
+            min={0}
+            value={limit}
+            onChange={(e) => {
+              setLimit(e.target.value)
+              setSaved(false)
+            }}
+            className={`${inputClass} w-40`}
+          />
+        </Labeled>
+        <p className="mt-2 text-xs text-gray-400">
+          Their first position choice is free; this limits how many times they can
+          switch afterward.
+        </p>
+        <div className="mt-4">
+          <SaveButton onClick={save} saving={saving} saved={saved} />
+        </div>
+      </Card>
+
+      <ApplicationMaterialsCard />
+    </div>
+  )
+}
+
+// Campaign rules + endorsement form are shown to candidates in the application
+// checklist modals (ApplicationDashboard). These columns previously had no admin
+// editor — this closes that gap.
+function ApplicationMaterialsCard() {
+  const { settings, refresh } = useSiteSettings()
+  const [rules, setRules] = useState('')
+  const [endorseUrl, setEndorseUrl] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (settings) {
+      setRules(settings.campaign_rules_md ?? '')
+      setEndorseUrl(settings.endorsement_form_url ?? '')
+    }
+  }, [settings])
+
+  async function save() {
+    setSaving(true)
+    setSaved(false)
+    const { error } = await supabase
+      .from('site_settings')
+      .update({
+        campaign_rules_md: rules.trim() || null,
+        endorsement_form_url: endorseUrl.trim() || null,
+      })
+      .eq('id', 1)
+    if (!error) {
+      await refresh()
+      setSaved(true)
+    }
+    setSaving(false)
+  }
+
+  return (
     <Card
-      title="Position changes allowed"
-      desc="How many times a candidate may change which position they're running for after applying. The filing deadline (set per election cycle) is the final cutoff."
+      title="Application materials"
+      desc="Shown to candidates as they complete their application: the campaign rules they must agree to, and the endorsement form they download, sign, and upload."
     >
-      <Labeled label="Changes per candidate">
-        <input
-          type="number"
-          min={0}
-          value={limit}
+      <Labeled label="Campaign rules (Markdown)">
+        <textarea
+          rows={6}
+          value={rules}
           onChange={(e) => {
-            setLimit(e.target.value)
+            setRules(e.target.value)
             setSaved(false)
           }}
-          className={`${inputClass} w-40`}
+          placeholder="Rules candidates must read and agree to before campaigning…"
+          className={`${inputClass} resize-y`}
         />
       </Labeled>
-      <p className="mt-2 text-xs text-gray-400">
-        Their first position choice is free; this limits how many times they can
-        switch afterward.
-      </p>
+      <div className="mt-3">
+        <Labeled label="Endorsement form URL">
+          <input
+            type="url"
+            value={endorseUrl}
+            onChange={(e) => {
+              setEndorseUrl(e.target.value)
+              setSaved(false)
+            }}
+            placeholder="https://…  (link to the printable endorsement sheet)"
+            className={inputClass}
+          />
+        </Labeled>
+      </div>
       <div className="mt-4">
         <SaveButton onClick={save} saving={saving} saved={saved} />
       </div>
