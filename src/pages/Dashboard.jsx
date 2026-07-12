@@ -77,46 +77,31 @@ export default function Dashboard() {
     }
   }, [canViewElections])
 
-  // "Assigned to me": individual tasks targeting this member, plus tasks assigned
-  // to any committee they belong to. RLS keeps each member's view to their own
-  // items; the two link to where the member actually submits.
+  // Tasks this member is an assignee on. RLS already scopes the read to their
+  // own items; every card links to the Assignments page, the one place in the
+  // app where work is submitted.
   useEffect(() => {
     if (!profile?.id) return
     let active = true
     async function loadAssignments() {
-      const { data: individual } = await supabase
-        .from('committee_tasks')
-        .select('id, title, due_date, created_at')
-        .eq('assignee_id', profile.id)
-
-      const { data: memberships } = await supabase
-        .from('committee_members')
-        .select('committee_id')
+      const { data: rows } = await supabase
+        .from('task_assignees')
+        .select(
+          'task:tasks(id, title, due_date, committee:committees(name))',
+        )
         .eq('member_id', profile.id)
-      const committeeIds = (memberships ?? []).map((m) => m.committee_id)
-      let committeeTasks = []
-      if (committeeIds.length) {
-        const { data } = await supabase
-          .from('committee_tasks')
-          .select('id, title, due_date, created_at, committee:committees(name)')
-          .in('committee_id', committeeIds)
-        committeeTasks = data ?? []
-      }
       if (!active) return
-      const merged = [
-        ...(individual ?? []).map((t) => ({
+      const merged = (rows ?? [])
+        .map((r) => r.task)
+        .filter(Boolean)
+        .map((t) => ({
           ...t,
-          target: 'Personal',
-          to: '/dashboard/profile',
-        })),
-        ...committeeTasks.map((t) => ({
-          ...t,
-          target: t.committee?.name ?? 'Committee',
-          to: '/dashboard/committees',
-        })),
-      ].sort((a, b) =>
-        (a.due_date ?? '9999-12-31').localeCompare(b.due_date ?? '9999-12-31'),
-      )
+          target: t.committee?.name ?? 'Personal',
+          to: '/dashboard/assignments',
+        }))
+        .sort((a, b) =>
+          (a.due_date ?? '9999-12-31').localeCompare(b.due_date ?? '9999-12-31'),
+        )
       setAssignments(merged)
       setLoadingAssignments(false)
     }

@@ -36,8 +36,9 @@ const TOOLS = [
   { label: 'Elections', to: '/dashboard/elections', icon: Vote, permission: 'view_elections' },
   { label: 'Bookkeeping', to: '/dashboard/bookkeeping', icon: Wallet, permission: 'view_bookkeeping' },
   { label: 'Committees', to: '/dashboard/committees', icon: UsersRound },
-  // Officer console for assigning work to a committee or an individual member.
-  { label: 'Assignments', to: '/dashboard/assignments', icon: ClipboardList, permission: 'manage_assignments' },
+  // Every member's own work view (assign_tasks holders get a Manage mode inside
+  // the page), so it carries no gate — like Committees.
+  { label: 'Assignments', to: '/dashboard/assignments', icon: ClipboardList },
   // Reachable by anyone with at least one admin-area permission; the panel
   // itself narrows to the sections they can use.
   { label: 'Admin Panel', to: '/dashboard/admin', icon: Settings2, anyPermission: ['edit_site', 'manage_roles'] },
