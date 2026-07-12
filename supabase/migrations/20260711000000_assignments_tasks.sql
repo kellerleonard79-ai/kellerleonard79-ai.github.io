@@ -297,17 +297,17 @@ begin
 end $$;
 
 -- ----------------------------------------------------------------------------
--- 6. Reports are gone as a concept: drop committee_reports and its bucket.
---    (Bucket object rows are removed so the bucket row can be deleted; the
---    physical files are orphaned — acceptable for test data, export first if
---    anything in there is real.)
+-- 6. Reports are gone as a concept: drop committee_reports and its bucket
+--    policies. The bucket itself can't be removed here — Supabase rejects
+--    direct DML on storage tables from SQL (42501: "Use the Storage API
+--    instead") — so after applying, delete the now-unused `committee-reports`
+--    bucket from Dashboard → Storage. It's harmless if it lingers; nothing
+--    references it anymore.
 -- ----------------------------------------------------------------------------
 drop table if exists public.committee_reports;
 
 drop policy if exists "Members can upload to committee-reports bucket" on storage.objects;
 drop policy if exists "Owners or committee managers delete committee-report objects" on storage.objects;
-delete from storage.objects where bucket_id = 'committee-reports';
-delete from storage.buckets where id = 'committee-reports';
 
 -- ----------------------------------------------------------------------------
 -- 7. committee-task-files bucket policies — rewritten for the new gate. Upload
