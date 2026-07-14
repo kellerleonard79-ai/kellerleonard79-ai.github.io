@@ -1015,7 +1015,6 @@ function CycleDetail({
                 key={g.positionId}
                 group={g}
                 cycle={cycle}
-                roles={roles}
                 canManage={canManage}
                 onChanged={onChanged}
               />
@@ -1027,8 +1026,7 @@ function CycleDetail({
   )
 }
 
-function PositionGroup({ group, cycle, roles, canManage, onChanged }) {
-  const [upgradeRoleId, setUpgradeRoleId] = useState('')
+function PositionGroup({ group, cycle, canManage, onChanged }) {
   const [busy, setBusy] = useState(false)
 
   const hasWinner = group.candidates.some(
@@ -1056,9 +1054,12 @@ function PositionGroup({ group, cycle, roles, canManage, onChanged }) {
     )
       return
     setBusy(true)
+    // The winner's role is derived server-side from the position's
+    // default_role_id. There is intentionally no caller-supplied role override:
+    // it was a privilege-escalation path (Finding A) and only an admin — who
+    // already holds manage_roles — could ever have used it safely.
     const { error } = await supabase.rpc('confirm_election_winner', {
       p_candidate_id: candidate.id,
-      p_upgrade_role_id: upgradeRoleId || null,
     })
     setBusy(false)
     if (error) {
@@ -1093,25 +1094,6 @@ function PositionGroup({ group, cycle, roles, canManage, onChanged }) {
     <div className="rounded-xl border border-gray-200">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gray-50 px-4 py-3">
         <h4 className="font-semibold text-maroon">{group.title}</h4>
-        {canManage && !hasWinner && group.candidates.length > 0 && (
-          <div className="flex items-center gap-2">
-            <select
-              value={upgradeRoleId}
-              onChange={(e) => setUpgradeRoleId(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-maroon outline-none focus:border-maroon"
-              title="By default the winner's role is upgraded automatically based on the position. Pick a role here to override."
-            >
-              <option value="">Auto role (from position)</option>
-              {roles
-                .filter((r) => !r.is_admin)
-                .map((r) => (
-                  <option key={r.id} value={r.id}>
-                    Override: upgrade to {r.name}
-                  </option>
-                ))}
-            </select>
-          </div>
-        )}
       </div>
       <ul className="divide-y divide-gray-100">
         {group.candidates.map((c) => (
