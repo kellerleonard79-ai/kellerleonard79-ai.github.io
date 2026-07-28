@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file guides Claude Code (claude.ai/code) when working with code in this repository.
 
 > A broader product/feature plan lives at `../CLAUDE.md` (the "Nexus 2.0" project plan). This file documents what is actually built in this repo.
 
