@@ -29,6 +29,7 @@ import {
   Eye,
   EyeOff,
   Vote,
+  Pencil,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
@@ -371,6 +372,11 @@ function AnnouncementsSection() {
   const [body, setBody] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editBody, setEditBody] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
 
   async function load() {
     const { data } = await supabase
@@ -429,6 +435,36 @@ function AnnouncementsSection() {
     if (deleteError) load()
   }
 
+  function startEdit(item) {
+    setEditingId(item.id)
+    setEditTitle(item.title)
+    setEditBody(item.body ?? '')
+    setEditError('')
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditError('')
+  }
+
+  async function saveEdit(item) {
+    const t = editTitle.trim()
+    if (!t) return
+    setEditSaving(true)
+    setEditError('')
+    const { error: updateError } = await supabase
+      .from('announcements')
+      .update({ title: t, body: editBody.trim(), updated_at: new Date().toISOString() })
+      .eq('id', item.id)
+    setEditSaving(false)
+    if (updateError) {
+      setEditError('Could not save changes. Please try again.')
+      return
+    }
+    setEditingId(null)
+    load()
+  }
+
   return (
     <Card
       title="Announcements"
@@ -472,54 +508,108 @@ function AnnouncementsSection() {
           </p>
         ) : (
           <ul className="space-y-3">
-            {items.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-start justify-between gap-4 rounded-xl border border-gray-200 p-4"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate font-semibold text-maroon">
-                      {item.title}
-                    </p>
-                    {item.is_published ? (
-                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700">
-                        Published
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                        Draft
-                      </span>
+            {items.map((item) =>
+              editingId === item.id ? (
+                <li
+                  key={item.id}
+                  className="rounded-xl border border-maroon/30 bg-maroon/5 p-4"
+                >
+                  <div className="space-y-3">
+                    <input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="Announcement title"
+                      className={inputClass}
+                    />
+                    <textarea
+                      value={editBody}
+                      onChange={(e) => setEditBody(e.target.value)}
+                      placeholder="Write the announcement…"
+                      rows={3}
+                      className={`${inputClass} resize-y`}
+                    />
+                    {editError && (
+                      <p className="text-xs text-red-600">{editError}</p>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => saveEdit(item)}
+                        disabled={editSaving || !editTitle.trim()}
+                        className="inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {editSaving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                        Save
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        disabled={editSaving}
+                        className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:bg-gray-100"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ) : (
+                <li
+                  key={item.id}
+                  className="flex items-start justify-between gap-4 rounded-xl border border-gray-200 p-4"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-semibold text-maroon">
+                        {item.title}
+                      </p>
+                      {item.is_published ? (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700">
+                          Published
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                          Draft
+                        </span>
+                      )}
+                    </div>
+                    {item.body && (
+                      <p className="mt-1 line-clamp-2 text-sm text-gray-500">
+                        {item.body}
+                      </p>
                     )}
                   </div>
-                  {item.body && (
-                    <p className="mt-1 line-clamp-2 text-sm text-gray-500">
-                      {item.body}
-                    </p>
-                  )}
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    onClick={() => togglePublish(item)}
-                    title={item.is_published ? 'Unpublish' : 'Publish'}
-                    className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
-                  >
-                    {item.is_published ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => remove(item)}
-                    title="Delete"
-                    className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </li>
-            ))}
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      onClick={() => startEdit(item)}
+                      title="Edit"
+                      className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => togglePublish(item)}
+                      title={item.is_published ? 'Unpublish' : 'Publish'}
+                      className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
+                    >
+                      {item.is_published ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => remove(item)}
+                      title="Delete"
+                      className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </li>
+              ),
+            )}
           </ul>
         )}
       </div>
