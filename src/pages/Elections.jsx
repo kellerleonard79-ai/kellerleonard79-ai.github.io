@@ -1326,7 +1326,7 @@ const fmtSessionDate = (d) =>
 function InterviewScheduling() {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
+  const [selected, setSelected] = useState(new Set())
 
   const load = useCallback(async () => {
     const { data: secs } = await supabase
@@ -1357,29 +1357,46 @@ function InterviewScheduling() {
     load()
   }, [load])
 
+  // Sessions grouped by date, so the calendar can mark days that already have
+  // one (or several — e.g. a morning + afternoon block) sessions.
+  const sessionsByDate = useMemo(() => {
+    const map = {}
+    for (const s of sessions) {
+      ;(map[s.date] ??= []).push(s)
+    }
+    return map
+  }, [sessions])
+
+  function toggleDay(date) {
+    setSelected((sel) => {
+      const next = new Set(sel)
+      if (next.has(date)) next.delete(date)
+      else next.add(date)
+      return next
+    })
+  }
+
   return (
     <Section
       icon={CalendarClock}
       title="Interview Scheduling"
-      desc="Set the dates and times candidates can book interviews into."
-      action={
-        !creating ? (
-          <button
-            onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-3 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark"
-          >
-            <Plus className="h-4 w-4" /> New session
-          </button>
-        ) : null
-      }
+      desc="Click a day to add it. Click an already-scheduled day (marked below) to edit or remove it."
     >
-      {creating && (
-        <MultiSessionForm
-          onCancel={() => setCreating(false)}
-          onSaved={() => {
-            setCreating(false)
+      <MonthCalendar
+        sessionsByDate={sessionsByDate}
+        selected={selected}
+        onToggle={toggleDay}
+      />
+
+      {selected.size > 0 && (
+        <SelectionPanel
+          selectedDates={[...selected].sort()}
+          sessionsByDate={sessionsByDate}
+          onDone={() => {
+            setSelected(new Set())
             load()
           }}
+          onCancel={() => setSelected(new Set())}
         />
       )}
 
@@ -1388,11 +1405,11 @@ function InterviewScheduling() {
           <Loader2 className="h-6 w-6 animate-spin text-maroon" />
         </div>
       ) : sessions.length === 0 ? (
-        <p className="py-4 text-center text-sm text-gray-400">
-          No interview sessions yet. Add one so candidates can book a time.
+        <p className="mt-4 py-4 text-center text-sm text-gray-400">
+          No interview sessions yet. Click a day above to add one.
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="mt-4 space-y-4">
           {sessions.map((s) => (
             <SessionCard key={s.id} session={s} onChanged={load} />
           ))}
@@ -1664,121 +1681,155 @@ function RangeRows({ ranges, onUpdate, onAdd, onRemove }) {
   )
 }
 
-// Short "9:00 AM–10:00 AM · 15 min" summary for a range, for the per-day rows.
-const fmtRangeSummary = (r) => {
-  if (!r.start || !r.end) return 'Incomplete range'
-  const t = (hhmm) =>
-    new Date(`2000-01-01T${hhmm}`).toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  return `${t(r.start)}–${t(r.end)} · ${r.duration} min`
-}
-
 const newRange = () => ({ start: '', end: '', duration: 15 })
 
-// Bulk creator: pick any number of days, then one or more time ranges. Every
-// (day × time range) pair becomes its own session, so a day can hold several
-// sessions (e.g. a morning block and an afternoon block). Editing an existing
-// session still goes through the single-session SessionForm.
-//
-// Time ranges are shared by default: new days inherit the "default time ranges"
-// below. Any single day can be customized — `customRanges` then holds its own
-// copy (decoupled from the defaults). A day with `customRanges == null` keeps
-// following the defaults live.
-function MultiSessionForm({ onCancel, onSaved }) {
-  const [days, setDays] = useState([]) // [{ date, customRanges: null | Range[] }]
-  const [newDay, setNewDay] = useState('')
-  const [defaultRanges, setDefaultRanges] = useState([newRange()])
+// Click-to-select month calendar for scheduling interview days. Days that
+// already have one or more sessions (`sessionsByDate`) are marked with a dot;
+// clicking any day — new or already-scheduled — toggles it in `selected` for
+// SelectionPanel below to act on. Multi-day ranges are just several clicks.
+function MonthCalendar({ sessionsByDate, selected, onToggle }) {
+  const [cursor, setCursor] = useState(() => {
+    const d = new Date()
+    return new Date(d.getFullYear(), d.getMonth(), 1)
+  })
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const year = cursor.getFullYear()
+  const month = cursor.getMonth()
+  const firstDow = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const toKey = (day) =>
+    `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
+  const cells = Array(firstDow)
+    .fill(null)
+    .concat(Array.from({ length: daysInMonth }, (_, i) => i + 1))
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setCursor(new Date(year, month - 1, 1))}
+          className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <span className="font-display text-sm font-bold text-maroon">
+          {cursor.toLocaleDateString([], { month: 'long', year: 'numeric' })}
+        </span>
+        <button
+          type="button"
+          onClick={() => setCursor(new Date(year, month + 1, 1))}
+          className="grid h-8 w-8 place-items-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-maroon"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-gray-400">
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+          <span key={i}>{d}</span>
+        ))}
+      </div>
+      <div className="mt-1 grid grid-cols-7 gap-1">
+        {cells.map((day, i) => {
+          if (day == null) return <div key={`blank-${i}`} />
+          const key = toKey(day)
+          const isPast = new Date(year, month, day) < today
+          const isSelected = selected.has(key)
+          const daySessions = sessionsByDate[key] ?? []
+          const hasSessions = daySessions.length > 0
+          return (
+            <button
+              type="button"
+              key={key}
+              onClick={() => onToggle(key)}
+              title={
+                hasSessions
+                  ? `${daySessions.length} session${daySessions.length === 1 ? '' : 's'} scheduled`
+                  : undefined
+              }
+              className={`relative flex h-11 flex-col items-center justify-center rounded-lg border text-sm font-medium transition ${
+                isSelected
+                  ? 'border-maroon bg-maroon text-white'
+                  : hasSessions
+                    ? 'border-maroon/30 bg-maroon/[0.06] text-maroon hover:bg-maroon/10'
+                    : 'border-transparent text-gray-600 hover:bg-gray-100'
+              } ${isPast ? 'opacity-40' : ''}`}
+            >
+              {day}
+              {hasSessions && (
+                <span
+                  className={`absolute bottom-1 h-1 w-1 rounded-full ${
+                    isSelected ? 'bg-white' : 'bg-maroon'
+                  }`}
+                />
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// Acts on the calendar's current selection. Newly-selected (empty) days get a
+// shared set of time ranges to create sessions from; days that already have
+// sessions are listed with their times directly editable, plus a bulk delete —
+// so a whole selected block (e.g. a week of 9–10am sessions) can be retimed or
+// removed together instead of one SessionCard at a time.
+function SelectionPanel({ selectedDates, sessionsByDate, onDone, onCancel }) {
+  const newDates = selectedDates.filter((d) => !sessionsByDate[d]?.length)
+  const existingDates = selectedDates.filter((d) => sessionsByDate[d]?.length)
+
+  const [ranges, setRanges] = useState([newRange()])
+  const [drafts, setDrafts] = useState({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  function addDay() {
-    if (!newDay) return
-    setDays((d) =>
-      d.some((x) => x.date === newDay)
-        ? d
-        : [...d, { date: newDay, customRanges: null }].sort((a, b) =>
-            a.date < b.date ? -1 : 1,
-          ),
-    )
-    setNewDay('')
-  }
-  const removeDay = (date) =>
-    setDays((ds) => ds.filter((x) => x.date !== date))
-
-  // Default (shared) range editing.
-  const updateDefault = (i, patch) =>
-    setDefaultRanges((rs) =>
-      rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)),
-    )
-  const addDefault = () => setDefaultRanges((rs) => [...rs, newRange()])
-  const removeDefault = (i) =>
-    setDefaultRanges((rs) => rs.filter((_, idx) => idx !== i))
-
-  // Per-day range editing. Customizing snapshots the current defaults into the
-  // day; resetting drops back to following the defaults.
-  const patchDay = (date, fn) =>
-    setDays((ds) => ds.map((d) => (d.date === date ? fn(d) : d)))
-  const customizeDay = (date) =>
-    patchDay(date, (d) => ({
-      ...d,
-      customRanges: defaultRanges.map((r) => ({ ...r })),
-    }))
-  const resetDay = (date) =>
-    patchDay(date, (d) => ({ ...d, customRanges: null }))
-  const updateDayRange = (date, i, patch) =>
-    patchDay(date, (d) => ({
-      ...d,
-      customRanges: d.customRanges.map((r, idx) =>
-        idx === i ? { ...r, ...patch } : r,
-      ),
-    }))
-  const addDayRange = (date) =>
-    patchDay(date, (d) => ({
-      ...d,
-      customRanges: [...d.customRanges, newRange()],
-    }))
-  const removeDayRange = (date, i) =>
-    patchDay(date, (d) => ({
-      ...d,
-      customRanges: d.customRanges.filter((_, idx) => idx !== i),
-    }))
-
-  // Effective ranges for a day: its own copy, or the shared defaults.
-  const rangesFor = (d) => d.customRanges ?? defaultRanges
-  const totalSessions = days.reduce((n, d) => n + rangesFor(d).length, 0)
-
-  function validateRanges(ranges) {
-    for (const r of ranges) {
-      if (!r.start || !r.end) return 'Every time range needs a start and end time.'
-      if (r.end <= r.start) return 'Each time range must end after it starts.'
-      if (!r.duration || Number(r.duration) < 1)
-        return 'Slot length must be at least 1 minute.'
+  const existingKey = existingDates.join(',')
+  useEffect(() => {
+    const d = {}
+    for (const date of existingDates) {
+      for (const s of sessionsByDate[date] ?? []) {
+        d[s.id] = {
+          start: s.start_time.slice(0, 5),
+          end: s.end_time.slice(0, 5),
+          duration: s.slot_duration,
+        }
+      }
     }
-    return null
-  }
+    setDrafts(d)
+    // Re-sync only when the set of already-scheduled selected days changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingKey])
 
-  async function submit(e) {
+  const updateDraft = (id, patch) =>
+    setDrafts((ds) => ({ ...ds, [id]: { ...ds[id], ...patch } }))
+
+  async function createNew(e) {
     e.preventDefault()
     setError('')
-    if (days.length === 0) {
-      setError('Add at least one day.')
-      return
-    }
-    // One row per (day × that day's effective range). The slot-generation
-    // trigger fires per insert.
-    const rows = []
-    for (const d of days) {
-      const ranges = rangesFor(d)
-      const msg = validateRanges(ranges)
-      if (msg) {
-        setError(msg)
+    for (const r of ranges) {
+      if (!r.start || !r.end) {
+        setError('Every time range needs a start and end time.')
         return
       }
+      if (r.end <= r.start) {
+        setError('Each time range must end after it starts.')
+        return
+      }
+      if (!r.duration || Number(r.duration) < 1) {
+        setError('Slot length must be at least 1 minute.')
+        return
+      }
+    }
+    const rows = []
+    for (const date of newDates) {
       for (const r of ranges) {
         rows.push({
-          date: d.date,
+          date,
           start_time: r.start,
           end_time: r.end,
           slot_duration: Number(r.duration),
@@ -1792,154 +1843,244 @@ function MultiSessionForm({ onCancel, onSaved }) {
       setError(error.message)
       return
     }
-    onSaved()
+    onDone()
+  }
+
+  async function saveExisting() {
+    setError('')
+    for (const d of Object.values(drafts)) {
+      if (!d.start || !d.end) {
+        setError('Every session needs a start and end time.')
+        return
+      }
+      if (d.end <= d.start) {
+        setError('Each session must end after it starts.')
+        return
+      }
+      if (!d.duration || Number(d.duration) < 1) {
+        setError('Slot length must be at least 1 minute.')
+        return
+      }
+    }
+    const anyBooked = existingDates.some((date) =>
+      sessionsByDate[date].some((s) => s.slots?.some((sl) => sl.booked_by_id)),
+    )
+    if (
+      anyBooked &&
+      !window.confirm(
+        'Changing these sessions regenerates their time slots and clears any existing bookings on the ones that changed. Continue?',
+      )
+    )
+      return
+    setBusy(true)
+    for (const [id, d] of Object.entries(drafts)) {
+      const { error } = await supabase
+        .from('interview_sessions')
+        .update({
+          start_time: d.start,
+          end_time: d.end,
+          slot_duration: Number(d.duration),
+        })
+        .eq('id', id)
+      if (error) {
+        setBusy(false)
+        setError(error.message)
+        return
+      }
+    }
+    setBusy(false)
+    onDone()
+  }
+
+  async function deleteExisting() {
+    const totalBooked = existingDates.reduce(
+      (n, date) =>
+        n +
+        sessionsByDate[date].reduce(
+          (m, s) => m + s.slots.filter((sl) => sl.booked_by_id).length,
+          0,
+        ),
+      0,
+    )
+    if (
+      !window.confirm(
+        `Delete all interview sessions on ${existingDates.length} selected day${
+          existingDates.length === 1 ? '' : 's'
+        }? ${
+          totalBooked > 0
+            ? `${totalBooked} booked interview${totalBooked === 1 ? '' : 's'} will be cancelled. `
+            : ''
+        }This cannot be undone.`,
+      )
+    )
+      return
+    setBusy(true)
+    const ids = existingDates.flatMap((date) =>
+      sessionsByDate[date].map((s) => s.id),
+    )
+    const { error } = await supabase
+      .from('interview_sessions')
+      .delete()
+      .in('id', ids)
+    setBusy(false)
+    if (error) {
+      window.alert(`Delete failed: ${error.message}`)
+      return
+    }
+    onDone()
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="mb-5 rounded-xl border border-maroon/20 bg-maroon/[0.03] p-4"
-    >
+    <div className="mt-3 space-y-4 rounded-xl border border-maroon/20 bg-maroon/[0.03] p-4">
       {error && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      {/* Default time ranges — shared by every day unless that day is customized */}
-      <span className="mb-1 block text-xs font-semibold text-gray-600">
-        Default time ranges
-      </span>
-      <p className="mb-2 text-[11px] text-gray-400">
-        Applied to every day you add. Customize an individual day below if it
-        needs different times.
-      </p>
-      <RangeRows
-        ranges={defaultRanges}
-        onUpdate={updateDefault}
-        onAdd={addDefault}
-        onRemove={removeDefault}
-      />
-
-      {/* Days */}
-      <span className="mb-1 mt-5 block text-xs font-semibold text-gray-600">
-        Interview days
-      </span>
-      <div className="flex flex-wrap items-end gap-2">
-        <input
-          type="date"
-          value={newDay}
-          onChange={(e) => setNewDay(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              addDay()
+      {newDates.length > 0 && (
+        <form onSubmit={createNew}>
+          <span className="mb-1 block text-xs font-semibold text-gray-600">
+            New session{newDates.length === 1 ? '' : 's'} on{' '}
+            {newDates.map((d) => fmtSessionDate(d)).join(', ')}
+          </span>
+          <p className="mb-2 text-[11px] text-gray-400">
+            These time ranges are created on every newly-selected day above.
+          </p>
+          <RangeRows
+            ranges={ranges}
+            onUpdate={(i, patch) =>
+              setRanges((rs) =>
+                rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)),
+              )
             }
-          }}
-          className={`${inputClass} max-w-[12rem]`}
-        />
-        <button
-          type="button"
-          onClick={addDay}
-          disabled={!newDay}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-maroon/30 px-3 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5 disabled:opacity-60"
-        >
-          <Plus className="h-4 w-4" /> Add day
-        </button>
-      </div>
+            onAdd={() => setRanges((rs) => [...rs, newRange()])}
+            onRemove={(i) =>
+              setRanges((rs) => rs.filter((_, idx) => idx !== i))
+            }
+          />
+          <div className="mt-3 flex justify-end">
+            <button
+              type="submit"
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:opacity-60"
+            >
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              Create session{newDates.length * ranges.length === 1 ? '' : 's'}
+            </button>
+          </div>
+        </form>
+      )}
 
-      {days.length > 0 && (
-        <div className="mt-3 space-y-3">
-          {days.map((d) => {
-            const customized = d.customRanges != null
-            return (
+      {existingDates.length > 0 && (
+        <div
+          className={
+            newDates.length > 0 ? 'border-t border-maroon/10 pt-4' : ''
+          }
+        >
+          <span className="mb-2 block text-xs font-semibold text-gray-600">
+            Editing {existingDates.length} already-scheduled day
+            {existingDates.length === 1 ? '' : 's'}
+          </span>
+          <div className="space-y-3">
+            {existingDates.map((date) => (
               <div
-                key={d.date}
+                key={date}
                 className="rounded-lg border border-gray-200 bg-white p-3"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-display text-sm font-bold text-maroon">
-                    {fmtSessionDate(d.date)}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        customized ? resetDay(d.date) : customizeDay(d.date)
-                      }
-                      className="rounded-md px-2 py-1 text-xs font-semibold text-maroon transition hover:bg-maroon/5"
-                    >
-                      {customized ? 'Use default times' : 'Customize times'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeDay(d.date)}
-                      className="grid h-6 w-6 place-items-center rounded-full text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                      title="Remove day"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                <span className="mb-2 block text-sm font-semibold text-maroon">
+                  {fmtSessionDate(date)}
+                </span>
+                <div className="space-y-2">
+                  {sessionsByDate[date].map((s) => (
+                    <div key={s.id} className="grid gap-2 sm:grid-cols-3">
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold text-gray-500">
+                          Start
+                        </span>
+                        <input
+                          type="time"
+                          value={drafts[s.id]?.start ?? ''}
+                          onChange={(e) =>
+                            updateDraft(s.id, { start: e.target.value })
+                          }
+                          className={inputClass}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold text-gray-500">
+                          End
+                        </span>
+                        <input
+                          type="time"
+                          value={drafts[s.id]?.end ?? ''}
+                          onChange={(e) =>
+                            updateDraft(s.id, { end: e.target.value })
+                          }
+                          className={inputClass}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold text-gray-500">
+                          Slot length (min)
+                        </span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={drafts[s.id]?.duration ?? ''}
+                          onChange={(e) =>
+                            updateDraft(s.id, { duration: e.target.value })
+                          }
+                          className={inputClass}
+                        />
+                      </label>
+                    </div>
+                  ))}
                 </div>
-
-                {customized ? (
-                  <div className="mt-3">
-                    <RangeRows
-                      ranges={d.customRanges}
-                      onUpdate={(i, patch) => updateDayRange(d.date, i, patch)}
-                      onAdd={() => addDayRange(d.date)}
-                      onRemove={(i) => removeDayRange(d.date, i)}
-                    />
-                  </div>
-                ) : (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {defaultRanges.map((r, i) => (
-                      <span
-                        key={i}
-                        className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-600"
-                      >
-                        {fmtRangeSummary(r)}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
-            )
-          })}
+            ))}
+          </div>
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={deleteExisting}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+            >
+              <Trash2 className="h-4 w-4" /> Delete selected day
+              {existingDates.length === 1 ? '' : 's'}
+            </button>
+            <button
+              type="button"
+              onClick={saveExisting}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:opacity-60"
+            >
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              Save changes
+            </button>
+          </div>
         </div>
       )}
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-gray-400">
-          {totalSessions > 0
-            ? `Creates ${totalSessions} session${
-                totalSessions === 1 ? '' : 's'
-              } across ${days.length} day${days.length === 1 ? '' : 's'}.`
-            : 'Add days and time ranges to begin.'}
-        </p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:text-maroon"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={busy || totalSessions === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:opacity-60"
-          >
-            {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-            Create sessions
-          </button>
-        </div>
+      <div className="flex justify-start border-t border-maroon/10 pt-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-sm font-semibold text-gray-500 transition hover:text-maroon"
+        >
+          Clear selection
+        </button>
       </div>
-    </form>
+    </div>
   )
 }
 
