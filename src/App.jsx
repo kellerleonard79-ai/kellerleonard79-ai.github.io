@@ -10,6 +10,7 @@ import MeetingDetail from './pages/MeetingDetail.jsx'
 import AgendaEditor from './pages/AgendaEditor.jsx'
 import SessionView from './pages/SessionView.jsx'
 import Checkin from './pages/Checkin.jsx'
+import Kiosk from './pages/Kiosk.jsx'
 import Profile from './pages/Profile.jsx'
 import ApplicationDashboard from './pages/ApplicationDashboard.jsx'
 import ElectionsPublic from './pages/ElectionsPublic.jsx'
@@ -86,6 +87,9 @@ export default function App() {
 
       {/* QR check-in is a public landing, intentionally outside the shell. */}
       <Route path="/checkin/:meetingId" element={<Checkin />} />
+      {/* Homecoming voting kiosk: fully public and deliberately unlinked —
+          reachable only by typing the URL, so nothing anywhere links to it. */}
+      <Route path="/kiosk" element={<Kiosk />} />
       {/* Catch-all: an unmatched path otherwise renders nothing (blank page). */}
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
