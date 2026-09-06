@@ -1,4 +1,5 @@
 import { supabasePublic } from './supabaseClient.js'
+import { withTimeout } from './withTimeout.js'
 
 // A wrong device clock (or an auto-time-off time-zone change that shifts the
 // actual UTC time) silently breaks Supabase auth, because auth-js compares the
@@ -27,7 +28,15 @@ export function measureClockSkew() {
   inflight = (async () => {
     try {
       const t0 = Date.now()
-      const { data, error } = await supabasePublic.rpc('server_now')
+      // A stalled fetch here (flaky network, a tab waking from sleep) must
+      // not block AuthContext's init() forever — bound it so skew just stays
+      // uncompensated (skewMs default 0) instead of freezing sign-in for
+      // every caller awaiting this shared inflight promise.
+      const { data, error } = await withTimeout(
+        supabasePublic.rpc('server_now'),
+        5000,
+        { data: null, error: 'timeout' },
+      )
       const t1 = Date.now()
       if (error || !data) return null
       const serverMs = new Date(data).getTime()

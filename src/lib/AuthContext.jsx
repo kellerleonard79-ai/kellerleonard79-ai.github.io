@@ -1,6 +1,15 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import supabase from './supabaseClient.js'
 import { measureClockSkew } from './clockCheck.js'
+import { withTimeout } from './withTimeout.js'
+
+// How long to wait on each network step of init() before giving up on it and
+// moving on with a "didn't finish" fallback. Without this, a stalled fetch or
+// a wedged supabase-js auth lock leaves `loading` true forever — freezing the
+// Navbar's Sign Out button (replaced by a spinner while loading) and the
+// whole DashboardLayout (which renders nothing but a spinner while loading)
+// until the user hard-refreshes the page. See PR/investigation notes.
+const INIT_STEP_TIMEOUT_MS = 8000
 
 const AuthContext = createContext({
   session: null,
@@ -34,12 +43,27 @@ export function AuthProvider({ children }) {
       // storage wrapper can compensate token expiry from the very first load,
       // not after a wrong-clock device has already decided it's logged out.
       await measureClockSkew()
+      // A wedged supabase-js auth lock (or just a stalled fetch) can leave
+      // getSession() pending forever; fall back to "no session" rather than
+      // block `loading` indefinitely. Worst case this bounces a genuinely
+      // logged-in user to /login, which is recoverable — an infinite spinner
+      // isn't.
       const {
         data: { session },
-      } = await supabase.auth.getSession()
+      } = await withTimeout(supabase.auth.getSession(), INIT_STEP_TIMEOUT_MS, {
+        data: { session: null },
+      })
       if (!active) return
       setSession(session)
-      setProfile(session?.user ? await fetchProfile(session.user.id) : null)
+      setProfile(
+        session?.user
+          ? await withTimeout(
+              fetchProfile(session.user.id),
+              INIT_STEP_TIMEOUT_MS,
+              null,
+            )
+          : null,
+      )
       if (active) setLoading(false)
     }
     init()
@@ -60,7 +84,13 @@ export function AuthProvider({ children }) {
       if (event === 'INITIAL_SESSION') return
       setSession(newSession)
       setProfile(
-        newSession?.user ? await fetchProfile(newSession.user.id) : null,
+        newSession?.user
+          ? await withTimeout(
+              fetchProfile(newSession.user.id),
+              INIT_STEP_TIMEOUT_MS,
+              null,
+            )
+          : null,
       )
     })
 

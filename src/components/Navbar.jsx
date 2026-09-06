@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Menu, X, LogIn, LogOut, UserPlus, LayoutDashboard, UserCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
+import { useStuckLoading } from '../lib/useStuckLoading.js'
 
 // Links with a `to` are real routes (React Router); the rest are placeholder
 // on-page anchors for pages you'll build later.
@@ -17,6 +18,7 @@ export default function Navbar() {
   const { session, loading, signOut } = useAuth()
   const { settings } = useSiteSettings()
   const signupEnabled = settings?.signup_enabled ?? false
+  const stuck = useStuckLoading(loading)
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
@@ -72,9 +74,18 @@ export default function Navbar() {
               "Member Login" before the session is read, making members think
               they were signed out. */}
           {loading ? (
-            <span className="ml-1 inline-flex h-9 w-9 items-center justify-center">
-              <Loader2 className="h-4 w-4 animate-spin text-maroon/50" />
-            </span>
+            stuck ? (
+              <button
+                onClick={() => window.location.reload()}
+                className="ml-1 rounded-lg border border-maroon/30 px-3 py-2 text-xs font-semibold text-maroon/70 transition hover:bg-maroon/5"
+              >
+                Taking a while — Reload
+              </button>
+            ) : (
+              <span className="ml-1 inline-flex h-9 w-9 items-center justify-center">
+                <Loader2 className="h-4 w-4 animate-spin text-maroon/50" />
+              </span>
+            )
           ) : session ? (
             <button
               onClick={signOut}
@@ -164,9 +175,18 @@ export default function Navbar() {
             {/* Mirror the desktop behavior: no logged-out CTA until auth
                 resolves, so the menu never flashes "Member Login". */}
             {loading ? (
-              <div className="mt-2 flex justify-center py-2">
-                <Loader2 className="h-5 w-5 animate-spin text-maroon/50" />
-              </div>
+              stuck ? (
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-2 flex w-full items-center justify-center rounded-lg border border-maroon/30 px-4 py-2 text-sm font-semibold text-maroon/70"
+                >
+                  Taking a while — Reload
+                </button>
+              ) : (
+                <div className="mt-2 flex justify-center py-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-maroon/50" />
+                </div>
+              )
             ) : session ? (
               <button
                 onClick={() => {

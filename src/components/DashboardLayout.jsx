@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext.jsx'
 import supabase from '../lib/supabaseClient.js'
+import { useStuckLoading } from '../lib/useStuckLoading.js'
 
 // The tool set shown to approved members. Gating mirrors each destination
 // page's own guard (view_* permissions, RequireStaff, AdminSettings' own
@@ -41,7 +42,7 @@ const TOOLS = [
   { label: 'Assignments', to: '/dashboard/assignments', icon: ClipboardList },
   // Reachable by anyone with at least one admin-area permission; the panel
   // itself narrows to the sections they can use.
-  { label: 'Admin Panel', to: '/dashboard/admin', icon: Settings2, anyPermission: ['edit_site', 'manage_roles'] },
+  { label: 'Admin Panel', to: '/dashboard/admin', icon: Settings2, anyPermission: ['edit_site', 'manage_roles', 'manage_elections'] },
 ]
 
 // Persistent shell for every /dashboard/* route. Rendered once as a layout
@@ -52,6 +53,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const stuck = useStuckLoading(loading)
 
   // Auth gate for the whole shell — replaces the per-page RequireAuth wrappers.
   useEffect(() => {
@@ -81,8 +83,19 @@ export default function DashboardLayout() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-maroon" />
+        {stuck && (
+          <div className="flex flex-col items-center gap-2 text-center">
+            <p className="text-sm text-gray-500">This is taking longer than expected.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-lg border border-maroon px-4 py-2 text-sm font-semibold text-maroon transition hover:bg-maroon/5"
+            >
+              Reload
+            </button>
+          </div>
+        )}
       </div>
     )
   }
