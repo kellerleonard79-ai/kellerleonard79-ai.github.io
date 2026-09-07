@@ -141,7 +141,7 @@ export default function Kiosk() {
   return (
     <Shell>
       {step === 'grade' && (
-        <Step title="What grade are you in?">
+        <Step title="Please Select Your Grade Level">
           <div className="grid w-full grid-cols-2 gap-5 sm:grid-cols-4">
             {GRADES.map((g) => (
               <button
@@ -205,14 +205,7 @@ export default function Kiosk() {
 function Shell({ children }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-6 py-10 text-center">
-      <div className="flex w-full max-w-3xl flex-col items-center">
-        <img
-          src="/maroon-phs-sga-logo.png"
-          alt=""
-          className="h-16 w-auto object-contain"
-        />
-        <div className="mt-8 flex w-full flex-col items-center">{children}</div>
-      </div>
+      <div className="flex w-full max-w-3xl flex-col items-center">{children}</div>
     </div>
   )
 }
@@ -248,7 +241,7 @@ function CandidatePicker({
 }) {
   const titles = TITLES[grade]
   return (
-    <Step title="Choose your Homecoming Court picks" subtitle={`Grade ${grade}`}>
+    <Step title={`Homecoming Court: ${grade}th Grade`}>
       <div className="grid w-full gap-8 sm:grid-cols-2">
         <CandidateColumn
           title={titles.male}
@@ -306,8 +299,8 @@ function ConfirmModal({
 
         <div className="mt-8 w-full space-y-4">
           <Summary label="Grade" value={String(grade)} />
-          <Summary label="Female candidate" value={female?.full_name} />
           <Summary label="Male candidate" value={male?.full_name} />
+          <Summary label="Female candidate" value={female?.full_name} />
         </div>
 
         {submitError && (
