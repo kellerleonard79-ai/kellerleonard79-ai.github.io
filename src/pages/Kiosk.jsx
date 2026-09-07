@@ -290,6 +290,7 @@ function ConfirmModal({
   onSubmit,
   onReset,
 }) {
+  const titles = TITLES[grade]
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
       <div className="w-full max-w-lg rounded-3xl bg-white p-8 text-center shadow-2xl">
@@ -299,8 +300,8 @@ function ConfirmModal({
 
         <div className="mt-8 w-full space-y-4">
           <Summary label="Grade" value={String(grade)} />
-          <Summary label="Male candidate" value={male?.full_name} />
-          <Summary label="Female candidate" value={female?.full_name} />
+          <Summary label={titles.male} value={male?.full_name} />
+          <Summary label={titles.female} value={female?.full_name} />
         </div>
 
         {submitError && (
