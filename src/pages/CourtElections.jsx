@@ -79,7 +79,9 @@ function HomecomingSection() {
   return (
     <div className="space-y-6">
       <HomecomingVotingCard />
-      <div className="grid gap-6 xl:grid-cols-2">
+      {/* Female left, male right — side by side from lg so the two
+          rosters read as one ballot rather than a long scroll. */}
+      <div className="grid gap-6 lg:grid-cols-2">
         <HomecomingRosterCard
           gender="female"
           label="Female candidates"
@@ -150,23 +152,31 @@ function HomecomingVotingCard() {
   )
 }
 
+// A student number is optional here — court candidates are typed in by hand and
+// don't need an account — but a partial one is a typo, so only a complete
+// 6-digit number is accepted. The DB carries the same check constraint.
+const validStudentId = (v) => v === '' || /^[0-9]{6}$/.test(v)
+
 function HomecomingRosterCard({ gender, label, candidates, onChanged }) {
   const [name, setName] = useState('')
+  const [studentId, setStudentId] = useState('')
   const [grade, setGrade] = useState('9')
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
 
   const mine = candidates.filter((c) => c.gender === gender)
+  const idOk = validStudentId(studentId)
 
   async function add() {
     const trimmed = name.trim()
-    if (!trimmed) return
+    if (!trimmed || !idOk) return
     setAdding(true)
     setError('')
     const { error: insertError } = await supabase
       .from('homecoming_candidates')
       .insert({
         full_name: trimmed,
+        student_id: studentId || null,
         grade_level: Number(grade),
         gender,
       })
@@ -176,6 +186,7 @@ function HomecomingRosterCard({ gender, label, candidates, onChanged }) {
       return
     }
     setName('')
+    setStudentId('')
     onChanged()
   }
 
@@ -213,41 +224,62 @@ function HomecomingRosterCard({ gender, label, candidates, onChanged }) {
         })}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-end gap-3 border-t border-gray-100 pt-5">
-        <Labeled label="Name">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && add()}
-            placeholder="Candidate name"
-            className={`${inputClass} w-52`}
-          />
-        </Labeled>
-        <Labeled label="Grade">
-          <select
-            value={grade}
-            onChange={(e) => setGrade(e.target.value)}
-            className={`${inputClass} w-28`}
+      <div className="mt-5 border-t border-gray-100 pt-5">
+        <div className="flex flex-wrap items-end gap-3">
+          <Labeled label="Name">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && add()}
+              placeholder="Candidate name"
+              className={`${inputClass} w-52`}
+            />
+          </Labeled>
+          <Labeled label="Student number (optional)">
+            <input
+              value={studentId}
+              onChange={(e) =>
+                setStudentId(e.target.value.replace(/\D/g, '').slice(0, 6))
+              }
+              onKeyDown={(e) => e.key === 'Enter' && add()}
+              inputMode="numeric"
+              placeholder="123456"
+              className={`${inputClass} w-36 ${
+                idOk ? '' : 'border-red-300 focus:border-red-400 focus:ring-red-200'
+              }`}
+            />
+          </Labeled>
+          <Labeled label="Grade">
+            <select
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              className={`${inputClass} w-24`}
+            >
+              {HC_GRADES.map((g) => (
+                <option key={g} value={String(g)}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          </Labeled>
+          <button
+            onClick={add}
+            disabled={adding || !name.trim() || !idOk}
+            className="mb-0.5 inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {HC_GRADES.map((g) => (
-              <option key={g} value={String(g)}>
-                {g}
-              </option>
-            ))}
-          </select>
-        </Labeled>
-        <button
-          onClick={add}
-          disabled={adding || !name.trim()}
-          className="mb-0.5 inline-flex items-center gap-2 rounded-lg bg-maroon px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {adding ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-          Add
-        </button>
+            {adding ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            Add
+          </button>
+        </div>
+        {!idOk && (
+          <p className="mt-2 text-xs text-red-600">
+            A student number must be all six digits, or left blank.
+          </p>
+        )}
       </div>
     </Card>
   )
@@ -255,8 +287,12 @@ function HomecomingRosterCard({ gender, label, candidates, onChanged }) {
 
 function HomecomingCandidateRow({ candidate, onChanged }) {
   const [name, setName] = useState(candidate.full_name)
+  const [studentId, setStudentId] = useState(candidate.student_id ?? '')
   const [busy, setBusy] = useState(false)
 
+  // Both fields save on blur; each reverts to the stored value if the edit is
+  // rejected, so a failed write never leaves the row showing something the DB
+  // doesn't have.
   async function rename() {
     const trimmed = name.trim()
     if (!trimmed || trimmed === candidate.full_name) {
@@ -270,6 +306,23 @@ function HomecomingCandidateRow({ candidate, onChanged }) {
       .eq('id', candidate.id)
     setBusy(false)
     if (updateError) setName(candidate.full_name)
+    else onChanged()
+  }
+
+  async function saveStudentId() {
+    const current = candidate.student_id ?? ''
+    if (studentId === current) return
+    if (!validStudentId(studentId)) {
+      setStudentId(current)
+      return
+    }
+    setBusy(true)
+    const { error: updateError } = await supabase
+      .from('homecoming_candidates')
+      .update({ student_id: studentId || null })
+      .eq('id', candidate.id)
+    setBusy(false)
+    if (updateError) setStudentId(current)
     else onChanged()
   }
 
@@ -297,7 +350,19 @@ function HomecomingCandidateRow({ candidate, onChanged }) {
         onBlur={rename}
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
         disabled={busy}
+        aria-label={`Name for ${candidate.full_name}`}
         className={`${inputClass} flex-1`}
+      />
+      <input
+        value={studentId}
+        onChange={(e) => setStudentId(e.target.value.replace(/\D/g, '').slice(0, 6))}
+        onBlur={saveStudentId}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        disabled={busy}
+        inputMode="numeric"
+        placeholder="ID"
+        aria-label={`Student number for ${candidate.full_name}`}
+        className={`${inputClass} w-24 shrink-0 text-center`}
       />
       <button
         onClick={remove}

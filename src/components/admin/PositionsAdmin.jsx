@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronDown, Loader2, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, Plus, Trash2 } from 'lucide-react'
 import supabase from '../../lib/supabaseClient.js'
 import { Card, Labeled, Loading, Toggle, inputClass } from '../ui.jsx'
 
@@ -85,22 +85,6 @@ export default function PositionsTab() {
 
   return (
     <div className="space-y-6">
-      {grouped.map(({ group, items }) => (
-        <Card key={group} title={groupLabel(group)}>
-          <div className="space-y-3">
-            {items.map((pos) => (
-              <PositionRow
-                key={pos.id}
-                position={pos}
-                roles={roles}
-                memberCount={counts[pos.id] ?? 0}
-                onChanged={load}
-              />
-            ))}
-          </div>
-        </Card>
-      ))}
-
       <Card title="Add position">
         <div className="grid items-end gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
           <Labeled label="Title">
@@ -142,6 +126,64 @@ export default function PositionsTab() {
           </button>
         </div>
       </Card>
+
+      {/* Existing positions rarely need touching, and each group's rows are a
+          dense grid of inputs — so the groups start collapsed and the add form
+          above stays the first thing on the page. */}
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        {grouped.map(({ group, items }, i) => (
+          <PositionGroup
+            key={group}
+            label={groupLabel(group)}
+            items={items}
+            roles={roles}
+            counts={counts}
+            onChanged={load}
+            first={i === 0}
+          />
+        ))}
+        {grouped.length === 0 && (
+          <p className="p-5 text-sm text-gray-400">
+            No positions yet — add the first one above.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PositionGroup({ label, items, roles, counts, onChanged, first }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className={first ? '' : 'border-t border-gray-100'}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 px-5 py-4 text-left transition hover:bg-maroon/5"
+      >
+        <ChevronRight
+          className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-90' : ''}`}
+        />
+        <span className="font-display text-lg font-bold text-maroon">{label}</span>
+        <span className="ml-auto text-sm text-gray-400">
+          {items.length} position{items.length === 1 ? '' : 's'}
+        </span>
+      </button>
+      {open && (
+        <div className="space-y-3 px-5 pb-5">
+          {items.map((pos) => (
+            <PositionRow
+              key={pos.id}
+              position={pos}
+              roles={roles}
+              memberCount={counts[pos.id] ?? 0}
+              onChanged={onChanged}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

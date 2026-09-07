@@ -20,11 +20,9 @@ import {
   CalendarClock,
   Ban,
   RefreshCw,
-  Award,
-  Settings2,
 } from 'lucide-react'
 import RequirePermission from '../components/RequirePermission.jsx'
-import PageTabs, { usePageTab } from '../components/PageTabs.jsx'
+import ManageToggle, { useManageMode } from '../components/ManageToggle.jsx'
 import PositionsAdmin from '../components/admin/PositionsAdmin.jsx'
 import CandidacyAdmin from '../components/admin/CandidacyAdmin.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
@@ -58,20 +56,17 @@ const pct = (n) =>
 function ElectionsContent() {
   const { hasPermission } = useAuth()
   const canManage = hasPermission('manage_elections')
-  // Two former Admin Panel sections now live here as tabs: the positions
-  // candidates run for, and the candidacy rules that apply to their
-  // applications — both a click from the cycle controls that gate filing.
+  // Two former Admin Panel sections now live behind this page's Manage button:
+  // the positions candidates run for, and the candidacy rules that apply to
+  // their applications — both a click from the cycle controls that gate filing.
   const canEditPositions = hasPermission('manage_roles')
-  const tabs = [
-    { key: 'elections', label: 'Elections', icon: Vote },
-    ...(canEditPositions
-      ? [{ key: 'positions', label: 'Positions', icon: Award }]
-      : []),
-    ...(canManage
-      ? [{ key: 'settings', label: 'Settings', icon: Settings2 }]
-      : []),
-  ]
-  const [tab, setTab] = usePageTab(tabs)
+  const canManageAnything = canEditPositions || canManage
+  // 'positions' is here only so the old /dashboard/admin/positions redirect
+  // still lands on the manage view.
+  const [managing, setManaging] = useManageMode(canManageAnything, [
+    'settings',
+    'positions',
+  ])
 
   const [cycles, setCycles] = useState([])
   const [candidates, setCandidates] = useState([])
@@ -167,27 +162,28 @@ function ElectionsContent() {
                 : 'Election cycles, candidates and results.'}
             </p>
           </div>
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-maroon"
-          >
-            <ChevronLeft className="h-4 w-4" /> Dashboard
-          </Link>
+          <div className="flex items-center gap-4">
+            {canManageAnything && (
+              <ManageToggle
+                managing={managing}
+                onChange={setManaging}
+                label="Manage"
+                doneLabel="Back to elections"
+              />
+            )}
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-maroon"
+            >
+              <ChevronLeft className="h-4 w-4" /> Dashboard
+            </Link>
+          </div>
         </div>
 
-        {tabs.length > 1 && (
-          <div className="mt-6">
-            <PageTabs tabs={tabs} active={tab} onChange={setTab} />
-          </div>
-        )}
-
-        {tab === 'positions' ? (
-          <div className="mt-8">
-            <PositionsAdmin />
-          </div>
-        ) : tab === 'settings' ? (
-          <div className="mt-8">
-            <CandidacyAdmin />
+        {managing ? (
+          <div className="mt-8 space-y-6">
+            {canEditPositions && <PositionsAdmin />}
+            {canManage && <CandidacyAdmin />}
           </div>
         ) : loading ? (
           <div className="flex justify-center py-20">

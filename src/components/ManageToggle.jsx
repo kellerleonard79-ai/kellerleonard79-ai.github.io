@@ -1,52 +1,52 @@
 import { useSearchParams } from 'react-router-dom'
+import { ArrowLeft, Settings2 } from 'lucide-react'
 
-// Tab bar for dashboard pages that absorbed an admin panel section (Member
-// Directory, SGA Elections, Meetings). The active tab lives in the `?tab=`
-// search param rather than component state so deep links, the back button, and
-// the /dashboard/admin/* redirects can all point straight at a tab.
-export default function PageTabs({ tabs, active, onChange }) {
-  if (tabs.length < 2) return null
+// Dashboard pages that absorbed an Admin Panel section (Meetings, Member
+// Directory, SGA Elections) show their admin controls behind a single button
+// rather than a tab bar: the page has one job, and the settings are a detour
+// off it, not a peer view.
+//
+// The mode still lives in the `?tab=` search param — deep links, the back
+// button, and the /dashboard/admin/* redirects all point straight at it.
+export default function ManageToggle({
+  managing,
+  onChange,
+  label = 'Settings',
+  doneLabel = 'Done',
+}) {
   return (
-    <div className="flex flex-wrap gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
-      {tabs.map((tab) => {
-        const on = tab.key === active
-        const Icon = tab.icon
-        return (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => onChange(tab.key)}
-            aria-current={on ? 'page' : undefined}
-            className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition ${
-              on
-                ? 'bg-maroon text-white shadow-sm'
-                : 'text-gray-600 hover:bg-maroon/5 hover:text-maroon'
-            }`}
-          >
-            {Icon && <Icon className="h-4 w-4 shrink-0" />}
-            {tab.label}
-          </button>
-        )
-      })}
-    </div>
+    <button
+      type="button"
+      onClick={() => onChange(!managing)}
+      className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition ${
+        managing
+          ? 'bg-maroon text-white shadow-sm hover:bg-maroon-dark'
+          : 'border border-maroon/30 text-maroon hover:bg-maroon/5'
+      }`}
+    >
+      {managing ? (
+        <ArrowLeft className="h-4 w-4" />
+      ) : (
+        <Settings2 className="h-4 w-4" />
+      )}
+      {managing ? doneLabel : label}
+    </button>
   )
 }
 
-// Companion hook: resolves the active tab from `?tab=`, falling back to the
-// first tab the viewer is allowed to see when the param is missing or names a
-// tab they can't open (a stale bookmark from before a permission change).
-export function usePageTab(tabs) {
+// `keys` lists every `?tab=` value that means "show the admin view" — more than
+// one because the old Admin Panel deep links landed on separate sections
+// (?tab=positions, ?tab=settings) that are now a single page.
+export function useManageMode(enabled, keys = ['settings']) {
   const [params, setParams] = useSearchParams()
-  const keys = tabs.map((t) => t.key)
-  const requested = params.get('tab')
-  const active = keys.includes(requested) ? requested : keys[0]
+  const managing = enabled && keys.includes(params.get('tab'))
 
-  function setActive(key) {
+  function setManaging(on) {
     const next = new URLSearchParams(params)
-    if (key === keys[0]) next.delete('tab')
-    else next.set('tab', key)
+    if (on) next.set('tab', keys[0])
+    else next.delete('tab')
     setParams(next, { replace: true })
   }
 
-  return [active, setActive]
+  return [managing, setManaging]
 }

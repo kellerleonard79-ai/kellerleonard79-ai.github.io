@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, ChevronDown, Search, ArrowRight, Loader2, Circle, CircleCheck, Download, X, ShieldCheck, Users, Settings2 } from 'lucide-react'
+import { ChevronLeft, ChevronDown, Search, ArrowRight, Loader2, Circle, CircleCheck, Download, X, ShieldCheck } from 'lucide-react'
 import RequirePermission from '../components/RequirePermission.jsx'
 import MemberPermissions from '../components/MemberPermissions.jsx'
-import PageTabs, { usePageTab } from '../components/PageTabs.jsx'
+import ManageToggle, { useManageMode } from '../components/ManageToggle.jsx'
 import TiersAdmin from '../components/admin/TiersAdmin.jsx'
 import {
   CreateAccountCard,
@@ -96,7 +96,7 @@ function DirectoryContent() {
   const canEditDues = hasPermission('edit_directory')
   // manage_roles gates everything administrative on this page: the inline role
   // dropdown, per-member permission overrides, the pending queue, and the
-  // Settings tab. The RLS guard reverts those writes without it, so don't
+  // Settings view. The RLS guard reverts those writes without it, so don't
   // surface the controls either.
   const canManageRoles = hasPermission('manage_roles')
   // Creating and deleting accounts goes through Edge Functions that authorize
@@ -104,12 +104,7 @@ function DirectoryContent() {
   // 403 from buttons we'd otherwise show them.
   const isAdmin = profile?.role?.is_admin === true
   const [openPermsId, setOpenPermsId] = useState(null)
-  const [tab, setTab] = usePageTab([
-    { key: 'directory', label: 'Directory', icon: Users },
-    ...(canManageRoles
-      ? [{ key: 'settings', label: 'Settings', icon: Settings2 }]
-      : []),
-  ])
+  const [managing, setManaging] = useManageMode(canManageRoles)
   const [busyRoleId, setBusyRoleId] = useState(null)
 
   const [members, setMembers] = useState([])
@@ -294,13 +289,22 @@ function DirectoryContent() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => setExportOpen((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-maroon shadow-sm transition hover:border-maroon/40 hover:bg-maroon/5"
-            >
-              <Download className="h-4 w-4" /> Export CSV
-            </button>
+            {canManageRoles && (
+              <ManageToggle
+                managing={managing}
+                onChange={setManaging}
+                doneLabel="Back to directory"
+              />
+            )}
+            {!managing && (
+              <button
+                type="button"
+                onClick={() => setExportOpen((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-maroon shadow-sm transition hover:border-maroon/40 hover:bg-maroon/5"
+              >
+                <Download className="h-4 w-4" /> Export CSV
+              </button>
+            )}
             <Link
               to="/dashboard"
               className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-maroon"
@@ -310,7 +314,7 @@ function DirectoryContent() {
           </div>
         </div>
 
-        {exportOpen && (
+        {exportOpen && !managing && (
           <ExportPanel
             fields={exportFields}
             onToggle={toggleField}
@@ -320,7 +324,9 @@ function DirectoryContent() {
           />
         )}
 
-        {canManageRoles && (pendingMembers.length > 0 || pendingCandidates.length > 0) && (
+        {!managing &&
+          canManageRoles &&
+          (pendingMembers.length > 0 || pendingCandidates.length > 0) && (
           <div className="mt-6 space-y-3">
             {pendingMembers.length > 0 && (
               <PendingCard
@@ -348,20 +354,7 @@ function DirectoryContent() {
           </div>
         )}
 
-        {canManageRoles && (
-          <div className="mt-6">
-            <PageTabs
-              tabs={[
-                { key: 'directory', label: 'Directory', icon: Users },
-                { key: 'settings', label: 'Settings', icon: Settings2 },
-              ]}
-              active={tab}
-              onChange={setTab}
-            />
-          </div>
-        )}
-
-        {tab === 'settings' ? (
+        {managing ? (
           <div className="mt-8 space-y-6">
             <TiersAdmin />
             {isAdmin && <CreateAccountCard roles={roles} onChanged={load} />}

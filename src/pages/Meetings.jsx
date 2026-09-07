@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, Plus, ArrowRight, Loader2, X, CalendarCheck, Settings2 } from 'lucide-react'
+import { ChevronLeft, Plus, ArrowRight, Loader2, X } from 'lucide-react'
 import RequirePermission from '../components/RequirePermission.jsx'
-import PageTabs, { usePageTab } from '../components/PageTabs.jsx'
+import ManageToggle, { useManageMode } from '../components/ManageToggle.jsx'
 import AgendaSectionsAdmin from '../components/admin/AgendaSectionsAdmin.jsx'
 import MeetingDefaultsAdmin from '../components/admin/MeetingDefaultsAdmin.jsx'
 import supabase from '../lib/supabaseClient.js'
@@ -24,15 +24,10 @@ function MeetingsContent() {
   const { hasPermission } = useAuth()
   const canCreate = hasPermission('create_meetings')
   // Agenda section types and meeting defaults used to be two Admin Panel
-  // sections; they live here now, behind a tab, next to the meetings they
-  // shape.
+  // sections; they live here now, behind the Settings button, next to the
+  // meetings they shape.
   const canConfigure = hasPermission('manage_roles')
-  const [tab, setTab] = usePageTab([
-    { key: 'meetings', label: 'Meetings', icon: CalendarCheck },
-    ...(canConfigure
-      ? [{ key: 'settings', label: 'Settings', icon: Settings2 }]
-      : []),
-  ])
+  const [managing, setManaging] = useManageMode(canConfigure)
   const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -86,7 +81,14 @@ function MeetingsContent() {
             >
               <ChevronLeft className="h-4 w-4" /> Dashboard
             </Link>
-            {canCreate && tab === 'meetings' && (
+            {canConfigure && (
+              <ManageToggle
+                managing={managing}
+                onChange={setManaging}
+                doneLabel="Back to meetings"
+              />
+            )}
+            {canCreate && !managing && (
               <button
                 onClick={() => setShowForm((v) => !v)}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
@@ -98,20 +100,7 @@ function MeetingsContent() {
           </div>
         </div>
 
-        {canConfigure && (
-          <div className="mt-6">
-            <PageTabs
-              tabs={[
-                { key: 'meetings', label: 'Meetings', icon: CalendarCheck },
-                { key: 'settings', label: 'Settings', icon: Settings2 },
-              ]}
-              active={tab}
-              onChange={setTab}
-            />
-          </div>
-        )}
-
-        {tab === 'settings' ? (
+        {managing ? (
           <div className="mt-8 space-y-6">
             <AgendaSectionsAdmin />
             <MeetingDefaultsAdmin />
