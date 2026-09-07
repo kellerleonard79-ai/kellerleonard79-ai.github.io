@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Loader2, Lock, RotateCcw, ChevronLeft } from 'lucide-react'
 import { supabasePublic } from '../lib/supabaseClient.js'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
-import Crest from '../components/Crest.jsx'
 
 // The Homecoming Court voting kiosk: a public, deliberately unlinked page a
 // supervised laptop sits on all day. It never touches useAuth — a signed-out
@@ -14,8 +13,17 @@ import Crest from '../components/Crest.jsx'
 
 const GRADES = [9, 10, 11, 12]
 
+// Each grade's court is titled differently; male title always listed first.
+const TITLES = {
+  9: { male: 'Count', female: 'Countess' },
+  10: { male: 'Duke', female: 'Duchess' },
+  11: { male: 'Prince', female: 'Princess' },
+  12: { male: 'King', female: 'Queen' },
+}
+
 // Order the voter walks through. `back` powers the per-step Back button.
-const STEPS = ['grade', 'female', 'male', 'confirm', 'done']
+// Confirmation is a modal over 'candidates', not its own step — see `confirmOpen`.
+const STEPS = ['grade', 'candidates', 'done']
 
 export default function Kiosk() {
   const { settings, loading: settingsLoading } = useSiteSettings()
@@ -27,6 +35,7 @@ export default function Kiosk() {
   const [grade, setGrade] = useState(null)
   const [female, setFemale] = useState(null)
   const [male, setMale] = useState(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
@@ -52,6 +61,7 @@ export default function Kiosk() {
     setGrade(null)
     setFemale(null)
     setMale(null)
+    setConfirmOpen(false)
     setSubmitError('')
   }
 
@@ -88,6 +98,7 @@ export default function Kiosk() {
       )
       return
     }
+    setConfirmOpen(false)
     setStep('done')
   }
 
@@ -139,7 +150,7 @@ export default function Kiosk() {
                   setGrade(g)
                   setFemale(null)
                   setMale(null)
-                  setStep('female')
+                  setStep('candidates')
                 }}
                 className="rounded-3xl border-4 border-maroon bg-white py-12 font-display text-6xl font-bold text-maroon transition hover:bg-maroon hover:text-white active:scale-95"
               >
@@ -150,72 +161,36 @@ export default function Kiosk() {
         </Step>
       )}
 
-      {step === 'female' && (
-        <Picker
-          title="Choose one female candidate"
-          subtitle={`Grade ${grade} · Step 1 of 2`}
-          options={ballot.female}
-          selected={female}
-          onSelect={setFemale}
-          onNext={() => setStep('male')}
-          onBack={back}
-          onReset={reset}
-          emptyLabel="No candidates have been entered for this grade yet."
-        />
-      )}
-
-      {step === 'male' && (
-        <Picker
-          title="Choose one male candidate"
-          subtitle={`Grade ${grade} · Step 2 of 2`}
-          options={ballot.male}
-          selected={male}
-          onSelect={setMale}
-          onNext={() => setStep('confirm')}
-          onBack={back}
-          onReset={reset}
-          emptyLabel="No candidates have been entered for this grade yet."
-        />
-      )}
-
-      {step === 'confirm' && (
-        <Step title="Is this right?">
-          <div className="w-full space-y-4">
-            <Summary label="Grade" value={String(grade)} />
-            <Summary label="Female candidate" value={female?.full_name} />
-            <Summary label="Male candidate" value={male?.full_name} />
-          </div>
-
-          {submitError && (
-            <p className="mt-6 w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-lg text-red-700">
-              {submitError}
-            </p>
+      {step === 'candidates' && (
+        <>
+          <CandidatePicker
+            grade={grade}
+            femaleOptions={ballot.female}
+            maleOptions={ballot.male}
+            female={female}
+            male={male}
+            onSelectFemale={setFemale}
+            onSelectMale={setMale}
+            onNext={() => setConfirmOpen(true)}
+            onBack={back}
+            onReset={reset}
+          />
+          {confirmOpen && (
+            <ConfirmModal
+              grade={grade}
+              female={female}
+              male={male}
+              submitting={submitting}
+              submitError={submitError}
+              onBack={() => {
+                setSubmitError('')
+                setConfirmOpen(false)
+              }}
+              onSubmit={submit}
+              onReset={reset}
+            />
           )}
-
-          <div className="mt-8 flex w-full flex-col gap-4 sm:flex-row">
-            <button
-              onClick={back}
-              disabled={submitting}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-gray-300 px-6 py-5 text-xl font-semibold text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
-            >
-              <ChevronLeft className="h-6 w-6" /> Go back
-            </button>
-            <button
-              onClick={submit}
-              disabled={submitting}
-              className="inline-flex flex-[2] items-center justify-center gap-3 rounded-2xl bg-maroon px-6 py-5 text-2xl font-bold text-white transition hover:bg-maroon-dark active:scale-[0.98] disabled:opacity-60"
-            >
-              {submitting ? (
-                <Loader2 className="h-7 w-7 animate-spin" />
-              ) : (
-                <Check className="h-7 w-7" />
-              )}
-              Submit my vote
-            </button>
-          </div>
-
-          <StartOver onClick={reset} disabled={submitting} />
-        </Step>
+        </>
       )}
 
       {step === 'done' && <Done onNext={reset} />}
@@ -228,14 +203,14 @@ export default function Kiosk() {
 // Full-bleed and chrome-less on purpose: no Navbar, no Footer, no way to
 // wander off into the rest of the site from an unattended kiosk.
 function Shell({ children }) {
-  const { settings } = useSiteSettings()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-6 py-10 text-center">
       <div className="flex w-full max-w-3xl flex-col items-center">
-        <Crest className="h-16 w-16 object-contain" />
-        <p className="mt-3 text-sm font-bold uppercase tracking-widest text-gray-400">
-          {settings?.school_name || 'PHS SGA'} · Homecoming Court
-        </p>
+        <img
+          src="/maroon-phs-sga-logo.png"
+          alt=""
+          className="h-16 w-auto object-contain"
+        />
         <div className="mt-8 flex w-full flex-col items-center">{children}</div>
       </div>
     </div>
@@ -256,67 +231,150 @@ function Step({ title, subtitle, children }) {
   )
 }
 
-function Picker({
-  title,
-  subtitle,
-  options,
-  selected,
-  onSelect,
+// One screen, two columns — male column always first. The column heading is
+// the grade's court title (e.g. King/Queen), not "male"/"female", since that's
+// what actually distinguishes the two lists for the voter.
+function CandidatePicker({
+  grade,
+  femaleOptions,
+  maleOptions,
+  female,
+  male,
+  onSelectFemale,
+  onSelectMale,
   onNext,
   onBack,
   onReset,
-  emptyLabel,
+}) {
+  const titles = TITLES[grade]
+  return (
+    <Step title="Choose your Homecoming Court picks" subtitle={`Grade ${grade}`}>
+      <div className="grid w-full gap-8 sm:grid-cols-2">
+        <CandidateColumn
+          title={titles.male}
+          options={maleOptions}
+          selected={male}
+          onSelect={onSelectMale}
+        />
+        <CandidateColumn
+          title={titles.female}
+          options={femaleOptions}
+          selected={female}
+          onSelect={onSelectFemale}
+        />
+      </div>
+
+      <div className="mt-8 flex w-full flex-col gap-4 sm:flex-row">
+        <button
+          onClick={onBack}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-gray-300 px-6 py-5 text-xl font-semibold text-gray-600 transition hover:bg-gray-50"
+        >
+          <ChevronLeft className="h-6 w-6" /> Go back
+        </button>
+        <button
+          onClick={onNext}
+          disabled={!female || !male}
+          className="flex-[2] rounded-2xl bg-maroon px-6 py-5 text-2xl font-bold text-white transition hover:bg-maroon-dark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Next
+        </button>
+      </div>
+
+      <StartOver onClick={onReset} />
+    </Step>
+  )
+}
+
+// A pop-up over the selection page rather than its own step, so the voter's
+// picks stay visible (and re-editable via "Go back") right behind it.
+function ConfirmModal({
+  grade,
+  female,
+  male,
+  submitting,
+  submitError,
+  onBack,
+  onSubmit,
+  onReset,
 }) {
   return (
-    <Step title={title} subtitle={subtitle}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
+      <div className="w-full max-w-lg rounded-3xl bg-white p-8 text-center shadow-2xl">
+        <h1 className="font-display text-4xl font-bold text-maroon">
+          Is this right?
+        </h1>
+
+        <div className="mt-8 w-full space-y-4">
+          <Summary label="Grade" value={String(grade)} />
+          <Summary label="Female candidate" value={female?.full_name} />
+          <Summary label="Male candidate" value={male?.full_name} />
+        </div>
+
+        {submitError && (
+          <p className="mt-6 w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-lg text-red-700">
+            {submitError}
+          </p>
+        )}
+
+        <div className="mt-8 flex w-full flex-col gap-4 sm:flex-row">
+          <button
+            onClick={onBack}
+            disabled={submitting}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-gray-300 px-6 py-5 text-xl font-semibold text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+          >
+            <ChevronLeft className="h-6 w-6" /> Go back
+          </button>
+          <button
+            onClick={onSubmit}
+            disabled={submitting}
+            className="inline-flex flex-[2] items-center justify-center gap-3 rounded-2xl bg-maroon px-6 py-5 text-2xl font-bold text-white transition hover:bg-maroon-dark active:scale-[0.98] disabled:opacity-60"
+          >
+            {submitting ? (
+              <Loader2 className="h-7 w-7 animate-spin" />
+            ) : (
+              <Check className="h-7 w-7" />
+            )}
+            Submit my vote
+          </button>
+        </div>
+
+        <StartOver onClick={onReset} disabled={submitting} />
+      </div>
+    </div>
+  )
+}
+
+function CandidateColumn({ title, options, selected, onSelect }) {
+  return (
+    <div className="flex flex-col items-center">
+      <h2 className="font-display text-2xl font-bold text-maroon">{title}</h2>
       {options.length === 0 ? (
-        <>
-          <p className="text-xl text-gray-600">{emptyLabel}</p>
-          <StartOver onClick={onReset} />
-        </>
+        <p className="mt-4 text-lg text-gray-600">
+          No candidates have been entered for this grade yet.
+        </p>
       ) : (
-        <>
-          <div className="grid w-full gap-4 sm:grid-cols-2">
-            {options.map((c) => {
-              const on = selected?.id === c.id
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => onSelect(c)}
-                  aria-pressed={on}
-                  className={`flex items-center justify-between gap-3 rounded-2xl border-4 px-6 py-7 text-left text-2xl font-semibold transition active:scale-[0.98] ${
-                    on
-                      ? 'border-maroon bg-maroon text-white shadow-lg'
-                      : 'border-gray-200 bg-white text-maroon hover:border-maroon'
-                  }`}
-                >
-                  {c.full_name}
-                  {on && <Check className="h-7 w-7 shrink-0" />}
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="mt-8 flex w-full flex-col gap-4 sm:flex-row">
-            <button
-              onClick={onBack}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-gray-300 px-6 py-5 text-xl font-semibold text-gray-600 transition hover:bg-gray-50"
-            >
-              <ChevronLeft className="h-6 w-6" /> Go back
-            </button>
-            <button
-              onClick={onNext}
-              disabled={!selected}
-              className="flex-[2] rounded-2xl bg-maroon px-6 py-5 text-2xl font-bold text-white transition hover:bg-maroon-dark active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-
-          <StartOver onClick={onReset} />
-        </>
+        <div className="mt-4 flex w-full flex-col gap-3">
+          {options.map((c) => {
+            const on = selected?.id === c.id
+            return (
+              <button
+                key={c.id}
+                onClick={() => onSelect(c)}
+                aria-pressed={on}
+                className={`flex items-center justify-between gap-3 rounded-2xl border-4 px-5 py-5 text-left text-xl font-semibold transition active:scale-[0.98] ${
+                  on
+                    ? 'border-maroon bg-maroon text-white shadow-lg'
+                    : 'border-gray-200 bg-white text-maroon hover:border-maroon'
+                }`}
+              >
+                {c.full_name}
+                {on && <Check className="h-6 w-6 shrink-0" />}
+              </button>
+            )
+          })}
+        </div>
       )}
-    </Step>
+    </div>
   )
 }
 
@@ -344,14 +402,14 @@ function StartOver({ onClick, disabled }) {
   )
 }
 
-// Resets itself so the kiosk is ready for the next student without anyone
-// having to touch it; the button is there for whoever doesn't want to wait.
+// Always resets itself, no button — the kiosk must be ready for the next
+// student without anyone touching it.
 function Done({ onNext }) {
   const onNextRef = useRef(onNext)
   onNextRef.current = onNext
 
   useEffect(() => {
-    const t = setTimeout(() => onNextRef.current(), 6000)
+    const t = setTimeout(() => onNextRef.current(), 3000)
     return () => clearTimeout(t)
   }, [])
 
@@ -361,15 +419,8 @@ function Done({ onNext }) {
         <Check className="h-14 w-14" />
       </span>
       <h1 className="mt-8 font-display text-4xl font-bold text-maroon sm:text-5xl">
-        Thanks for voting!
+        Thank you for your participation.
       </h1>
-      <p className="mt-3 text-xl text-gray-600">Your ballot has been recorded.</p>
-      <button
-        onClick={onNext}
-        className="mt-10 rounded-2xl bg-maroon px-10 py-5 text-2xl font-bold text-white transition hover:bg-maroon-dark active:scale-[0.98]"
-      >
-        Next voter
-      </button>
     </>
   )
 }
