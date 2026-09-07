@@ -1,7 +1,7 @@
 # Nexus 2.0 — Full Project Plan
 > Reference document for Claude Code sessions. Covers architecture, data models, feature specs, access control, and a staged build order.
 
-> **Reconciled 2026-09-06.** This was the pre-build vision doc; the repo (`kellerleonard79-ai.github.io/`) has since implemented most of it and diverged in a few places. The repo's own `CLAUDE.md` documents what's actually built and is the source of truth for current behavior — treat this file as the original plan with corrections/status notes layered in, not as ground truth on its own. Headline deltas:
+> **Reconciled 2026-09-06.** This was the pre-build vision doc; the repo has since implemented most of it and diverged in a few places. The repo's own `CLAUDE.md` documents what's actually built and is the source of truth for current behavior — treat this file as the original plan with corrections/status notes layered in, not as ground truth on its own. Headline deltas:
 > - **Routing is NOT hash-based.** The app uses `BrowserRouter` with real paths; the `404.html` copy trick (still accurate) handles GitHub Pages deep links instead.
 > - **Login is by student ID, not email.** `Login` resolves student ID → email via an `email_for_student_id()` RPC, then signs in normally.
 > - **Branding is fixed to maroon (#8e231c) + white**, not admin-customizable despite the schema columns below still existing. There is no live "Branding" tab in Admin Settings.
