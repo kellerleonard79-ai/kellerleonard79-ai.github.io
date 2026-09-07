@@ -5,6 +5,7 @@ import RequireStaff from '../components/RequireStaff.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { formatDate, formatTime, gradeLabel } from '../lib/format.js'
+import { clearanceForRole } from '../components/admin/MembersAdmin.jsx'
 
 // Two entry points share one view (both inside the DashboardLayout shell,
 // which guarantees a signed-in session):
@@ -211,15 +212,6 @@ function Field({ label, value, children }) {
       </dd>
     </div>
   )
-}
-
-// Maps a role to the legacy clearance_level string so the two stay in sync
-// while the app still reads clearance_level in places (isStaff, nav, badges).
-function clearanceForRole(role) {
-  if (!role) return 'member'
-  if (role.is_admin) return 'admin'
-  if (role.permissions?.create_meetings) return 'officer'
-  return 'member'
 }
 
 // SCI-only edit panel: change role, change elected position, approve / set

@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, Plus, ArrowRight, Loader2, X } from 'lucide-react'
+import { ChevronLeft, Plus, ArrowRight, Loader2, X, CalendarCheck, Settings2 } from 'lucide-react'
 import RequirePermission from '../components/RequirePermission.jsx'
+import PageTabs, { usePageTab } from '../components/PageTabs.jsx'
+import AgendaSectionsAdmin from '../components/admin/AgendaSectionsAdmin.jsx'
+import MeetingDefaultsAdmin from '../components/admin/MeetingDefaultsAdmin.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
@@ -20,6 +23,16 @@ export default function Meetings() {
 function MeetingsContent() {
   const { hasPermission } = useAuth()
   const canCreate = hasPermission('create_meetings')
+  // Agenda section types and meeting defaults used to be two Admin Panel
+  // sections; they live here now, behind a tab, next to the meetings they
+  // shape.
+  const canConfigure = hasPermission('manage_roles')
+  const [tab, setTab] = usePageTab([
+    { key: 'meetings', label: 'Meetings', icon: CalendarCheck },
+    ...(canConfigure
+      ? [{ key: 'settings', label: 'Settings', icon: Settings2 }]
+      : []),
+  ])
   const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -73,7 +86,7 @@ function MeetingsContent() {
             >
               <ChevronLeft className="h-4 w-4" /> Dashboard
             </Link>
-            {canCreate && (
+            {canCreate && tab === 'meetings' && (
               <button
                 onClick={() => setShowForm((v) => !v)}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-maroon px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maroon-dark"
@@ -85,82 +98,104 @@ function MeetingsContent() {
           </div>
         </div>
 
-        {showForm && (
-          <CreateMeetingForm
-            onCreated={() => {
-              setShowForm(false)
-              load()
-            }}
-          />
+        {canConfigure && (
+          <div className="mt-6">
+            <PageTabs
+              tabs={[
+                { key: 'meetings', label: 'Meetings', icon: CalendarCheck },
+                { key: 'settings', label: 'Settings', icon: Settings2 },
+              ]}
+              active={tab}
+              onChange={setTab}
+            />
+          </div>
         )}
 
-        {/* Upcoming */}
-        <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Upcoming
-          </h2>
-          {loading ? (
-            <EmptyCard>Loading…</EmptyCard>
-          ) : upcoming.length === 0 ? (
-            <EmptyCard>
-              {canCreate
-                ? 'No upcoming meetings. Create one above.'
-                : 'No upcoming meetings.'}
-            </EmptyCard>
-          ) : (
-            <ul className="mt-3 space-y-3">
-              {upcoming.map((m) => (
-                <MeetingRow key={m.id} meeting={m} />
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* Past */}
-        <section className="mt-10">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Past meetings
-            </h2>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                setSearch(query)
-              }}
-              className="flex items-center gap-2"
-            >
-              <input
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  if (e.target.value === '') setSearch('')
-                }}
-                placeholder="Search by title…"
-                className="w-48 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-maroon focus:ring-2 focus:ring-maroon/20 sm:w-56"
-              />
-              <button
-                type="submit"
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-maroon transition hover:bg-gray-50"
-              >
-                Search
-              </button>
-            </form>
+        {tab === 'settings' ? (
+          <div className="mt-8 space-y-6">
+            <AgendaSectionsAdmin />
+            <MeetingDefaultsAdmin />
           </div>
-
-          {loading ? (
-            <EmptyCard>Loading…</EmptyCard>
-          ) : past.length === 0 ? (
-            <EmptyCard>
-              {search ? 'No meetings match your search.' : 'No past meetings yet.'}
-            </EmptyCard>
-          ) : (
-            <ul className="mt-3 space-y-3">
-              {past.map((m) => (
-                <MeetingRow key={m.id} meeting={m} />
-              ))}
-            </ul>
+        ) : (
+          <>
+          {showForm && (
+            <CreateMeetingForm
+              onCreated={() => {
+                setShowForm(false)
+                load()
+              }}
+            />
           )}
-        </section>
+
+          {/* Upcoming */}
+          <section className="mt-8">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+              Upcoming
+            </h2>
+            {loading ? (
+              <EmptyCard>Loading…</EmptyCard>
+            ) : upcoming.length === 0 ? (
+              <EmptyCard>
+                {canCreate
+                  ? 'No upcoming meetings. Create one above.'
+                  : 'No upcoming meetings.'}
+              </EmptyCard>
+            ) : (
+              <ul className="mt-3 space-y-3">
+                {upcoming.map((m) => (
+                  <MeetingRow key={m.id} meeting={m} />
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Past */}
+          <section className="mt-10">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                Past meetings
+              </h2>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  setSearch(query)
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value)
+                    if (e.target.value === '') setSearch('')
+                  }}
+                  placeholder="Search by title…"
+                  className="w-48 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-maroon focus:ring-2 focus:ring-maroon/20 sm:w-56"
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-maroon transition hover:bg-gray-50"
+                >
+                  Search
+                </button>
+              </form>
+            </div>
+
+            {loading ? (
+              <EmptyCard>Loading…</EmptyCard>
+            ) : past.length === 0 ? (
+              <EmptyCard>
+                {search ? 'No meetings match your search.' : 'No past meetings yet.'}
+              </EmptyCard>
+            ) : (
+              <ul className="mt-3 space-y-3">
+                {past.map((m) => (
+                  <MeetingRow key={m.id} meeting={m} />
+                ))}
+              </ul>
+            )}
+          </section>
+          </>
+        )}
       </div>
 
     </div>

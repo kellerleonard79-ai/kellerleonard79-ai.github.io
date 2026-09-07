@@ -20,8 +20,13 @@ import {
   CalendarClock,
   Ban,
   RefreshCw,
+  Award,
+  Settings2,
 } from 'lucide-react'
 import RequirePermission from '../components/RequirePermission.jsx'
+import PageTabs, { usePageTab } from '../components/PageTabs.jsx'
+import PositionsAdmin from '../components/admin/PositionsAdmin.jsx'
+import CandidacyAdmin from '../components/admin/CandidacyAdmin.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { formatTime } from '../lib/format.js'
@@ -53,6 +58,20 @@ const pct = (n) =>
 function ElectionsContent() {
   const { hasPermission } = useAuth()
   const canManage = hasPermission('manage_elections')
+  // Two former Admin Panel sections now live here as tabs: the positions
+  // candidates run for, and the candidacy rules that apply to their
+  // applications — both a click from the cycle controls that gate filing.
+  const canEditPositions = hasPermission('manage_roles')
+  const tabs = [
+    { key: 'elections', label: 'Elections', icon: Vote },
+    ...(canEditPositions
+      ? [{ key: 'positions', label: 'Positions', icon: Award }]
+      : []),
+    ...(canManage
+      ? [{ key: 'settings', label: 'Settings', icon: Settings2 }]
+      : []),
+  ]
+  const [tab, setTab] = usePageTab(tabs)
 
   const [cycles, setCycles] = useState([])
   const [candidates, setCandidates] = useState([])
@@ -140,7 +159,7 @@ function ElectionsContent() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-bold text-maroon">
-              Elections
+              SGA Elections
             </h1>
             <p className="mt-1 text-gray-500">
               {canManage
@@ -156,7 +175,21 @@ function ElectionsContent() {
           </Link>
         </div>
 
-        {loading ? (
+        {tabs.length > 1 && (
+          <div className="mt-6">
+            <PageTabs tabs={tabs} active={tab} onChange={setTab} />
+          </div>
+        )}
+
+        {tab === 'positions' ? (
+          <div className="mt-8">
+            <PositionsAdmin />
+          </div>
+        ) : tab === 'settings' ? (
+          <div className="mt-8">
+            <CandidacyAdmin />
+          </div>
+        ) : loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-maroon" />
           </div>

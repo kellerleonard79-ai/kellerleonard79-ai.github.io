@@ -13,6 +13,7 @@ export const PERMISSION_KEYS = [
   ['upload_archives', 'Upload archives'],
   ['view_elections', 'View elections'],
   ['manage_elections', 'Manage elections'],
+  ['manage_court', 'Manage court elections'],
   ['edit_site', 'Edit site'],
   ['manage_roles', 'Manage roles'],
   ['manage_committees', 'Manage committees'],

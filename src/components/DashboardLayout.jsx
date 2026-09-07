@@ -9,6 +9,7 @@ import {
 import {
   Users,
   CalendarCheck,
+  Crown,
   Vote,
   Wallet,
   Archive,
@@ -26,23 +27,26 @@ import { useAuth } from '../lib/AuthContext.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useStuckLoading } from '../lib/useStuckLoading.js'
 
-// The tool set shown to approved members. Gating mirrors each destination
-// page's own guard (view_* permissions, RequireStaff, AdminSettings' own
-// check) so the sidebar only offers what the member can actually open.
-// Committees is open to any signed-in member, so it carries no gate.
+// The tool set shown to approved members, in sidebar order. Gating mirrors each
+// destination page's own guard (view_* permissions, RequirePermission) so the
+// sidebar only offers what the member can actually open. Committees and
+// Assignments are open to any signed-in member, so they carry no gate.
+//
+// `show` is for entries that depend on something other than a permission — My
+// Application appears only while an election cycle is running. Keeping it in
+// this array (rather than splicing it in afterwards) is what lets it sit in the
+// middle of the list.
 const TOOLS = [
-  { label: 'Member Directory', to: '/dashboard/members', icon: Users, permission: 'view_directory' },
   { label: 'Meetings', to: '/dashboard/meetings', icon: CalendarCheck, permission: 'view_meetings' },
   { label: 'Archives', to: '/dashboard/archives', icon: Archive, permission: 'view_archives' },
-  { label: 'Elections', to: '/dashboard/elections', icon: Vote, permission: 'view_elections' },
+  { label: 'Member Directory', to: '/dashboard/members', icon: Users, permission: 'view_directory' },
+  { label: 'SGA Elections', to: '/dashboard/elections', icon: Vote, permission: 'view_elections' },
+  { label: 'Court Elections', to: '/dashboard/court', icon: Crown, permission: 'manage_court' },
+  { label: 'My Application', to: '/dashboard/application', icon: ClipboardList, show: (ctx) => ctx.cycleActive },
   { label: 'Bookkeeping', to: '/dashboard/bookkeeping', icon: Wallet, permission: 'view_bookkeeping' },
   { label: 'Committees', to: '/dashboard/committees', icon: UsersRound },
-  // Every member's own work view (assign_tasks holders get a Manage mode inside
-  // the page), so it carries no gate — like Committees.
   { label: 'Assignments', to: '/dashboard/assignments', icon: ClipboardList },
-  // Reachable by anyone with at least one admin-area permission; the panel
-  // itself narrows to the sections they can use.
-  { label: 'Admin Panel', to: '/dashboard/admin', icon: Settings2, anyPermission: ['edit_site', 'manage_roles', 'manage_elections'] },
+  { label: 'Edit Site', to: '/dashboard/edit-site', icon: Settings2, permission: 'edit_site' },
 ]
 
 // Persistent shell for every /dashboard/* route. Rendered once as a layout
@@ -67,14 +71,16 @@ export default function DashboardLayout() {
     setDrawerOpen(false)
   }, [pathname])
 
-  // Existing members aren't flagged as candidates, so they'd otherwise have no
-  // path to declare candidacy when a cycle opens. Check whether filing is open
-  // to surface a "Run for a Position" entry to already-approved members.
-  const [cycleOpen, setCycleOpen] = useState(false)
+  // Whether an election cycle is running at all, which is what gates the "My
+  // Application" entry. Deliberately cycle_active and not cycle_open: the
+  // latter also requires the filing deadline to be in the future, so it would
+  // hide the entry from candidates who have already filed but still owe
+  // endorsements and an interview booking.
+  const [cycleActive, setCycleActive] = useState(false)
   useEffect(() => {
     let active = true
     supabase.rpc('my_candidacy').then(({ data }) => {
-      if (active) setCycleOpen(Boolean(data?.cycle_open))
+      if (active) setCycleActive(Boolean(data?.cycle_active))
     })
     return () => {
       active = false
@@ -104,26 +110,19 @@ export default function DashboardLayout() {
 
   const pending = profile?.status === 'pending'
 
-  // Build the nav item list. Candidacy entries surface for the right people;
-  // pending applicants get the approval notice (landing pane) and no tools.
+  // Build the nav item list. Pending applicants get the approval notice (the
+  // landing pane) and no tools — except the candidacy picker, which is the one
+  // thing they can still act on, so they are never left with nowhere to go.
   const items = [{ label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, end: true }]
 
-  // Candidacy + application live on one unified page now. Pending applicants
-  // only ever see the candidacy picker there, so label their entry accordingly.
-  if (profile?.is_candidate_application) {
-    items.push({
-      label: pending ? 'My Candidacy' : 'My Application',
-      to: '/dashboard/application',
-      icon: pending ? Vote : ClipboardList,
-    })
-  } else if (cycleOpen && !pending) {
-    items.push({ label: 'Run for a Position', to: '/dashboard/application', icon: Vote })
-  }
-
-  if (!pending) {
+  if (pending) {
+    if (profile?.is_candidate_application) {
+      items.push({ label: 'My Candidacy', to: '/dashboard/application', icon: Vote })
+    }
+  } else {
     for (const tool of TOOLS) {
       if (tool.permission && !hasPermission(tool.permission)) continue
-      if (tool.anyPermission && !tool.anyPermission.some(hasPermission)) continue
+      if (tool.show && !tool.show({ cycleActive })) continue
       items.push(tool)
     }
   }

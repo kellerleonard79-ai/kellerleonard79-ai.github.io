@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../lib/AuthContext.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { formatDate, todayISO } from '../lib/format.js'
+import { Card, Labeled, Toggle } from '../components/ui.jsx'
 
 // Assignments = WORK. Every task and every submission in the app lives here —
 // no other page accepts a submission. An assignment is a task plus an explicit
@@ -1272,22 +1273,6 @@ const inputClass =
 const filterClass =
   'rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-600 shadow-sm outline-none transition focus:border-maroon focus:ring-2 focus:ring-maroon/20'
 
-function Card({ title, desc, children }) {
-  return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      {(title || desc) && (
-        <div className="border-b border-gray-100 p-5">
-          {title && (
-            <h2 className="font-display text-lg font-bold text-maroon">{title}</h2>
-          )}
-          {desc && <p className="mt-0.5 text-sm text-gray-500">{desc}</p>}
-        </div>
-      )}
-      <div className="p-5">{children}</div>
-    </section>
-  )
-}
-
 function SectionHeading({ icon: Icon, children }) {
   return (
     <h2 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-maroon">
@@ -1438,36 +1423,6 @@ function DueBadge({ due, overdue }) {
       {overdue ? 'Overdue · ' : 'Due '}
       {formatDate(due, { month: 'short', day: 'numeric', year: 'numeric' })}
     </span>
-  )
-}
-
-function Toggle({ checked, onChange, disabled }) {
-  return (
-    <button
-      type="button"
-      onClick={() => !disabled && onChange(!checked)}
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition disabled:opacity-50 ${
-        checked ? 'bg-green-500' : 'bg-gray-300'
-      }`}
-    >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
-          checked ? 'translate-x-6' : 'translate-x-1'
-        }`}
-      />
-    </button>
-  )
-}
-
-function Labeled({ label, children }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-semibold text-maroon">{label}</span>
-      {children}
-    </label>
   )
 }
 

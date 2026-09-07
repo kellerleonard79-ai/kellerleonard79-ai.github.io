@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import Home from './pages/Home.jsx'
 import About from './pages/About.jsx'
 import Join from './pages/Join.jsx'
@@ -20,13 +20,38 @@ import Elections from './pages/Elections.jsx'
 import Bookkeeping from './pages/Bookkeeping.jsx'
 import Committees from './pages/Committees.jsx'
 import Assignments from './pages/Assignments.jsx'
-import AdminSettings from './pages/AdminSettings.jsx'
+import EditSite from './pages/EditSite.jsx'
+import CourtElections from './pages/CourtElections.jsx'
 import DashboardLayout from './components/DashboardLayout.jsx'
 import ClockWarning from './components/ClockWarning.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 
-// The standalone Edit Site and Security Clearance pages were folded into the
-// unified Admin panel; their old routes now redirect to the matching section.
+// The unified Admin panel was unwound: every section that belonged to a
+// dashboard tool moved onto that tool's own page, and what was left became Edit
+// Site. This maps the old /dashboard/admin/<section> deep links onto wherever
+// each section lives now, so bookmarks and in-app links keep working.
+const ADMIN_SECTION_HOMES = {
+  announcements: '/dashboard/edit-site/announcements',
+  join: '/dashboard/edit-site/join',
+  about: '/dashboard/edit-site/about',
+  calendar: '/dashboard/edit-site/calendar',
+  contact: '/dashboard/edit-site/contact',
+  newsletter: '/dashboard/edit-site/newsletter',
+  members: '/dashboard/members?tab=settings',
+  tiers: '/dashboard/members?tab=settings',
+  positions: '/dashboard/elections?tab=positions',
+  candidacy: '/dashboard/elections?tab=settings',
+  sections: '/dashboard/meetings?tab=settings',
+  meetings: '/dashboard/meetings?tab=settings',
+  homecoming: '/dashboard/court',
+}
+
+function AdminSectionRedirect() {
+  const { section } = useParams()
+  return (
+    <Navigate to={ADMIN_SECTION_HOMES[section] ?? '/dashboard/edit-site'} replace />
+  )
+}
 
 export default function App() {
   return (
@@ -56,13 +81,11 @@ export default function App() {
           element={<Navigate to="/dashboard/application" replace />}
         />
         <Route path="application" element={<ApplicationDashboard />} />
-        <Route
-          path="edit-site"
-          element={<Navigate to="/dashboard/admin/announcements" replace />}
-        />
+        <Route path="edit-site" element={<EditSite />} />
+        <Route path="edit-site/:section" element={<EditSite />} />
         <Route
           path="security"
-          element={<Navigate to="/dashboard/admin/members" replace />}
+          element={<Navigate to="/dashboard/members?tab=settings" replace />}
         />
         {/* Assigning work moved out of the Admin committee-tasks tab into its
             own console; keep old deep links working. */}
@@ -71,10 +94,11 @@ export default function App() {
           element={<Navigate to="/dashboard/assignments" replace />}
         />
         <Route path="assignments" element={<Assignments />} />
-        <Route path="admin" element={<AdminSettings />} />
-        <Route path="admin/:section" element={<AdminSettings />} />
+        <Route path="admin" element={<Navigate to="/dashboard/edit-site" replace />} />
+        <Route path="admin/:section" element={<AdminSectionRedirect />} />
         <Route path="archives" element={<Archives />} />
         <Route path="elections" element={<Elections />} />
+        <Route path="court" element={<CourtElections />} />
         <Route path="bookkeeping" element={<Bookkeeping />} />
         <Route path="committees" element={<Committees />} />
         <Route path="members" element={<MemberDirectory />} />
