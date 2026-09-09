@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, Loader2, Plus, Trash2 } from 'lucide-react'
-import RequirePermission from '../components/RequirePermission.jsx'
+import RequireAdmin from '../components/RequireAdmin.jsx'
 import supabase from '../lib/supabaseClient.js'
 import { useSiteSettings } from '../lib/SiteSettingsContext.jsx'
 import { Card, Labeled, Loading, Toggle, inputClass } from '../components/ui.jsx'
 
 // Court Elections — the roster and tally behind the public /kiosk voting page.
-// Promoted out of the admin panel to its own dashboard page and onto its own
-// permission key (manage_court), so running the court can be delegated without
-// handing over the SGA election machinery.
+// Editing candidates and opening/closing voting are admin-only (RequireAdmin,
+// enforced again by RLS via is_admin() — see the homecoming_* policies) rather
+// than gated on a delegable permission key, since this is the only tool that
+// can stuff or wipe the court ballot.
 export default function CourtElections() {
   return (
-    <RequirePermission permission="manage_court">
+    <RequireAdmin>
       <div className="flex min-h-screen flex-col bg-gray-50">
         <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -37,7 +38,7 @@ export default function CourtElections() {
           </div>
         </div>
       </div>
-    </RequirePermission>
+    </RequireAdmin>
   )
 }
 

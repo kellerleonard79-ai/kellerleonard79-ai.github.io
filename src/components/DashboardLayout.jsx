@@ -41,7 +41,7 @@ const TOOLS = [
   { label: 'Archives', to: '/dashboard/archives', icon: Archive, permission: 'view_archives' },
   { label: 'Member Directory', to: '/dashboard/members', icon: Users, permission: 'view_directory' },
   { label: 'SGA Elections', to: '/dashboard/elections', icon: Vote, permission: 'view_elections' },
-  { label: 'Court Elections', to: '/dashboard/court', icon: Crown, permission: 'manage_court' },
+  { label: 'Court Elections', to: '/dashboard/court', icon: Crown, adminOnly: true },
   { label: 'My Application', to: '/dashboard/application', icon: ClipboardList, show: (ctx) => ctx.cycleActive },
   { label: 'Bookkeeping', to: '/dashboard/bookkeeping', icon: Wallet, permission: 'view_bookkeeping' },
   { label: 'Committees', to: '/dashboard/committees', icon: UsersRound },
@@ -53,7 +53,7 @@ const TOOLS = [
 // route so the sidebar stays mounted across navigation (no remount, no flash).
 // Owns the auth gate that each page used to carry via RequireAuth.
 export default function DashboardLayout() {
-  const { loading, session, profile, signOut, hasPermission } = useAuth()
+  const { loading, session, profile, role, signOut, hasPermission } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -122,6 +122,7 @@ export default function DashboardLayout() {
   } else {
     for (const tool of TOOLS) {
       if (tool.permission && !hasPermission(tool.permission)) continue
+      if (tool.adminOnly && !role?.is_admin) continue
       if (tool.show && !tool.show({ cycleActive })) continue
       items.push(tool)
     }
