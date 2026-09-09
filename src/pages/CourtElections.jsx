@@ -352,7 +352,7 @@ function HomecomingCandidateRow({ candidate, onChanged }) {
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
         disabled={busy}
         aria-label={`Name for ${candidate.full_name}`}
-        className={`${inputClass} flex-1`}
+        className={`${inputClass} min-w-0 flex-1`}
       />
       <input
         value={studentId}
@@ -363,7 +363,7 @@ function HomecomingCandidateRow({ candidate, onChanged }) {
         inputMode="numeric"
         placeholder="ID"
         aria-label={`Student number for ${candidate.full_name}`}
-        className={`${inputClass} w-24 shrink-0 text-center`}
+        className={`${inputClass} w-24! shrink-0 text-center`}
       />
       <button
         onClick={remove}
